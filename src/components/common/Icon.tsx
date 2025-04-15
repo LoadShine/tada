@@ -2,9 +2,8 @@
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
-// import { clsx } from 'clsx';
 
-// Keep the existing IconName type
+// Keep the existing IconName type - ADD any new icons used
 export type IconName =
     | 'check-square' | 'calendar' | 'search' | 'user' | 'settings' | 'inbox'
     | 'file-text' | 'trash' | 'list' | 'grid' | 'clock' | 'alert-circle'
@@ -13,10 +12,11 @@ export type IconName =
     | 'star' | 'flag' | 'tag' | 'bell' | 'share' | 'upload' | 'download'
     | 'logout' | 'lock' | 'tool' | 'layers' | 'package' | 'sliders' | 'info'
     | 'help' | 'phone' | 'mail' | 'external-link' | 'crown' | 'terminal'
-    | 'grip-vertical' | 'copy' | 'archive' | 'arrow-up-down' | 'calendar-days' | 'loader' | 'users'; // Added some potentially useful icons
+    | 'grip-vertical' | 'copy' | 'archive' | 'arrow-up-down' | 'calendar-days' | 'loader' | 'users'
+    | 'sparkles'; // Added sparkles
 
-// Map string names to Lucide components (Case-insensitive matching for flexibility)
-const iconMap: { [key: string]: React.ComponentType<LucideIcons.LucideProps> } = {
+// Map string names to Lucide components (Case-insensitive matching might be added if needed)
+const iconMap: { [key in IconName]: React.ComponentType<LucideIcons.LucideProps> } = {
     'check-square': LucideIcons.CheckSquare,
     'calendar': LucideIcons.Calendar,
     'search': LucideIcons.Search,
@@ -67,31 +67,36 @@ const iconMap: { [key: string]: React.ComponentType<LucideIcons.LucideProps> } =
     'archive': LucideIcons.Archive,
     'arrow-up-down': LucideIcons.ArrowUpDown,
     'calendar-days': LucideIcons.CalendarDays,
-    'loader': LucideIcons.Loader,
+    'loader': LucideIcons.Loader2, // Use Loader2 for a different spin animation
     'users': LucideIcons.Users,
+    'sparkles': LucideIcons.Sparkles, // Added sparkles
 };
 
 interface IconProps extends React.SVGAttributes<SVGElement> {
     name: IconName;
     size?: number | string;
     className?: string;
+    strokeWidth?: number; // Allow customizing stroke width
 }
 
 const Icon = React.forwardRef<SVGSVGElement, IconProps>(
-    ({ name, size = '1em', className, ...props }, ref) => {
+    ({ name, size = '1em', className, strokeWidth = 1.75, ...props }, ref) => { // Default stroke slightly thinner
         const IconComponent = iconMap[name];
 
         if (!IconComponent) {
             console.warn(`Icon "${name}" not found.`);
-            return null; // Or return a default placeholder icon
+            // Return a default placeholder icon to avoid breaking layout
+            return <LucideIcons.HelpCircle ref={ref} size={size} className={twMerge('inline-block flex-shrink-0 text-red-500', className)} {...props} />;
         }
 
         return (
             <IconComponent
                 ref={ref}
                 size={size}
+                // Combine classes: base, passed className
                 className={twMerge('inline-block flex-shrink-0 stroke-current', className)}
-                strokeWidth={2} // Default stroke width for lucide
+                strokeWidth={strokeWidth}
+                absoluteStrokeWidth={strokeWidth !== 2} // Needed for lucide-react if strokeWidth is not default 2
                 {...props}
             />
         );

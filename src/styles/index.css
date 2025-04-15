@@ -5,44 +5,64 @@
 
 @layer base {
   body {
-    @apply bg-canvas font-sans text-gray-800 antialiased;
+    @apply bg-canvas font-sans text-gray-900 antialiased; /* Slightly darker base text */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* More refined focus-visible styles */
+  /* Refined focus-visible styles */
   *:focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-canvas;
+    @apply outline-none ring-2 ring-primary/70 ring-offset-2 ring-offset-canvas;
+  }
+
+  /* Remove default spinner from number inputs */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield; /* Firefox */
   }
 }
 
 @layer components {
-  /* Custom scrollbar - more subtle */
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+  /* Custom scrollbar - more subtle, Apple-like */
+  .styled-scrollbar::-webkit-scrollbar {
+    width: 6px; /* Slightly wider for easier grab */
+    height: 6px;
   }
 
-  ::-webkit-scrollbar-track {
+  .styled-scrollbar::-webkit-scrollbar-track {
     background-color: transparent;
   }
 
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+  .styled-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300/80 rounded-full border-2 border-transparent bg-clip-content;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+  .styled-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400/90;
   }
 
-  /* Style for react-datepicker */
+  .styled-scrollbar {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: theme('colors.gray.300') transparent; /* Firefox */
+  }
+  .styled-scrollbar:hover {
+    scrollbar-color: theme('colors.gray.400') transparent; /* Firefox */
+  }
+
+
+  /* Style for react-datepicker - More integrated feel */
   .react-datepicker {
-    @apply border-gray-200 rounded-lg shadow-medium;
+    @apply border-gray-200/80 rounded-lg shadow-medium bg-canvas p-1; /* Add slight padding */
     font-family: inherit;
+    font-size: 0.875rem; /* Match base text size */
   }
   .react-datepicker__header {
-    @apply bg-canvas-alt border-b border-gray-200 rounded-t-lg pt-2;
+    @apply bg-transparent border-b border-gray-200/70 rounded-t-lg pt-2 pb-1 px-2; /* Subtle border */
   }
   .react-datepicker__current-month,
   .react-datepicker-time__header,
@@ -50,19 +70,24 @@
     @apply text-sm font-medium text-gray-700 pb-2;
   }
   .react-datepicker__navigation {
-    @apply top-3;
+    @apply top-3 w-8 h-8; /* Slightly larger hit area */
+  }
+  .react-datepicker__navigation--previous { @apply left-1; }
+  .react-datepicker__navigation--next { @apply right-1; }
+  .react-datepicker__navigation-icon {
+    @apply w-full h-full flex items-center justify-center;
   }
   .react-datepicker__navigation-icon::before {
-    @apply border-gray-500;
+    @apply border-gray-500 hover:border-gray-700; /* Add hover */
     border-width: 2px 2px 0 0;
-    height: 7px;
-    width: 7px;
+    height: 6px;
+    width: 6px;
   }
   .react-datepicker__day-name, .react-datepicker__day, .react-datepicker__time-name {
-    @apply w-9 h-9 leading-9 text-xs; /* Adjust size */
+    @apply w-8 h-8 leading-8 text-xs m-0.5; /* Adjust size/margin */
   }
   .react-datepicker__day {
-    @apply text-gray-600 rounded-full transition-colors duration-150 ease-in-out;
+    @apply text-gray-700 rounded-full transition-colors duration-100 ease-in-out;
     &:hover {
       @apply bg-gray-100;
     }
@@ -70,44 +95,73 @@
   .react-datepicker__day--selected,
   .react-datepicker__day--in-selecting-range,
   .react-datepicker__day--in-range {
-    @apply bg-primary text-white font-medium;
+    @apply bg-primary text-white font-semibold; /* Make selection bold */
     &:hover {
       @apply bg-primary-dark;
     }
   }
   .react-datepicker__day--keyboard-selected {
-    @apply bg-primary-light text-primary-dark;
+    @apply bg-primary/10 ring-1 ring-primary; /* Subtle keyboard focus */
   }
   .react-datepicker__day--today {
-    @apply font-bold text-primary;
+    @apply font-semibold text-primary bg-primary/10; /* Highlight today */
   }
   .react-datepicker__day--outside-month {
-    @apply text-gray-300;
+    @apply text-gray-400 opacity-80;
   }
   .react-datepicker__day--disabled {
-    @apply text-gray-300 cursor-not-allowed opacity-50;
+    @apply text-gray-300 cursor-not-allowed opacity-50 hover:bg-transparent;
+  }
+  .react-datepicker__close-icon {
+    @apply absolute top-0 right-0 p-2;
   }
   .react-datepicker__close-icon::after {
-    @apply bg-transparent text-gray-500 h-6 w-6 text-xl font-normal;
+    @apply bg-transparent text-gray-500 h-5 w-5 text-lg font-normal flex items-center justify-center rounded-full hover:bg-gray-100;
     content: '✕';
   }
+  /* Datepicker input */
+  .react-datepicker-ignore-onclickoutside {
+    @apply !border-primary ring-1 ring-primary bg-white;
+  }
 
-  /* CodeMirror base styles */
+  /* CodeMirror base styles - Refined */
   .cm-editor {
-    @apply text-sm rounded-md border border-gray-200;
+    @apply text-sm rounded-md outline-none; /* Remove default border, handle focus externally */
     &.cm-focused {
-      @apply border-primary ring-1 ring-primary; /* Match focus-visible */
+      /* Focus handled by wrapper */
     }
   }
   .cm-gutters {
-    @apply bg-canvas-alt border-r border-gray-200 rounded-l-md; /* Style line numbers */
+    @apply bg-canvas-alt border-r border-gray-200/80 text-muted text-xs pr-2; /* Subtle gutter */
+    font-family: inherit;
     user-select: none;
+    border-top-left-radius: inherit;
+    border-bottom-left-radius: inherit;
+  }
+  .cm-content {
+    @apply p-2; /* Add padding inside the content area */
+    caret-color: theme('colors.primary.DEFAULT'); /* Themed caret */
   }
   .cm-scroller {
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; /* Monospace font */
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    @apply styled-scrollbar; /* Apply custom scrollbar */
   }
-  /* Example theme adjustment if needed */
-  .cm-theme-light .cm-gutters { /* Assuming a light theme */
-    @apply bg-gray-50;
+  .cm-lineNumbers .cm-gutterElement {
+    padding: 0 8px 0 10px; /* Adjust gutter text padding */
+    min-width: 2em; /* Ensure minimum width */
+    text-align: right;
+  }
+  .cm-activeLineGutter {
+    @apply bg-primary/10; /* Highlight active line gutter */
+  }
+  .cm-activeLine {
+    @apply bg-primary/5; /* Subtle active line background */
+  }
+  .cm-placeholder {
+    @apply text-muted italic;
+  }
+  /* Adjust selection color for better contrast */
+  .cm-selectionBackground, ::selection {
+    @apply bg-primary/20;
   }
 }

@@ -1,17 +1,20 @@
 // src/components/common/CodeMirrorEditor.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useImperativeHandle } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, placeholder as viewPlaceholder} from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
-// import { oneDark } from '@codemirror/theme-one-dark'; // Example theme
 import { bracketMatching, indentOnInput, foldGutter, foldKeymap } from '@codemirror/language';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap } from '@codemirror/lint';
 import { twMerge } from 'tailwind-merge';
-// import { clsx } from 'clsx';
+
+// Optional: Define a ref handle type
+export interface CodeMirrorEditorRef {
+    focus: () => void;
+}
 
 interface CodeMirrorEditorProps {
     value: string;
@@ -19,29 +22,72 @@ interface CodeMirrorEditorProps {
     className?: string;
     placeholder?: string;
     readOnly?: boolean;
-    onBlur?: () => void;
+    onBlur?: (event: FocusEvent) => void; // Pass the event
+    onFocus?: (event: FocusEvent) => void; // Pass the event
+    editorRef?: React.Ref<CodeMirrorEditorRef>; // Allow passing a ref
 }
 
-const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
-                                                               value,
-                                                               onChange,
-                                                               className,
-                                                               placeholder,
-                                                               readOnly = false,
-                                                               onBlur,
-                                                           }) => {
-    const editorRef = useRef<HTMLDivElement>(null);
+const CodeMirrorEditor = React.forwardRef<HTMLDivElement, CodeMirrorEditorProps>(({
+                                                                                      value,
+                                                                                      onChange,
+                                                                                      className,
+                                                                                      placeholder,
+                                                                                      readOnly = false,
+                                                                                      onBlur,
+                                                                                      onFocus,
+                                                                                      editorRef: externalEditorRef, // Rename prop to avoid conflict
+                                                                                  }, ref) => {
+    const internalEditorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
 
+    // Combine internal and external refs
+    const combinedRef = (el: HTMLDivElement | null) => {
+        if (typeof ref === 'function') {
+            ref(el);
+        } else if (ref) {
+            ref.current = el;
+        }
+        (internalEditorRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    };
+
+    // Expose focus method via ref
+    useImperativeHandle(externalEditorRef, () => ({
+        focus: () => {
+            viewRef.current?.focus();
+        },
+    }), []); // Ensure dependencies are correct if viewRef changes need to be tracked
+
     useEffect(() => {
-        if (!editorRef.current) return;
+        if (!internalEditorRef.current) return;
+
+        // Theme and Styling Extensions
+        const themeExtensions = EditorView.theme({
+            // Apply Tailwind classes directly where possible, or define custom CM classes
+            '&': {
+                height: '100%', // Ensure editor fills container height
+                fontSize: '0.875rem', // text-sm
+                lineHeight: '1.5', // Adjust line height for readability
+            },
+            '.cm-scroller': {
+                fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace",
+                overflow: 'auto', // Ensure scrollbars appear
+            },
+            // Add more theme overrides here if needed
+        });
 
         const extensions = [
             lineNumbers(),
             highlightActiveLineGutter(),
             highlightSpecialChars(),
             history(),
-            foldGutter(),
+            foldGutter({
+                markerDOM: (open) => {
+                    const marker = document.createElement("span");
+                    marker.className = `cm-foldMarker ${open ? 'cm-foldMarker-open' : ''}`;
+                    marker.textContent = open ? "⌄" : "›"; // Use chevrons
+                    return marker;
+                }
+            }),
             drawSelection(),
             dropCursor(),
             EditorState.allowMultipleSelections.of(true),
@@ -61,18 +107,26 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
                 ...foldKeymap,
                 ...completionKeymap,
                 ...lintKeymap,
-                indentWithTab, // Use Tab key for indentation
+                indentWithTab,
             ]),
             markdown({
                 base: markdownLanguage,
-                codeLanguages: languages, // Support syntax highlighting in code blocks
+                codeLanguages: languages,
+                addKeymap: true, // Add default markdown keybindings
             }),
-            // oneDark, // Add a theme if desired
-            EditorView.lineWrapping, // Enable line wrapping
+            EditorView.lineWrapping,
+            themeExtensions, // Apply custom theme/styles
             EditorView.contentAttributes.of({ 'aria-label': 'Markdown editor' }),
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
                     onChange(update.state.doc.toString());
+                }
+                if (update.focusChanged) {
+                    if (update.view.hasFocus) {
+                        onFocus?.(new FocusEvent('focus')); // Synthesize event if needed
+                    } else {
+                        onBlur?.(new FocusEvent('blur')); // Synthesize event if needed
+                    }
                 }
             }),
             EditorState.readOnly.of(readOnly),
@@ -84,9 +138,14 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
             extensions: extensions,
         });
 
+        // Destroy previous view if it exists
+        if (viewRef.current) {
+            viewRef.current.destroy();
+        }
+
         const view = new EditorView({
             state: startState,
-            parent: editorRef.current,
+            parent: internalEditorRef.current,
         });
         viewRef.current = view;
 
@@ -94,9 +153,9 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
             view.destroy();
             viewRef.current = null;
         };
-        // IMPORTANT: Only re-initialize if readOnly or placeholder changes.
-        // Value changes are handled by the dispatch effect below.
-    }, [onChange, readOnly, placeholder]);
+        // Include relevant dependencies. onChange, onFocus, onBlur are functions and might cause re-renders if not stable.
+        // Consider wrapping them in useCallback in the parent component.
+    }, [onChange, readOnly, placeholder, onFocus, onBlur]);
 
     // Effect to update the editor content when the `value` prop changes from outside
     useEffect(() => {
@@ -107,11 +166,14 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
         }
     }, [value]);
 
-    return <div
-        ref={editorRef}
-        className={twMerge('cm-editor-container h-full', className)}
-        onBlur={onBlur}
-    ></div>;
-};
-
+    return (
+        <div
+            ref={combinedRef}
+            // Apply base styling here, CM theme handles internal styles
+            className={twMerge('cm-editor-container relative h-full w-full', className)}
+            // Remove onBlur from the container div, let CM handle it via updateListener
+        ></div>
+    );
+});
+CodeMirrorEditor.displayName = 'CodeMirrorEditor';
 export default CodeMirrorEditor;

@@ -11,20 +11,29 @@ export interface Task {
     id: string;
     title: string;
     completed: boolean;
-    dueDate?: number | null; // Store as timestamp for easier sorting/filtering
-    list: string; // Could be an ID later if lists become complex entities
+    dueDate?: number | null; // Store as timestamp (milliseconds)
+    list: string; // 'Inbox' or user-defined list name
     content?: string; // Markdown content
-    order: number; // For manual sorting
-    createdAt: number; // Timestamp
-    updatedAt: number; // Timestamp
-    tags?: string[]; // Optional tags
-    priority?: number; // Optional priority (e.g., 1-4)
+    order: number; // Global order for sorting (can be float for fractional indexing)
+    createdAt: number; // Timestamp (milliseconds)
+    updatedAt: number; // Timestamp (milliseconds)
+    tags?: string[];
+    priority?: number; // 1 (High) to 4 (Low)
 }
 
 export type ListDisplayMode = 'expanded' | 'compact';
 
-// Define filter types for sidebar/routes
-export type TaskFilter = 'all' | 'today' | 'next7days' | 'inbox' | 'completed' | 'trash' | `list-${string}` | `tag-${string}`;
+// Updated filter types reflecting sidebar changes
+export type TaskFilter = 'all' | 'today' | 'next7days' | 'completed' | 'trash' | `list-${string}` | `tag-${string}`;
+
+// Added type for grouped tasks
+export type TaskGroup = {
+    id: string; // e.g., 'overdue', 'today', '2024-08-15', 'nodate'
+    title: string; // e.g., 'Overdue', 'Today', 'Aug 15', 'No Date'
+    tasks: Task[];
+    isDateGroup: boolean; // Indicates if this group represents a specific date/range
+    date?: number; // Timestamp for date groups (start of day)
+};
 
 export type SettingsTab =
     | 'account' | 'premium' | 'features' | 'smart-list' | 'notifications'

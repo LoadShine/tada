@@ -16,14 +16,15 @@ const MainPage: React.FC<MainPageProps> = ({ title, filter }) => {
     const [selectedTaskId] = useAtom(selectedTaskIdAtom);
 
     return (
-        <div className="h-full flex flex-1"> {/* Ensure it fills the main area */}
-            {/* Task List takes available space */}
-            <div className="flex-1 h-full min-w-0"> {/* min-w-0 prevents overflow issues */}
+        // Ensure this container fills the space provided by MainLayout's <main>
+        <div className="h-full flex flex-1 overflow-hidden">
+            {/* Task List takes available space, minimum width prevents collapse */}
+            <div className="flex-1 h-full min-w-0 overflow-hidden">
                 <TaskList title={title} filter={filter} />
             </div>
 
             {/* Task Detail slides in/out */}
-            <AnimatePresence>
+            <AnimatePresence initial={false}>
                 {selectedTaskId && <TaskDetail />}
             </AnimatePresence>
         </div>
