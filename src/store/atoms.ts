@@ -1,7 +1,7 @@
 // src/store/atoms.ts
 import { atom } from 'jotai';
 import { atomWithStorage } from 'jotai/utils';
-import {User, Task, ListDisplayMode, TaskFilter, TaskGroupCategory, SettingsTab} from '@/types';
+import { User, Task, TaskFilter, TaskGroupCategory, SettingsTab } from '@/types';
 import { isToday, isWithinNext7Days, isOverdue } from '@/utils/dateUtils';
 import { startOfDay } from 'date-fns';
 
@@ -25,23 +25,27 @@ const initialTasks: Task[] = [
     { id: '10', title: '研究 CodeMirror Themes', completed: false, dueDate: null, list: 'Dev', content: 'Find a good light/dark theme.', order: 6, createdAt: Date.now() - 86400000 * 2, updatedAt: Date.now() - 86400000 * 1 },
     { id: '11', title: '体检预约', completed: false, dueDate: startOfDay(new Date(Date.now() - 86400000 * 2)).getTime(), list: 'Personal', content: 'Call the clinic.', order: 7, createdAt: Date.now() - 86400000 * 4, updatedAt: Date.now() - 86400000 * 3, priority: 1 }, // Overdue task
     { id: '5', title: '我能用Tada做什么?', completed: true, dueDate: null, list: 'Inbox', content: 'Organize life, track projects, collaborate.', order: 8, createdAt: Date.now() - 86400000 * 4, updatedAt: Date.now() - 86400000 * 3 },
-    { id: '6', title: '研究一下patch', completed: true, dueDate: new Date(2024, 6, 13).getTime(), list: 'Archive', content: '', order: 9, createdAt: new Date(2024, 6, 13).getTime(), updatedAt: new Date(2024, 6, 14).getTime() }, // Note: JS months are 0-indexed
+    { id: '6', title: '研究一下patch', completed: true, dueDate: new Date(2024, 6, 13).getTime(), list: 'Archive', content: '', order: 9, createdAt: new Date(2024, 6, 13).getTime(), updatedAt: new Date(2024, 6, 14).getTime() },
     { id: '7', title: 'Swagger2讲解 (Completed)', completed: true, dueDate: new Date(2024, 6, 14).getTime(), list: 'Work', content: 'Focus on API documentation standards.', order: 10, createdAt: new Date(2024, 6, 14).getTime(), updatedAt: new Date(2024, 6, 14).getTime() },
 ].sort((a, b) => a.order - b.order); // Initial sort by order
 
 // Store tasks in localStorage using timestamps
 export const tasksAtom = atomWithStorage<Task[]>('tasks', initialTasks, undefined, { getOnInit: true });
 
+// Store user-defined lists separately (Requirement 4)
+const initialUserLists = ['Work', 'Planning', 'Dev', 'Personal']; // Extract from initialTasks or define defaults
+export const userDefinedListsAtom = atomWithStorage<string[]>('userDefinedLists', initialUserLists, undefined, { getOnInit: true });
+
 export const selectedTaskIdAtom = atom<string | null>(null);
 
-export const listDisplayModeAtom = atomWithStorage<ListDisplayMode>('listDisplayMode', 'expanded'); // Keep for potential future use
+// export const listDisplayModeAtom = atomWithStorage<ListDisplayMode>('listDisplayMode', 'expanded'); // Keep for potential future use
 
 export const isSettingsOpenAtom = atom<boolean>(false);
 export const settingsSelectedTabAtom = atom<SettingsTab>('account');
+export const isAddListModalOpenAtom = atom<boolean>(false); // State for Add List Modal
 
 // Represents the current filter applied (from URL/Sidebar)
-// Default to 'all' as requested
-export const currentFilterAtom = atom<TaskFilter>('all');
+export const currentFilterAtom = atom<TaskFilter>('all'); // Default to 'all'
 
 // --- Derived Atoms ---
 
@@ -74,15 +78,12 @@ export const filteredTasksAtom = atom<Task[]>((get) => {
             // Show tasks due today AND the next 6 days
             filtered = activeTasks.filter(task => !task.completed && task.dueDate && isWithinNext7Days(task.dueDate));
             break;
-        // case 'inbox': // Removed as per requirement
-        //     filtered = activeTasks.filter(task => !task.completed && task.list === 'Inbox');
-        //     break;
         case 'completed':
-            // Show completed non-trashed tasks, maybe sort by completion date? (using updatedAt for now)
+            // Show completed non-trashed tasks, sorted by completion date (updatedAt) descending
             filtered = activeTasks.filter(task => task.completed).sort((a, b) => b.updatedAt - a.updatedAt);
             break;
         case 'trash':
-            // Show only trashed tasks, maybe sort by updated date?
+            // Show only trashed tasks, sorted by updated date descending
             filtered = trashedTasks.sort((a, b) => b.updatedAt - a.updatedAt);
             break;
         default:
@@ -101,34 +102,63 @@ export const filteredTasksAtom = atom<Task[]>((get) => {
 
     // Sort all filtered tasks (except completed/trash which have their own sort) by the 'order' property
     if (filter !== 'completed' && filter !== 'trash') {
-        return filtered.sort((a, b) => a.order - b.order);
+        // Ensure consistent sorting even if order numbers are identical or non-numeric (fallback to creation time)
+        return filtered.sort((a, b) => (a.order - b.order) || (a.createdAt - b.createdAt));
     }
     return filtered;
 
 });
 
+// Atom to get unique list names including user-defined ones even if empty
+export const userListNamesAtom = atom<string[]>((get) => {
+    const tasks = get(tasksAtom);
+    const userDefinedLists = get(userDefinedListsAtom);
+    const specialLists = ['Inbox', 'Trash', 'Archive']; // Exclude system/default lists
+
+    const listsFromTasks = new Set<string>();
+    tasks.forEach(task => {
+        // Consider only tasks not in Trash for user-defined lists
+        if (task.list && !specialLists.includes(task.list) && task.list !== 'Trash') {
+            listsFromTasks.add(task.list);
+        }
+    });
+
+    // Combine lists from tasks and explicitly defined lists
+    const combinedLists = new Set([...userDefinedLists, ...listsFromTasks]);
+
+    return Array.from(combinedLists).sort((a, b) => a.localeCompare(b)); // Alphabetical sort
+});
+
+
 // Atom to get task counts for the sidebar
 export const taskCountsAtom = atom((get) => {
     const tasks = get(tasksAtom);
-    // Important: Filter out trashed tasks *before* counting for most categories
+    const allUserListNames = get(userListNamesAtom); // Get all known user lists
+
+    // Active tasks are non-trashed tasks
     const activeTasks = tasks.filter(task => task.list !== 'Trash');
 
+    // Counts for standard filters
     const counts = {
         all: activeTasks.filter(t => !t.completed).length,
         today: activeTasks.filter(t => !t.completed && t.dueDate && isToday(t.dueDate)).length,
         next7days: activeTasks.filter(t => !t.completed && t.dueDate && isWithinNext7Days(t.dueDate)).length,
-        // inbox: activeTasks.filter(t => !t.completed && t.list === 'Inbox').length, // Removed
         completed: activeTasks.filter(t => t.completed).length, // Count completed from active tasks
         trash: tasks.filter(t => t.list === 'Trash').length, // Count trash from *all* tasks
         lists: {} as Record<string, number>,
         tags: {} as Record<string, number>,
     };
 
+    // Initialize counts for all known user lists to 0
+    allUserListNames.forEach(listName => {
+        counts.lists[listName] = 0;
+    });
+
     // Calculate counts for lists and tags dynamically from *active, non-completed* tasks
     activeTasks.filter(t => !t.completed).forEach(task => {
-        // List counts (excluding 'Inbox')
-        if (task.list && task.list !== 'Inbox') {
-            counts.lists[task.list] = (counts.lists[task.list] || 0) + 1;
+        // List counts (only count if it's in our user list names)
+        if (task.list && Object.prototype.hasOwnProperty.call(counts.lists, task.list)) {
+            counts.lists[task.list]++;
         }
         // Tag counts
         task.tags?.forEach(tag => {
@@ -136,22 +166,17 @@ export const taskCountsAtom = atom((get) => {
         });
     });
 
+    // Initialize counts for tags found
+    const tagNames = get(userTagNamesAtom);
+    tagNames.forEach(tag => {
+        if (!Object.prototype.hasOwnProperty.call(counts.tags, tag)) {
+            counts.tags[tag] = 0; // Ensure all known tags are present, even if count is 0
+        }
+    });
+
     return counts;
 });
 
-// Atom to get unique list names (excluding special ones)
-export const userListNamesAtom = atom<string[]>((get) => {
-    const tasks = get(tasksAtom);
-    const specialLists = ['Inbox', 'Trash', 'Archive']; // Exclude system/default lists
-    const lists = new Set<string>();
-    tasks.forEach(task => {
-        // Consider only tasks not in Trash for user-defined lists
-        if (task.list && !specialLists.includes(task.list) && task.list !== 'Trash') {
-            lists.add(task.list);
-        }
-    });
-    return Array.from(lists).sort((a, b) => a.localeCompare(b)); // Alphabetical sort
-});
 
 // Atom to get unique tag names
 export const userTagNamesAtom = atom<string[]>((get) => {
@@ -166,7 +191,10 @@ export const userTagNamesAtom = atom<string[]>((get) => {
 
 // Helper atom to group tasks for the 'All Tasks' view
 export const groupedAllTasksAtom = atom((get): Record<TaskGroupCategory, Task[]> => {
-    const allActiveTasks = get(filteredTasksAtom); // Use the already filtered ('all', non-completed, sorted by order) tasks
+    // Use the 'all' filtered tasks directly, which are already non-completed, non-trashed, and sorted by order
+    const allActiveTasksSortedByOrder = get(tasksAtom)
+        .filter(task => task.list !== 'Trash' && !task.completed)
+        .sort((a, b) => (a.order - b.order) || (a.createdAt - b.createdAt));
 
     const groups: Record<TaskGroupCategory, Task[]> = {
         overdue: [],
@@ -176,13 +204,14 @@ export const groupedAllTasksAtom = atom((get): Record<TaskGroupCategory, Task[]>
         nodate: [],
     };
 
-    allActiveTasks.forEach(task => {
+    allActiveTasksSortedByOrder.forEach(task => {
         if (task.dueDate) {
-            if (isOverdue(task.dueDate)) {
+            const dueDate = new Date(task.dueDate); // Create date object for checks
+            if (isOverdue(dueDate)) {
                 groups.overdue.push(task);
-            } else if (isToday(task.dueDate)) {
+            } else if (isToday(dueDate)) {
                 groups.today.push(task);
-            } else if (isWithinNext7Days(task.dueDate)) {
+            } else if (isWithinNext7Days(dueDate)) {
                 // Exclude today since it has its own group
                 groups.next7days.push(task);
             } else {
@@ -194,7 +223,6 @@ export const groupedAllTasksAtom = atom((get): Record<TaskGroupCategory, Task[]>
         }
     });
 
-    // Keep the original sort order within each group
-    // The tasks are already sorted by 'order' from filteredTasksAtom
+    // Groups are naturally sorted by 'order' because the input list was sorted
     return groups;
 });

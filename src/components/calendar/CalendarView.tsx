@@ -18,15 +18,17 @@ import {
     isSameDay,
     getDay,
     startOfDay,
+    isBefore,
 } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { twMerge } from 'tailwind-merge';
 import { clsx } from 'clsx';
-import { DndContext, DragEndEvent, DragStartEvent, useDraggable, useDroppable, DragOverlay, pointerWithin } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent, useDraggable, useDroppable, DragOverlay, pointerWithin, MeasuringStrategy } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { isToday as isTodayFn, safeParseDate } from "@/utils/dateUtils.ts";
+import { AnimatePresence, motion } from 'framer-motion';
 
-// Draggable Task Item for Calendar
+// Draggable Task Item for Calendar - Refined Styling
 interface DraggableTaskProps {
     task: Task;
     onClick: () => void;
@@ -35,33 +37,38 @@ interface DraggableTaskProps {
 const DraggableCalendarTask: React.FC<DraggableTaskProps> = ({ task, onClick }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: `task-${task.id}`,
-        data: { task }, // Pass task data
+        data: { task, type: 'calendar-task' }, // Add type for context
     });
 
     const style = {
         transform: CSS.Translate.toString(transform),
         opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 100 : 1, // Ensure dragged item is on top
+        zIndex: isDragging ? 1000 : 1, // Ensure dragged item is high z-index
     };
 
+    const isOverdue = task.dueDate && isBefore(startOfDay(new Date(task.dueDate)), startOfDay(new Date())) && !task.completed;
+
     return (
-        <button
+        <motion.button
             ref={setNodeRef}
             style={style}
             {...listeners}
             {...attributes}
             onClick={onClick}
             className={twMerge(
-                "w-full text-left p-1 rounded-sm truncate transition-all duration-150 cursor-grab", // Use grab cursor
-                task.completed ? 'bg-gray-100 text-muted line-through' : 'bg-primary/10 text-primary-dark hover:bg-primary/20',
-                task.priority === 1 && !task.completed && "border-l-2 border-red-500 pl-0.5",
-                task.priority === 2 && !task.completed && "border-l-2 border-orange-400 pl-0.5",
-                isDragging && "shadow-lg bg-white ring-1 ring-primary/50" // Style for dragging item
+                "w-full text-left px-1 py-0.5 rounded-[4px] truncate text-[11px] transition-all duration-100 cursor-grab relative", // Smaller radius, font size
+                task.completed ? 'bg-gray-100 text-muted line-through italic opacity-70' : 'bg-primary/10 text-primary-dark hover:bg-primary/20',
+                // Priority indicators as dots or subtle borders
+                task.priority === 1 && !task.completed && "before:content-[''] before:absolute before:left-0 before:top-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-red-500 pl-2.5", // Dot indicator + padding
+                task.priority === 2 && !task.completed && "before:content-[''] before:absolute before:left-0 before:top-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-orange-400 pl-2.5",
+                isOverdue && !task.completed && 'text-red-600 bg-red-500/10 hover:bg-red-500/20 before:bg-red-600', // Overdue styling
+                isDragging && "shadow-medium bg-white ring-1 ring-primary/50" // Style for dragging item
             )}
             title={task.title}
+            layout // Animate layout changes if tasks reorder within day
         >
             {task.title}
-        </button>
+        </motion.button>
     );
 }
 
@@ -75,7 +82,7 @@ interface DroppableDayProps {
 const DroppableDayCell: React.FC<DroppableDayProps> = ({ day, children, className }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: `day-${format(day, 'yyyy-MM-dd')}`,
-        data: { date: day }, // Pass date data
+        data: { date: day, type: 'calendar-day' }, // Add type
     });
 
     return (
@@ -83,7 +90,8 @@ const DroppableDayCell: React.FC<DroppableDayProps> = ({ day, children, classNam
             ref={setNodeRef}
             className={twMerge(
                 className,
-                isOver && 'bg-primary/10 ring-1 ring-primary/30 transition-colors duration-100' // Highlight when dropping over
+                // Subtle highlight effect
+                isOver && 'bg-primary/10 ring-1 ring-primary/20 transition-colors duration-150 scale-[1.01]' // Scale up slightly
             )}
         >
             {children}
@@ -97,6 +105,7 @@ const CalendarView: React.FC = () => {
     const [, setSelectedTaskId] = useAtom(selectedTaskIdAtom);
     const [currentMonthDate, setCurrentMonthDate] = useState(startOfDay(new Date()));
     const [draggingTask, setDraggingTask] = useState<Task | null>(null); // Track dragging task for overlay
+    const [monthDirection, setMonthDirection] = useState<number>(0); // 0: current, -1: prev, 1: next
 
     const firstDayCurrentMonth = startOfMonth(currentMonthDate);
     const lastDayCurrentMonth = endOfMonth(currentMonthDate);
@@ -109,7 +118,7 @@ const CalendarView: React.FC = () => {
     const tasksByDueDate = useMemo(() => {
         const grouped: Record<string, Task[]> = {};
         tasks.forEach(task => {
-            // Include tasks due on this date, regardless of completion status for display, but filter out trashed
+            // Only include non-trashed tasks relevant for calendar display
             if (task.dueDate && task.list !== 'Trash') {
                 const parsedDate = safeParseDate(task.dueDate);
                 if (parsedDate) {
@@ -121,21 +130,20 @@ const CalendarView: React.FC = () => {
                 }
             }
         });
-        // Sort tasks within each day (e.g., by priority, then creation time)
+        // Sort tasks within each day: Priority (High to Low), then Creation Time (Newest First?)
         Object.values(grouped).forEach(dayTasks => {
-            dayTasks.sort((a, b) => (a.priority ?? 5) - (b.priority ?? 5) || a.createdAt - b.createdAt);
+            dayTasks.sort((a, b) => ((a.priority ?? 5) - (b.priority ?? 5)) || (b.createdAt - a.createdAt));
         });
         return grouped;
     }, [tasks]);
 
     const handleTaskClick = (taskId: string) => {
-        // Navigate to the main task view to show details?
-        // Or open a popover/modal here? For now, just select it.
         setSelectedTaskId(taskId);
-        // Maybe navigate('/'); // Navigate to a view where TaskDetail is shown
+        // Consider navigating to the main task view or opening a popover
+        // For now, just selects the task, expecting TaskDetail to appear if configured
     };
 
-    const renderCalendarDay = (day: Date) => {
+    const renderCalendarDay = (day: Date, index: number) => {
         const dateKey = format(day, 'yyyy-MM-dd');
         const dayTasks = tasksByDueDate[dateKey] || [];
         const isCurrentMonth = isSameMonth(day, currentMonthDate);
@@ -144,66 +152,105 @@ const CalendarView: React.FC = () => {
 
         return (
             <DroppableDayCell
-                key={day.toString()}
+                key={day.toISOString()} // Use ISO string for stable key
                 day={day}
                 className={twMerge(
-                    'h-32 md:h-36 border-t border-l border-gray-200/60 flex flex-col relative transition-colors duration-150 ease-in-out',
-                    !isCurrentMonth && 'bg-canvas-inset/50 text-muted',
-                    isCurrentMonth && 'bg-canvas hover:bg-gray-50/30',
-                    dayIsToday && 'bg-primary/5',
-                    dayOfWeek === 0 && 'border-l-0', // No left border for Sunday
-                    // Tailwind grid handles borders, but ensure top on first row and left on first col are correct visually
-                    'group' // Add group for potential hover effects within cell
+                    'flex flex-col relative transition-colors duration-150 ease-in-out overflow-hidden', // Add overflow hidden
+                    'border-t border-l border-border-color/60', // Use consistent border color
+                    // Conditional Backgrounds
+                    !isCurrentMonth && 'bg-canvas-inset/50', // Dim non-current month days
+                    isCurrentMonth && 'bg-canvas',
+                    dayIsToday && 'bg-primary/5', // Highlight today subtly
+                    // No left border for first column (Sunday)
+                    dayOfWeek === 0 && 'border-l-0',
+                    // Tailwind grid handles rows, but first row needs top border visually covered by header technically
+                    index < 7 && 'border-t-0', // Remove top border for first row of days
+                    'group' // Add group for hover effects
                 )}
             >
-                {/* Day Number */}
+                {/* Day Number - improved styling */}
                 <div className="flex justify-between items-center px-1.5 pt-1.5 pb-1 flex-shrink-0">
                      <span className={clsx(
-                         'text-xs font-medium w-5 h-5 flex items-center justify-center rounded-full',
-                         dayIsToday ? 'bg-primary text-white font-semibold' : 'text-gray-600',
-                         !isCurrentMonth && !dayIsToday && 'text-gray-400'
+                         'text-xs font-medium w-5 h-5 flex items-center justify-center rounded-full transition-colors duration-150',
+                         dayIsToday ? 'bg-primary text-white font-semibold shadow-sm' : 'text-gray-600', // Today marker stands out
+                         !isCurrentMonth && !dayIsToday && 'text-gray-400 opacity-70' // Dim non-current month numbers
                      )}>
                         {format(day, 'd')}
                     </span>
+                    {/* Task count badge - subtle */}
                     {dayTasks.length > 0 && isCurrentMonth && (
-                        <span className="text-[10px] text-muted-foreground bg-gray-100 px-1 py-0.5 rounded-full font-mono">
-                           {dayTasks.length}
-                        </span>
+                        <motion.span
+                            className="text-[10px] text-muted-foreground bg-gray-100 px-1 py-0.5 rounded-full font-mono"
+                            initial={{scale: 0.8, opacity: 0}}
+                            animate={{scale: 1, opacity: 1}}
+                            transition={{duration: 0.15}}
+                        >
+                            {dayTasks.length}
+                        </motion.span>
                     )}
                 </div>
 
                 {/* Task List - Only show tasks for the current month */}
-                {isCurrentMonth && (
-                    <div className="overflow-y-auto styled-scrollbar flex-1 space-y-1 text-xs px-1 pb-1">
-                        {dayTasks.slice(0, 4).map((task) => ( // Show up to 4 tasks
-                            <DraggableCalendarTask
+                {/* Add subtle fade-in for tasks */}
+                <div className="overflow-y-auto styled-scrollbar flex-1 space-y-0.5 text-xs px-1 pb-1 min-h-[60px]"> {/* Min height for drop area */}
+                    <AnimatePresence>
+                        {isCurrentMonth && dayTasks.slice(0, 3).map((task) => ( // Show up to 3 tasks initially
+                            <motion.div
                                 key={task.id}
-                                task={task}
-                                onClick={() => handleTaskClick(task.id)}
-                            />
+                                layout // Animate position changes
+                                initial={{ opacity: 0, y: -3 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, transition: {duration: 0.1} }}
+                                transition={{ duration: 0.15, delay: 0.05 }}
+                            >
+                                <DraggableCalendarTask
+                                    task={task}
+                                    onClick={() => handleTaskClick(task.id)}
+                                />
+                            </motion.div>
                         ))}
-                        {dayTasks.length > 4 && (
-                            <div className="text-[10px] text-muted-foreground pt-0.5 px-1">+ {dayTasks.length - 4} more</div>
-                        )}
-                    </div>
-                )}
-                {/* Placeholder for empty days in current month */}
-                {isCurrentMonth && dayTasks.length === 0 && (
-                    <div className="flex-1"></div>
-                )}
+                    </AnimatePresence>
+                    {isCurrentMonth && dayTasks.length > 3 && (
+                        <div className="text-[10px] text-muted pt-0.5 px-1">+ {dayTasks.length - 3} more</div>
+                    )}
+                </div>
+                {/* Placeholder for empty days */}
+                {/* {!isCurrentMonth && <div className="flex-1 bg-gradient-to-br from-transparent via-transparent to-black/5 opacity-10 pointer-events-none"></div>} */}
+
             </DroppableDayCell>
         );
     };
 
-    const previousMonth = () => setCurrentMonthDate(subMonths(currentMonthDate, 1));
-    const nextMonth = () => setCurrentMonthDate(addMonths(currentMonthDate, 1));
-    const goToToday = () => setCurrentMonthDate(startOfDay(new Date()));
+    // Month navigation with animation direction
+    const previousMonth = () => {
+        setMonthDirection(-1);
+        setCurrentMonthDate(subMonths(currentMonthDate, 1));
+    };
+    const nextMonth = () => {
+        setMonthDirection(1);
+        setCurrentMonthDate(addMonths(currentMonthDate, 1));
+    };
+    const goToToday = () => {
+        const todayMonth = startOfMonth(new Date());
+        const currentViewMonth = startOfMonth(currentMonthDate);
+        if (isBefore(todayMonth, currentViewMonth)) {
+            setMonthDirection(-1);
+        } else if (isBefore(currentViewMonth, todayMonth)) {
+            setMonthDirection(1);
+        } else {
+            setMonthDirection(0); // No animation if already in the current month
+        }
+        setCurrentMonthDate(startOfDay(new Date()));
+    };
 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+    // Drag and Drop Handlers
     const handleDragStart = useCallback((event: DragStartEvent) => {
-        const task = event.active.data.current?.task;
-        if (task) {
+        const { active } = event;
+        // Ensure we are dragging a calendar task
+        if (active.data.current?.type === 'calendar-task') {
+            const task = active.data.current?.task as Task;
             setDraggingTask(task);
             setSelectedTaskId(task.id); // Select task being dragged
         }
@@ -213,105 +260,146 @@ const CalendarView: React.FC = () => {
         setDraggingTask(null); // Clear overlay task
         const { active, over } = event;
 
-        if (over) {
-            // 安全地转换 UniqueIdentifier 到字符串
-            const activeId = String(active.id);
-            const overId = String(over.id);
+        // Check if 'over' is a droppable day cell and 'active' is a draggable task
+        if (over && over.data.current?.type === 'calendar-day' && active.data.current?.type === 'calendar-task') {
+            const taskId = active.id.toString().substring(5); // Extract task ID from `task-${id}`
+            const targetDay = over.data.current?.date as Date | undefined;
+            const originalTask = active.data.current?.task as Task | undefined;
 
-            if (activeId.startsWith('task-') && overId.startsWith('day-')) {
-                const taskId = activeId.substring(5); // Extract task ID
-                const targetDay = over.data.current?.date as Date | undefined;
+            if (taskId && targetDay && originalTask) {
+                const currentDueDate = originalTask.dueDate ? startOfDay(new Date(originalTask.dueDate)) : null;
+                const newDueDate = startOfDay(targetDay);
 
-                if (taskId && targetDay) {
-                    setTasks((prevTasks) => {
-                        // 确保 prevTasks 是数组类型
-                        if (!Array.isArray(prevTasks)) {
-                            // 如果是 Promise，需要等待解析，但在 useCallback 中难以处理
-                            // 我们可以简单地返回当前值，等待下一次更新
-                            return prevTasks;
-                        }
-
+                // Only update if the date actually changed
+                if (!currentDueDate || !isSameDay(currentDueDate, newDueDate)) {
+                    setTasks((prevTasks: Task[]) => {
                         return prevTasks.map(task => {
                             if (task.id === taskId) {
                                 // Keep existing time, just change the date part
-                                const originalDueDate = safeParseDate(task.dueDate);
-                                let newDateTime = startOfDay(targetDay).getTime(); // Default to start of day
+                                const originalDateTime = safeParseDate(task.dueDate);
+                                let newTimestamp = newDueDate.getTime(); // Default to start of day
 
-                                if (originalDueDate) {
+                                if (originalDateTime) {
                                     // Preserve original time if it existed
-                                    const hours = originalDueDate.getHours();
-                                    const minutes = originalDueDate.getMinutes();
-                                    const seconds = originalDueDate.getSeconds();
-                                    newDateTime = new Date(targetDay).setHours(hours, minutes, seconds, 0);
+                                    const hours = originalDateTime.getHours();
+                                    const minutes = originalDateTime.getMinutes();
+                                    const seconds = originalDateTime.getSeconds();
+                                    // Create new Date object for the target day, then set time
+                                    const updatedDate = new Date(targetDay);
+                                    updatedDate.setHours(hours, minutes, seconds, 0);
+                                    newTimestamp = updatedDate.getTime();
                                 }
 
                                 return {
                                     ...task,
-                                    dueDate: newDateTime,
+                                    dueDate: newTimestamp,
                                     updatedAt: Date.now(),
+                                    order: task.order // Preserve original order for now, DND reordering is separate
                                 };
                             }
                             return task;
                         });
                     });
-                    setSelectedTaskId(null); // Deselect task after dropping
                 }
+                // Deselect task after successful drop? Maybe not, keep it selected.
+                // setSelectedTaskId(null);
             }
         }
-    }, [setTasks, setSelectedTaskId]);
+    }, [setTasks]);
+
+    // Animation variants for month change
+    const variants = {
+        initial: (direction: number) => ({
+            opacity: 0,
+            x: direction > 0 ? 15 : (direction < 0 ? -15 : 0), // Slide direction
+        }),
+        animate: {
+            opacity: 1,
+            x: 0,
+            transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
+        },
+        exit: (direction: number) => ({
+            opacity: 0,
+            x: direction > 0 ? -15 : (direction < 0 ? 15 : 0), // Slide opposite direction
+            transition: { duration: 0.15, ease: [0.4, 0, 0.2, 1] }
+        }),
+    };
+
 
     return (
-        // Ensure CalendarView fills the height provided by MainLayout
-        <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} collisionDetection={pointerWithin}>
-            <div className="h-full flex flex-col bg-canvas">
+        <DndContext
+            onDragEnd={handleDragEnd}
+            onDragStart={handleDragStart}
+            collisionDetection={pointerWithin}
+            measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} // Helps with dynamic content in droppables
+        >
+            <div className="h-full flex flex-col bg-canvas overflow-hidden"> {/* Ensure overflow hidden */}
                 {/* Header */}
-                <div className="px-4 py-2 border-b border-gray-200/60 flex justify-between items-center flex-shrink-0">
-                    {/* Header with glass effect? Maybe too much? Keep it clean for now. */}
-                    {/* <div className="px-4 py-2 border-b border-black/5 dark:border-white/5 flex justify-between items-center flex-shrink-0 bg-glass/darker backdrop-blur-sm"> */}
+                <div className="px-4 py-2 border-b border-border-color/60 flex justify-between items-center flex-shrink-0">
+                    {/* Optional glass effect on header */}
+                    {/* <div className="px-4 py-2 border-b border-black/5 flex justify-between items-center flex-shrink-0 bg-glass-alt backdrop-blur-sm"> */}
                     <h1 className="text-lg font-semibold text-gray-800">Calendar</h1>
                     <div className="flex items-center space-x-3">
                         <Button
                             onClick={goToToday}
                             variant="outline"
                             size="sm"
-                            disabled={isSameMonth(currentMonthDate, new Date()) && isTodayFn(currentMonthDate)} // Using imported isToday function
+                            disabled={isSameMonth(currentMonthDate, new Date()) && isTodayFn(currentMonthDate)}
                         >
                             Today
                         </Button>
                         <div className="flex items-center">
-                            <Button onClick={previousMonth} variant="ghost" size="icon" aria-label="Previous month" className="w-7 h-7">
+                            <Button onClick={previousMonth} variant="ghost" size="icon" aria-label="Previous month" className="w-7 h-7 text-muted-foreground">
                                 <Icon name="chevron-left" size={18} />
                             </Button>
-                            <span className="mx-2 text-sm font-medium w-28 text-center tabular-nums">
-                                 {format(currentMonthDate, 'MMMM yyyy', { locale: enUS })}
-                            </span>
-                            <Button onClick={nextMonth} variant="ghost" size="icon" aria-label="Next month" className="w-7 h-7">
+                            {/* Animated Month/Year Display */}
+                            <AnimatePresence mode="wait" initial={false} custom={monthDirection}>
+                                <motion.span
+                                    key={format(currentMonthDate, 'yyyy-MM')} // Key changes on month change
+                                    className="mx-2 text-sm font-medium w-28 text-center tabular-nums text-gray-700"
+                                    custom={monthDirection}
+                                    variants={variants}
+                                    initial="initial"
+                                    animate="animate"
+                                    exit="exit"
+                                >
+                                    {format(currentMonthDate, 'MMMM yyyy', { locale: enUS })}
+                                </motion.span>
+                            </AnimatePresence>
+                            <Button onClick={nextMonth} variant="ghost" size="icon" aria-label="Next month" className="w-7 h-7 text-muted-foreground">
                                 <Icon name="chevron-right" size={18} />
                             </Button>
                         </div>
                     </div>
                 </div>
 
-                {/* Calendar Grid - Takes remaining space */}
-                {/* Use padding on the container for spacing, let grid fill */}
-                <div className="flex-1 overflow-hidden p-2">
-                    {/* Grid container ensures structure and borders */}
-                    <div className="grid grid-cols-7 h-full border-b border-r border-gray-200/60 rounded-lg overflow-hidden shadow-subtle">
-                        {/* Weekday Headers */}
-                        {weekDays.map((day) => (
-                            <div key={day} className="text-center py-1.5 text-[11px] font-medium text-muted-foreground bg-canvas-alt border-l border-t border-gray-200/60 first:border-l-0">
-                                {day}
-                            </div>
-                        ))}
-                        {/* Calendar Days - Render days, grid layout handles positioning */}
-                        {daysInGrid.map(renderCalendarDay)}
+                {/* Calendar Grid Container */}
+                <div className="flex-1 overflow-hidden p-3"> {/* Add padding around the grid */}
+                    <div className="h-full w-full flex flex-col rounded-lg overflow-hidden shadow-subtle border border-border-color/60 bg-white">
+                        {/* Weekday Headers - Improved Styling */}
+                        <div className="grid grid-cols-7 flex-shrink-0 border-b border-border-color/60">
+                            {weekDays.map((day) => (
+                                <div key={day} className="text-center py-1.5 text-[11px] font-medium text-muted-foreground bg-canvas-alt border-l border-border-color/60 first:border-l-0">
+                                    {day}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Calendar Days Grid - takes remaining space */}
+                        <div className="grid grid-cols-7 grid-rows-6 flex-1"> {/* Fixed 6 rows */}
+                            {/* AnimatePresence for month transition */}
+                            {/* Note: Animating the entire grid might be heavy. Animating the month text is often enough. */}
+                            {daysInGrid.map(renderCalendarDay)}
+                        </div>
                     </div>
                 </div>
             </div>
-            {/* Drag Overlay for visual feedback */}
+
+            {/* Drag Overlay for visual feedback - Improved Styling */}
             <DragOverlay dropAnimation={null}>
                 {draggingTask ? (
-                    <div className="text-xs w-full text-left p-1 rounded-sm truncate shadow-lg bg-white ring-1 ring-primary/50" title={draggingTask.title}>
+                    <div className="text-xs w-auto text-left px-2 py-1 rounded-md truncate shadow-strong bg-white ring-1 ring-primary/50 font-medium" title={draggingTask.title}>
+                        <Icon name="grip-vertical" size={12} className="inline-block mr-1 text-muted opacity-50" />
                         {draggingTask.title}
                     </div>
                 ) : null}

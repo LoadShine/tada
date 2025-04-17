@@ -3,7 +3,7 @@ import React from 'react';
 import CalendarView from '../components/calendar/CalendarView';
 
 const CalendarPage: React.FC = () => {
-    // CalendarView now handles its own layout within the main content area
+    // CalendarView handles its own layout within the main content area
     return <CalendarView />;
 };
 

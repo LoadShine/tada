@@ -3,7 +3,7 @@ import React from 'react';
 import SummaryView from '../components/summary/SummaryView';
 
 const SummaryPage: React.FC = () => {
-    // SummaryView now handles its own layout within the main content area
+    // SummaryView handles its own layout within the main content area
     return <SummaryView />;
 };
 

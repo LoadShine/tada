@@ -18,7 +18,7 @@ export interface Task {
     createdAt: number; // Timestamp
     updatedAt: number; // Timestamp
     tags?: string[];
-    priority?: number; // e.g., 1 (High) - 4 (Low)
+    priority?: number | null; // e.g., 1 (High) - 4 (Low), null for none
 }
 
 export type ListDisplayMode = 'expanded' | 'compact';
@@ -26,9 +26,8 @@ export type ListDisplayMode = 'expanded' | 'compact';
 export type TaskFilter = 'all' | 'today' | 'next7days' | 'completed' | 'trash' | `list-${string}` | `tag-${string}`;
 
 export type SettingsTab =
-    | 'account' | 'premium' | 'features' | 'smart-list' | 'notifications'
-    | 'date-time' | 'appearance' | 'more' | 'integrations' | 'collaborate'
-    | 'shortcuts' | 'about';
+    | 'account' | 'appearance' | 'premium' | 'notifications' | 'integrations'
+    | 'about'; // Simplified the list based on SettingsModal usage
 
 // Grouping category for 'all' tasks view
 export type TaskGroupCategory = 'overdue' | 'today' | 'next7days' | 'later' | 'nodate';
