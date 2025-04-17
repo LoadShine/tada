@@ -8,7 +8,17 @@ import {
     addDays,
     parseISO,
     isValid,
-    differenceInCalendarDays
+    differenceInCalendarDays,
+    endOfWeek, // Needed for CalendarView calculation
+    startOfWeek, // Needed for CalendarView calculation
+    eachDayOfInterval, // Needed for CalendarView calculation
+    isSameMonth, // Needed for CalendarView calculation
+    isSameDay, // Needed for CalendarView calculation
+    getDay, // Needed for CalendarView calculation
+    addMonths, // Needed for CalendarView calculation
+    subMonths, // Needed for CalendarView calculation
+    startOfMonth, // Needed for CalendarView calculation
+    endOfMonth, // Needed for CalendarView calculation
 } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 
@@ -26,7 +36,11 @@ export const safeParseDate = (dateInput: Date | number | string | null | undefin
         // Assuming the number is a timestamp in milliseconds
         date = new Date(dateInput);
     } else if (typeof dateInput === 'string') {
-        date = parseISO(dateInput); // Handles ISO 8601 format
+        // Try parsing ISO 8601 first, then fall back to general parsing
+        date = parseISO(dateInput);
+        if (!isValid(date)) {
+            date = new Date(dateInput); // General fallback
+        }
     } else {
         return null; // Unsupported type
     }
@@ -41,7 +55,7 @@ export const formatDate = (dateInput: Date | number | null | undefined, formatSt
     try {
         return formatFns(date, formatString, { locale: currentLocale });
     } catch (e) {
-        console.error("Error formatting date:", e);
+        console.error("Error formatting date:", dateInput, e);
         return "Invalid Date";
     }
 };
@@ -88,8 +102,8 @@ export const isWithinNext7Days = (dateInput: Date | number | null | undefined): 
     const today = startOfDay(new Date());
     const nextWeekEnd = endOfDay(addDays(today, 6)); // End of the 7th day from today
 
-    // Ensure the date is not in the past and is within the 7-day window
-    return !isBefore(startOfDay(date), today) && isBefore(date, addDays(nextWeekEnd, 1));
+    // Check if the date is on or after today and before the end of the 7th day
+    return !isBefore(startOfDay(date), today) && isBefore(startOfDay(date), addDays(nextWeekEnd, 1));
 };
 
 
@@ -101,3 +115,22 @@ export const isOverdue = (dateInput: Date | number | null | undefined): boolean 
     // Compare the start of the input date with the start of today
     return isBefore(startOfDay(date), today);
 };
+
+// Re-export date-fns functions needed specifically by CalendarView for cleaner imports there
+export {
+    formatFns as format, // Rename to avoid conflict with our formatDate
+    startOfMonth,
+    endOfMonth,
+    startOfWeek,
+    endOfWeek,
+    eachDayOfInterval,
+    addMonths,
+    subMonths,
+    isSameMonth,
+    isSameDay,
+    getDay,
+    startOfDay,
+    isBefore,
+    isValid
+};
+export { enUS }; // Export locale for consistency

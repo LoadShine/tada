@@ -1,208 +1,260 @@
 /* src/styles/index.css */
+/* Import Tailwind base, components, and utilities */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Define base layer styles */
 @layer base {
+  /* Apply base font stack, background, text color, and smoothing */
   body {
-    @apply bg-canvas font-sans text-gray-800 antialiased;
+    @apply bg-canvas font-sans text-gray-900 antialiased; /* Slightly darker base text */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Consistent focus-visible styles using the primary color */
+  /* Define consistent focus-visible styles using primary color */
   *:focus-visible {
-    /* Use a slightly softer, less intrusive ring */
-    @apply outline-none ring-1 ring-primary/60 ring-offset-1 ring-offset-canvas;
+    /* Use a slightly softer, inset ring for better integration */
+    @apply outline-none ring-1 ring-primary/70 ring-offset-1 ring-offset-canvas;
   }
 
-  /* Remove default button outline */
+  /* Remove default outline on buttons when focused (use focus-visible instead) */
   button:focus {
     outline: none;
   }
+
+  /* Define CSS variable for monospace font stack for CodeMirror */
+  :root {
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
 }
 
+/* Define component layer styles */
 @layer components {
-  /* Custom subtle scrollbar */
+  /* Custom subtle scrollbar styling */
   .styled-scrollbar::-webkit-scrollbar {
-    width: 7px; /* Slightly wider for easier grabbing */
-    height: 7px;
+    width: 8px; /* Slightly wider for touch */
+    height: 8px;
   }
 
   .styled-scrollbar::-webkit-scrollbar-track {
-    background-color: transparent; /* Fully transparent track */
+    background-color: transparent; /* Transparent track */
   }
 
   .styled-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-200/80 rounded-full border-2 border-solid border-transparent; /* Add padding via border */
+    @apply bg-gray-300/70 rounded-full border-[2px] border-solid border-transparent; /* Add padding via border */
     background-clip: padding-box; /* Clip background to padding box */
     transition: background-color 0.15s ease-out;
   }
 
+  /* Darker scrollbar thumb on hover */
+  .styled-scrollbar:hover::-webkit-scrollbar-thumb {
+    @apply bg-gray-400/80;
+  }
   .styled-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-300/90;
+    @apply bg-gray-400/90;
   }
 
-  /* --- Revamped react-datepicker styles --- */
+
+  /* --- react-datepicker style overrides --- */
+  /* Make wrapper take full width if needed by parent */
   .react-datepicker-wrapper {
-    display: inline-block;
-    width: 100%; /* Make wrapper take full width if needed by parent */
+    display: block; /* Use block for full width */
+    width: 100%;
   }
 
+  /* Ensure datepicker popper appears above other elements */
   .react-datepicker-popper {
-    z-index: 50 !important; /* Ensure high z-index */
+    z-index: 50 !important;
   }
 
-  /* Main container - Glass effect */
+  /* Main datepicker container: Apply glass effect and standard styling */
   .react-datepicker {
-    @apply border border-black/5 rounded-lg shadow-strong overflow-hidden;
-    @apply bg-glass-alt backdrop-blur-lg; /* Apply glass effect */
-    font-family: inherit;
-    font-size: 13px; /* Slightly smaller base font */
+    @apply border border-black/5 rounded-lg shadow-strong overflow-hidden p-1; /* Add slight padding */
+    @apply bg-glass-100 backdrop-blur-md; /* Use configured glass effect */
+    font-family: inherit; /* Inherit font from body */
+    font-size: 13px; /* Consistent small font size */
   }
 
+  /* Header section (month/year navigation) */
   .react-datepicker__header {
-    @apply bg-transparent border-b border-black/5 pt-2.5 pb-1.5 px-2; /* Transparent header bg */
+    @apply bg-transparent border-b border-black/5 pt-2 pb-1.5 px-1; /* Transparent bg, subtle border */
     border-radius: 0; /* Remove internal radius */
   }
 
+  /* Month/Year display text */
   .react-datepicker__current-month,
   .react-datepicker-time__header,
   .react-datepicker-year-header {
-    @apply text-sm font-medium text-gray-700 pb-1.5;
+    @apply text-sm font-medium text-gray-700 pb-1.5; /* Standard text style */
   }
 
-  /* Navigation Arrows */
+  /* Navigation Arrows styling */
   .react-datepicker__navigation {
-    @apply top-3.5; /* Adjust vertical position */
+    @apply top-3; /* Adjust vertical position */
   }
-  .react-datepicker__navigation--previous { @apply left-2; }
-  .react-datepicker__navigation--next { @apply right-2; }
+  .react-datepicker__navigation--previous { @apply left-1.5; }
+  .react-datepicker__navigation--next { @apply right-1.5; }
   .react-datepicker__navigation-icon {
-    @apply w-5 h-5 flex items-center justify-center rounded hover:bg-black/5 transition-colors;
+    @apply w-6 h-6 flex items-center justify-center rounded-md hover:bg-black/5 transition-colors; /* Slightly larger touch target */
   }
   .react-datepicker__navigation-icon::before {
     border-color: hsl(210, 9%, 55%); /* Muted arrow color */
-    border-width: 1.5px 1.5px 0 0;
+    border-width: 1.5px 1.5px 0 0; /* Standard arrow thickness */
     height: 6px;
     width: 6px;
   }
 
-  /* Day grid */
+  /* Day grid container */
   .react-datepicker__month {
-    @apply m-0 px-1.5 pb-1.5 pt-1; /* Adjust padding */
+    @apply m-0 px-1 pb-1 pt-1; /* Adjust padding */
   }
   .react-datepicker__day-names {
     @apply mb-1;
   }
+  /* Day names and individual day cells styling */
   .react-datepicker__day-name, .react-datepicker__day, .react-datepicker__time-name {
     @apply w-8 h-7 leading-7 text-xs m-0.5 font-medium; /* Smaller, slightly shorter cells */
-    border-radius: 6px; /* Consistent rounded-md */
+    border-radius: 6px; /* Standard rounded-md */
   }
+  /* Day names (Sun, Mon, etc.) */
   .react-datepicker__day-name {
-    @apply text-muted font-semibold; /* Header days */
+    @apply text-muted-foreground font-semibold;
   }
 
-  /* Individual Day styles */
+  /* Individual Day cell styles */
   .react-datepicker__day {
     @apply text-gray-600 transition-colors duration-100 ease-out;
     &:hover {
       @apply bg-black/5; /* Subtle hover */
     }
   }
+  /* Selected day / range styles */
   .react-datepicker__day--selected,
   .react-datepicker__day--in-selecting-range,
   .react-datepicker__day--in-range {
     @apply bg-primary text-white font-semibold;
     &:hover {
-      @apply bg-primary-dark;
+      @apply bg-primary-dark; /* Darker primary on hover */
     }
   }
-  .react-datepicker__day--keyboard-selected { /* Focus state */
-    @apply bg-primary/10 ring-1 ring-primary/50;
+  /* Keyboard focus state */
+  .react-datepicker__day--keyboard-selected {
+    @apply bg-primary/10 ring-1 ring-primary/50; /* Consistent focus ring */
   }
+  /* Today's date highlight */
   .react-datepicker__day--today {
-    @apply font-semibold text-primary bg-primary/10;
+    @apply font-semibold text-primary bg-primary/5; /* Subtle primary background */
   }
+  /* Days outside the current month */
   .react-datepicker__day--outside-month {
-    @apply text-gray-300 hover:bg-transparent; /* Lighter, no hover bg */
+    @apply text-gray-300 hover:bg-transparent; /* Lighter, no hover background */
+    pointer-events: none; /* Prevent clicking days outside month */
   }
+  /* Disabled days */
   .react-datepicker__day--disabled {
-    @apply text-gray-300 cursor-not-allowed opacity-60 hover:bg-transparent;
+    @apply text-gray-300 cursor-not-allowed opacity-50 hover:bg-transparent;
   }
 
-  /* Clear button ('x') */
+  /* Clear button ('x') styling */
   .react-datepicker__close-icon {
-    @apply absolute top-0.5 right-0.5 p-0 m-0;
+    @apply absolute top-0 right-0 p-0 m-0; /* Position top right */
     cursor: pointer;
-  }
-  .react-datepicker__close-icon::after {
-    @apply bg-gray-500/10 text-gray-500 h-5 w-5 text-xs font-normal flex items-center justify-center rounded-full;
-    content: '✕';
-    transition: background-color 0.15s ease-out, color 0.15s ease-out;
-  }
-  .react-datepicker__close-icon:hover::after {
-    @apply bg-gray-500/20 text-gray-700;
+    /* The ::after pseudo-element creates the visual button */
+    &::after {
+      @apply bg-gray-400/10 text-gray-500 h-5 w-5 text-xs font-normal flex items-center justify-center rounded-full;
+      content: '✕'; /* Use the 'x' character */
+      transition: background-color 0.15s ease-out, color 0.15s ease-out;
+      position: relative;
+      top: 4px; /* Adjust positioning */
+      right: 4px;
+    }
+    &:hover::after {
+      @apply bg-gray-500/20 text-gray-700; /* Darken slightly on hover */
+    }
   }
 
-  /* Today Button */
+  /* "Today" button at the bottom */
   .react-datepicker__today-button {
-    @apply bg-canvas-inset border-t border-black/5 py-1.5 text-primary font-medium text-xs;
+    @apply bg-canvas-inset border-t border-black/5 py-1.5 text-primary font-medium text-xs mt-1; /* Add margin top */
     transition: background-color 0.15s ease-out;
     &:hover {
-      @apply bg-gray-100;
+      @apply bg-gray-100/80; /* Subtle hover */
     }
   }
 
-  /* --- CodeMirror Adjustments --- */
-  .cm-editor-container {
-    /* Inherit size from parent */
-    @apply rounded-md overflow-hidden; /* Ensure rounding clips content */
+  /* --- CodeMirror Editor adjustments --- */
+  /* Base container for CodeMirror */
+  /* Styles like border, bg, rounded should be applied via `className` prop to CodeMirrorEditor */
+
+  /* Focused state for the container */
+  .cm-editor-container.focus-within {
+    @apply border-primary/80 ring-1 ring-primary/50;
   }
+
+  /* The editor itself */
   .cm-editor {
-    @apply text-sm h-full;
+    @apply text-sm h-full; /* Base text size, fill height */
     &.cm-focused {
-      outline: none; /* Focus handled by parent */
+      outline: none; /* Remove CodeMirror's default outline, container handles focus */
     }
   }
+
+  /* Scroller within the editor */
   .cm-scroller {
-    @apply h-full overflow-auto styled-scrollbar;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    @apply h-full styled-scrollbar; /* Fill height, use custom scrollbar */
+    font-family: var(--font-mono); /* Use monospace font stack */
+    line-height: 1.6; /* Improve readability */
   }
+
+  /* Gutters (line numbers, folding) */
   .cm-gutters {
-    @apply bg-canvas-inset border-r border-border-color/60 text-muted text-xs opacity-80; /* Lighter gutters */
+    @apply bg-canvas-inset/60 border-r border-border-color/60 text-muted text-xs opacity-90 pr-2; /* Subtle gutter style */
     user-select: none;
+    -webkit-user-select: none;
   }
+  /* Highlight for active line number gutter */
   .cm-activeLineGutter {
     @apply bg-primary/10;
   }
+
+  /* Main content area where text is typed */
   .cm-content {
-    @apply p-2.5; /* Slightly more padding */
-    caret-color: hsl(208, 100%, 50%); /* Primary caret */
+    @apply p-2.5; /* Consistent padding */
+    caret-color: hsl(208, 100%, 50%); /* Primary color caret */
   }
+  /* Individual lines */
   .cm-line {
-    @apply leading-relaxed px-0.5; /* Add slight horizontal padding to lines */
+    @apply leading-relaxed px-1; /* Add slight horizontal padding to lines */
   }
+  /* Placeholder text style */
   .cm-placeholder {
-    @apply text-muted italic opacity-70;
+    @apply text-muted italic opacity-70 pointer-events-none absolute top-0 left-0 p-2.5; /* Match content padding */
   }
+  /* Text selection style */
   .cm-selectionBackground, ::selection {
-    @apply bg-primary/20;
+    @apply bg-primary/20; /* Subtle primary selection */
   }
+  /* Active line background */
   .cm-activeLine {
-    background-color: hsla(210, 60%, 95%, 0.5); /* Very subtle active line */
+    background-color: hsla(210, 60%, 95%, 0.6); /* Very subtle active line highlight */
   }
+  /* Fold marker (arrow) */
   .cm-foldMarker {
-    color: hsl(210, 10%, 70%) !important; /* Override default style color */
-    margin-left: 2px !important;
+    color: hsl(210, 10%, 65%); /* Muted color */
+    margin-left: 2px;
     padding: 0 2px;
-    cursor: pointer !important;
+    cursor: pointer;
     &:hover {
-      color: hsl(210, 10%, 50%) !important;
+      color: hsl(210, 10%, 45%); /* Darken on hover */
     }
   }
+  /* Gutter element containing the fold marker */
   .cm-foldGutter .cm-gutterElement {
     padding-left: 4px !important; /* Space before fold arrow */
+    text-align: center;
   }
+
 }

@@ -1,6 +1,6 @@
 // src/components/common/CodeMirrorEditor.tsx
-import { useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { EditorState } from '@codemirror/state';
+import { useRef, useEffect, useImperativeHandle, forwardRef, memo } from 'react';
+import {EditorState, StateEffect} from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, highlightActiveLine, placeholder as viewPlaceholder } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -11,30 +11,67 @@ import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap } from '@codemirror/lint';
 import { twMerge } from 'tailwind-merge';
 
-// Theme extension for adjustments
+// Minimalist theme adjustments integrated with Tailwind styles applied externally
 const editorTheme = EditorView.theme({
     '&': {
-        height: '100%', // Ensure the editor itself tries to fill the container
-        borderRadius: 'inherit', // Inherit border radius from parent
-        backgroundColor: 'transparent', // Make CM background transparent
+        height: '100%',
+        fontSize: '13px', // Slightly smaller font size for editor
+        backgroundColor: 'transparent', // Ensure CM background doesn't override container
+        borderRadius: 'inherit', // Inherit rounding
     },
     '.cm-scroller': {
-        // fontFamily defined via Tailwind in index.css
-        overflow: 'auto', // Ensure scroll is handled by scroller
+        fontFamily: `var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace)`, // Use CSS var or fallback
+        lineHeight: '1.6', // Generous line height for readability
+        overflow: 'auto',
+        position: 'relative', // Needed for placeholder absolute positioning
     },
     '.cm-content': {
-        // padding defined in index.css
-        // caretColor defined in index.css
+        padding: '10px 12px', // Consistent padding (matches TaskDetail p-4 roughly)
+        caretColor: 'hsl(208, 100%, 50%)', // Primary color caret
     },
     '.cm-gutters': {
-        // backgroundColor, borderRight, color, text-xs defined in index.css
+        backgroundColor: 'hsla(220, 30%, 96%, 0.5)', // Very light, slightly transparent gutter bg
+        borderRight: '1px solid hsl(210, 20%, 90%)', // Subtle border
+        color: 'hsl(210, 9%, 65%)', // Muted text color
+        paddingLeft: '8px',
+        paddingRight: '4px',
+        fontSize: '11px',
+        userSelect: 'none',
+        WebkitUserSelect: 'none', // Safari
+    },
+    '.cm-lineNumbers .cm-gutterElement': {
+        minWidth: '20px', // Ensure enough space for line numbers
     },
     '.cm-line': {
-        // lineHeight, px defined in index.css
+        padding: '0 4px', // Minimal horizontal padding within lines
     },
     '.cm-activeLine': {
-        // backgroundColor defined in index.css
-    }
+        backgroundColor: 'hsla(208, 100%, 50%, 0.05)', // Very subtle primary active line
+    },
+    '.cm-activeLineGutter': {
+        backgroundColor: 'hsla(208, 100%, 50%, 0.08)', // Slightly more visible gutter highlight
+    },
+    '.cm-placeholder': {
+        color: 'hsl(210, 9%, 65%)', // Muted placeholder color
+        fontStyle: 'italic',
+        pointerEvents: 'none',
+        padding: '10px 12px', // Match content padding
+        position: 'absolute', // Position correctly within scroller
+        top: 0,
+        left: 0,
+    },
+    '.cm-foldGutter .cm-gutterElement': {
+        padding: '0 4px 0 8px', // Adjust padding for fold arrows
+        cursor: 'pointer',
+        textAlign: 'center',
+    },
+    '.cm-foldMarker': { // Custom fold marker style
+        display: 'inline-block',
+        color: 'hsl(210, 10%, 70%)',
+        '&:hover': {
+            color: 'hsl(210, 10%, 50%)',
+        },
+    },
 });
 
 interface CodeMirrorEditorProps {
@@ -49,6 +86,7 @@ interface CodeMirrorEditorProps {
 // Define the type for the ref handle
 export interface CodeMirrorEditorRef {
     focus: () => void;
+    getView: () => EditorView | null;
 }
 
 const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
@@ -62,14 +100,17 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
      }, ref) => {
         const editorRef = useRef<HTMLDivElement>(null);
         const viewRef = useRef<EditorView | null>(null);
+        const stateRef = useRef<EditorState | null>(null); // Keep track of state
 
-        // Expose focus method via ref
+        // Expose focus and view instance via ref
         useImperativeHandle(ref, () => ({
             focus: () => {
                 viewRef.current?.focus();
-            }
+            },
+            getView: () => viewRef.current,
         }));
 
+        // Effect for Initialization and Cleanup
         useEffect(() => {
             if (!editorRef.current) return;
 
@@ -79,11 +120,10 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 highlightSpecialChars(),
                 history(),
                 foldGutter({
-                    markerDOM: (open) => {
+                    markerDOM: (open) => { // Simple text markers
                         const marker = document.createElement("span");
-                        marker.className = `cm-foldMarker ${open ? 'cm-foldMarker-open' : 'cm-foldMarker-folded'}`;
-                        marker.textContent = open ? "⌄" : "›"; // Use standard arrows
-                        // Styles applied via CSS in index.css
+                        marker.className = "cm-foldMarker";
+                        marker.textContent = open ? "⌄" : "›";
                         return marker;
                     }
                 }),
@@ -115,11 +155,17 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 EditorView.lineWrapping,
                 EditorView.contentAttributes.of({ 'aria-label': 'Markdown editor' }),
                 EditorView.updateListener.of((update) => {
+                    // Update internal state ref first
+                    if (update.state) {
+                        stateRef.current = update.state;
+                    }
+                    // Notify parent of document changes
                     if (update.docChanged) {
                         onChange(update.state.doc.toString());
                     }
+                    // Handle blur event
                     if (update.focusChanged && !update.view.hasFocus && onBlur) {
-                        onBlur(); // Trigger external onBlur when editor loses focus
+                        onBlur();
                     }
                 }),
                 EditorState.readOnly.of(readOnly),
@@ -127,54 +173,76 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 editorTheme, // Apply our custom theme adjustments
             ];
 
-            const startState = EditorState.create({
-                doc: value,
-                extensions: extensions,
-            });
+            // Create initial state only once or if critical props change
+            if (!stateRef.current) {
+                stateRef.current = EditorState.create({
+                    doc: value,
+                    extensions: extensions,
+                });
+            }
 
             const view = new EditorView({
-                state: startState,
+                state: stateRef.current,
                 parent: editorRef.current,
             });
             viewRef.current = view;
 
+            // Cleanup function
             return () => {
                 view.destroy();
                 viewRef.current = null;
+                // Optionally reset stateRef if component might remount with different config
+                // stateRef.current = null;
             };
-            // Re-initialize only if essential props change that require full rebuild
-        }, [onChange, readOnly, placeholder, onBlur]); // Added onBlur dependency
+            // Re-run effect only if props affecting extensions change significantly
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [readOnly, placeholder]); // onChange and onBlur are handled by listeners
 
-        // Effect to update the editor content when the `value` prop changes from outside
+        // Effect to update the editor content ONLY when the `value` prop changes externally
         useEffect(() => {
             const view = viewRef.current;
-            if (view && value !== view.state.doc.toString()) {
-                // Only update if the document actually changed externally
-                const currentDoc = view.state.doc.toString();
-                if (value !== currentDoc) {
+            const currentState = stateRef.current;
+
+            if (view && currentState && value !== currentState.doc.toString()) {
+                // Check again to prevent race conditions if internal state updated quickly
+                if (value !== view.state.doc.toString()){
                     view.dispatch({
                         changes: { from: 0, to: view.state.doc.length, insert: value || '' },
-                        // Avoid moving cursor if user might be editing
-                        // selection: { anchor: view.state.doc.length }
+                        // Optionally preserve selection or move cursor to end
+                        // selection: view.state.selection,
+                        // selection: { anchor: view.state.doc.length } // Move cursor to end
                     });
                 }
             }
-        }, [value]);
+        }, [value]); // Only depend on the external value prop
+
+        // Effect to update readOnly state dynamically
+        useEffect(() => {
+            const view = viewRef.current;
+            if (view) {
+                view.dispatch({
+                    effects: StateEffect.reconfigure.of(EditorState.readOnly.of(readOnly))
+                });
+            }
+        }, [readOnly]);
+
 
         // Container div handles focus ring, background, and overall structure
+        // Removed internal border/bg, rely on external styling or props
         return (
             <div
                 ref={editorRef}
                 className={twMerge(
-                    'cm-editor-container relative h-full w-full overflow-hidden',
-                    'border border-border-color/60 bg-canvas-inset', // Apply base bg and border
-                    'focus-within:border-primary/80 focus-within:ring-1 focus-within:ring-primary/50', // Focus ring on the container
-                    className // Allow overrides like removing border/bg
+                    'cm-editor-container relative h-full w-full overflow-hidden', // Base structure
+                    // Apply focus styles to the container for a clear boundary
+                    'focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/80 border border-transparent', // Transparent border initially
+                    className // Allow overrides like adding border/bg externally
                 )}
-            ></div>
+            />
         );
     }
 );
 
 CodeMirrorEditor.displayName = 'CodeMirrorEditor';
-export default CodeMirrorEditor;
+// Memoize to prevent unnecessary re-renders if props haven't changed shallowly
+export default memo(CodeMirrorEditor);

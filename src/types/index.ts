@@ -12,7 +12,7 @@ export interface Task {
     title: string;
     completed: boolean;
     dueDate?: number | null; // Store as timestamp (milliseconds since epoch)
-    list: string;
+    list: string; // e.g., 'Inbox', 'Work', 'Personal'
     content?: string; // Markdown content
     order: number; // For manual sorting within filters/lists
     createdAt: number; // Timestamp
@@ -21,13 +21,11 @@ export interface Task {
     priority?: number | null; // e.g., 1 (High) - 4 (Low), null for none
 }
 
-export type ListDisplayMode = 'expanded' | 'compact';
-
 export type TaskFilter = 'all' | 'today' | 'next7days' | 'completed' | 'trash' | `list-${string}` | `tag-${string}`;
 
 export type SettingsTab =
     | 'account' | 'appearance' | 'premium' | 'notifications' | 'integrations'
-    | 'about'; // Simplified the list based on SettingsModal usage
+    | 'about';
 
-// Grouping category for 'all' tasks view
+// Grouping category for 'All Tasks' view
 export type TaskGroupCategory = 'overdue' | 'today' | 'next7days' | 'later' | 'nodate';
