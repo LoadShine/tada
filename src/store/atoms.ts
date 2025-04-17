@@ -2,7 +2,7 @@
 import { atom } from 'jotai';
 import { atomWithStorage } from 'jotai/utils';
 import {User, Task, ListDisplayMode, TaskFilter, TaskGroupCategory, SettingsTab} from '@/types';
-import { isToday, isWithinNext7Days, isOverdue, safeParseDate } from '@/utils/dateUtils';
+import { isToday, isWithinNext7Days, isOverdue } from '@/utils/dateUtils';
 import { startOfDay } from 'date-fns';
 
 // --- Base Atoms ---
@@ -30,7 +30,7 @@ const initialTasks: Task[] = [
 ].sort((a, b) => a.order - b.order); // Initial sort by order
 
 // Store tasks in localStorage using timestamps
-export const tasksAtom = atomWithStorage<Task[]>('tasks', initialTasks, undefined, { unstable_getOnInit: true });
+export const tasksAtom = atomWithStorage<Task[]>('tasks', initialTasks, undefined, { getOnInit: true });
 
 export const selectedTaskIdAtom = atom<string | null>(null);
 

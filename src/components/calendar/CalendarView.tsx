@@ -18,14 +18,13 @@ import {
     isSameDay,
     getDay,
     startOfDay,
-    setDate
 } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { twMerge } from 'tailwind-merge';
 import { clsx } from 'clsx';
-import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, pointerWithin, rectIntersection } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent, useDraggable, useDroppable, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import {isToday, safeParseDate} from "@/utils/dateUtils.ts";
+import { isToday as isTodayFn, safeParseDate } from "@/utils/dateUtils.ts";
 
 // Draggable Task Item for Calendar
 interface DraggableTaskProps {
@@ -112,11 +111,14 @@ const CalendarView: React.FC = () => {
         tasks.forEach(task => {
             // Include tasks due on this date, regardless of completion status for display, but filter out trashed
             if (task.dueDate && task.list !== 'Trash') {
-                const dateKey = format(safeParseDate(task.dueDate)!, 'yyyy-MM-dd'); // Use safeParseDate
-                if (!grouped[dateKey]) {
-                    grouped[dateKey] = [];
+                const parsedDate = safeParseDate(task.dueDate);
+                if (parsedDate) {
+                    const dateKey = format(parsedDate, 'yyyy-MM-dd');
+                    if (!grouped[dateKey]) {
+                        grouped[dateKey] = [];
+                    }
+                    grouped[dateKey].push(task);
                 }
-                grouped[dateKey].push(task);
             }
         });
         // Sort tasks within each day (e.g., by priority, then creation time)
@@ -137,7 +139,7 @@ const CalendarView: React.FC = () => {
         const dateKey = format(day, 'yyyy-MM-dd');
         const dayTasks = tasksByDueDate[dateKey] || [];
         const isCurrentMonth = isSameMonth(day, currentMonthDate);
-        const isToday = isSameDay(day, new Date());
+        const dayIsToday = isSameDay(day, new Date());
         const dayOfWeek = getDay(day); // 0 for Sunday, 6 for Saturday
 
         return (
@@ -148,7 +150,7 @@ const CalendarView: React.FC = () => {
                     'h-32 md:h-36 border-t border-l border-gray-200/60 flex flex-col relative transition-colors duration-150 ease-in-out',
                     !isCurrentMonth && 'bg-canvas-inset/50 text-muted',
                     isCurrentMonth && 'bg-canvas hover:bg-gray-50/30',
-                    isToday && 'bg-primary/5',
+                    dayIsToday && 'bg-primary/5',
                     dayOfWeek === 0 && 'border-l-0', // No left border for Sunday
                     // Tailwind grid handles borders, but ensure top on first row and left on first col are correct visually
                     'group' // Add group for potential hover effects within cell
@@ -158,8 +160,8 @@ const CalendarView: React.FC = () => {
                 <div className="flex justify-between items-center px-1.5 pt-1.5 pb-1 flex-shrink-0">
                      <span className={clsx(
                          'text-xs font-medium w-5 h-5 flex items-center justify-center rounded-full',
-                         isToday ? 'bg-primary text-white font-semibold' : 'text-gray-600',
-                         !isCurrentMonth && !isToday && 'text-gray-400'
+                         dayIsToday ? 'bg-primary text-white font-semibold' : 'text-gray-600',
+                         !isCurrentMonth && !dayIsToday && 'text-gray-400'
                      )}>
                         {format(day, 'd')}
                     </span>
@@ -199,49 +201,61 @@ const CalendarView: React.FC = () => {
 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    const handleDragStart = (event: DragEndEvent) => {
+    const handleDragStart = useCallback((event: DragStartEvent) => {
         const task = event.active.data.current?.task;
         if (task) {
             setDraggingTask(task);
             setSelectedTaskId(task.id); // Select task being dragged
         }
-    };
-
+    }, [setSelectedTaskId]);
 
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         setDraggingTask(null); // Clear overlay task
         const { active, over } = event;
 
-        if (over && active.id.startsWith('task-') && over.id.startsWith('day-')) {
-            const taskId = active.id.substring(5); // Extract task ID
-            const targetDay = over.data.current?.date as Date | undefined;
+        if (over) {
+            // 安全地转换 UniqueIdentifier 到字符串
+            const activeId = String(active.id);
+            const overId = String(over.id);
 
-            if (taskId && targetDay) {
-                setTasks(prevTasks =>
-                    prevTasks.map(task => {
-                        if (task.id === taskId) {
-                            // Keep existing time, just change the date part
-                            const originalDueDate = safeParseDate(task.dueDate);
-                            let newDateTime = startOfDay(targetDay).getTime(); // Default to start of day
+            if (activeId.startsWith('task-') && overId.startsWith('day-')) {
+                const taskId = activeId.substring(5); // Extract task ID
+                const targetDay = over.data.current?.date as Date | undefined;
 
-                            if (originalDueDate) {
-                                // Preserve original time if it existed
-                                const hours = originalDueDate.getHours();
-                                const minutes = originalDueDate.getMinutes();
-                                const seconds = originalDueDate.getSeconds();
-                                newDateTime = new Date(targetDay).setHours(hours, minutes, seconds, 0);
-                            }
-
-                            return {
-                                ...task,
-                                dueDate: newDateTime,
-                                updatedAt: Date.now(),
-                            };
+                if (taskId && targetDay) {
+                    setTasks((prevTasks) => {
+                        // 确保 prevTasks 是数组类型
+                        if (!Array.isArray(prevTasks)) {
+                            // 如果是 Promise，需要等待解析，但在 useCallback 中难以处理
+                            // 我们可以简单地返回当前值，等待下一次更新
+                            return prevTasks;
                         }
-                        return task;
-                    })
-                );
-                setSelectedTaskId(null); // Deselect task after dropping
+
+                        return prevTasks.map(task => {
+                            if (task.id === taskId) {
+                                // Keep existing time, just change the date part
+                                const originalDueDate = safeParseDate(task.dueDate);
+                                let newDateTime = startOfDay(targetDay).getTime(); // Default to start of day
+
+                                if (originalDueDate) {
+                                    // Preserve original time if it existed
+                                    const hours = originalDueDate.getHours();
+                                    const minutes = originalDueDate.getMinutes();
+                                    const seconds = originalDueDate.getSeconds();
+                                    newDateTime = new Date(targetDay).setHours(hours, minutes, seconds, 0);
+                                }
+
+                                return {
+                                    ...task,
+                                    dueDate: newDateTime,
+                                    updatedAt: Date.now(),
+                                };
+                            }
+                            return task;
+                        });
+                    });
+                    setSelectedTaskId(null); // Deselect task after dropping
+                }
             }
         }
     }, [setTasks, setSelectedTaskId]);
@@ -260,8 +274,7 @@ const CalendarView: React.FC = () => {
                             onClick={goToToday}
                             variant="outline"
                             size="sm"
-                            disabled={isSameMonth(currentMonthDate, new Date()) && isToday(currentMonthDate)} // Disable only if on today's month AND today's date selected? Simpler: just check month.
-                            // disabled={isSameMonth(currentMonthDate, new Date())}
+                            disabled={isSameMonth(currentMonthDate, new Date()) && isTodayFn(currentMonthDate)} // Using imported isToday function
                         >
                             Today
                         </Button>

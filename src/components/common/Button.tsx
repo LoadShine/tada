@@ -103,7 +103,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 type={type}
                 className={twMerge(
                     baseClasses,
-                    size !== 'link' && sizeClasses[size], // Don't apply size classes to link variant
+                    variant !== 'link' && sizeClasses[size], // Don't apply size classes to link variant
                     variant !== 'link' && variantClasses[variant], // Don't apply background/border to link
                     variant === 'link' && variantClasses.link, // Apply only link styles if variant is link
                     className // Allow overrides

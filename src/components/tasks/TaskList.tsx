@@ -5,7 +5,7 @@ import { useAtom } from 'jotai';
 import { filteredTasksAtom, tasksAtom, selectedTaskIdAtom, currentFilterAtom, groupedAllTasksAtom } from '@/store/atoms';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
-import { Task, TaskFilter, TaskGroupCategory } from '@/types';
+import { Task, TaskFilter } from '@/types';
 import {
     DndContext,
     closestCenter,
@@ -176,7 +176,7 @@ const TaskList: React.FC<TaskListProps> = ({ title, filter }) => {
     };
 
     // Render a group of tasks
-    const renderTaskGroup = (groupTasks: Task[], groupKey: string | number) => (
+    const renderTaskGroup = (groupTasks: Task[], _groupKey: string | number) => (
         <AnimatePresence initial={false}>
             {groupTasks.map((task) => (
                 <motion.div

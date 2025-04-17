@@ -1,10 +1,10 @@
 // src/components/layout/Sidebar.tsx
 import React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import Icon, { IconName } from '../common/Icon';
 import { useAtom } from 'jotai';
-import { currentFilterAtom, taskCountsAtom, userListNamesAtom, userTagNamesAtom, tasksAtom } from '@/store/atoms';
-import { TaskFilter, Task } from '@/types';
+import { currentFilterAtom, taskCountsAtom, userListNamesAtom, userTagNamesAtom } from '@/store/atoms';
+import { TaskFilter } from '@/types';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../common/Button';
@@ -29,40 +29,52 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, filter, icon, label, coun
         navigate(to); // Manually navigate
     };
 
-    const getNavLinkClass = ({ isActive }: { isActive: boolean }): string =>
-        twMerge(
-            'flex items-center justify-between px-2.5 py-1 h-7 rounded-md mb-0.5 text-sm group transition-colors duration-100 ease-out', // Slightly smaller, less margin
-            isActive
-                ? 'bg-primary/10 text-primary font-medium' // Use primary color theme for active
-                : 'text-gray-600 hover:bg-black/5 dark:hover:bg-white/5 hover:text-gray-800 dark:hover:text-gray-200' // Gentle hover
-        );
-
     return (
         <NavLink
             to={to}
             end={exact} // Use 'end' prop for exact matching if specified
-            className={getNavLinkClass}
+            // --- ClassName for the NavLink itself ---
+            // This part remains the same, using the function prop correctly
+            className={({ isActive }) =>
+                twMerge(
+                    'flex items-center justify-between px-2.5 py-1 h-7 rounded-md mb-0.5 text-sm group transition-colors duration-100 ease-out', // Base NavLink styles
+                    isActive
+                        ? 'bg-primary/10 text-primary font-medium' // Active NavLink styles
+                        : 'text-gray-600 hover:bg-black/5 dark:hover:bg-white/5 hover:text-gray-800 dark:hover:text-gray-200' // Inactive NavLink styles
+                )
+            }
             onClick={handleClick} // Use our custom click handler
             aria-current="page" // Let NavLink handle aria-current based on its isActive
         >
-            <div className="flex items-center overflow-hidden whitespace-nowrap text-ellipsis">
-                <Icon name={icon} size={16} className="mr-2 flex-shrink-0" />
-                <span className="truncate">{label}</span>
-            </div>
-            {/* Subtle count indicator */}
-            {count !== undefined && count > 0 && (
-                <span className={twMerge(
-                    "text-[11px] font-mono px-1.5 py-0 rounded-full ml-2 tabular-nums",
-                    // Conditional styling based on NavLink's active state (passed via className function)
-                    ({ isActive }: { isActive: boolean }) => isActive ? 'text-primary bg-primary/15' : 'text-muted-foreground bg-gray-100 group-hover:bg-gray-200'
-                )}>
-                    {count}
-                </span>
+            {/* --- Children as a function to access isActive --- */}
+            {/* Pass a function here. It receives { isActive } */}
+            {({ isActive }) => (
+                <> {/* Use a fragment to return multiple elements */}
+                    <div className="flex items-center overflow-hidden whitespace-nowrap text-ellipsis">
+                        <Icon name={icon} size={16} className="mr-2 flex-shrink-0" />
+                        <span className="truncate">{label}</span>
+                    </div>
+                    {/* Subtle count indicator */}
+                    {count !== undefined && count > 0 && (
+                        <span className={twMerge( // Use twMerge here
+                            "text-[11px] font-mono px-1.5 py-0 rounded-full ml-2 tabular-nums", // Base count styles
+                            // NOW we have access to 'isActive' from the children function prop
+                            // Calculate the conditional class string *before* passing to twMerge
+                            isActive
+                                ? 'text-primary bg-primary/15' // Active count styles
+                                : 'text-muted-foreground bg-gray-100 group-hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:group-hover:bg-gray-600' // Inactive count styles (added dark/hover)
+                        )}>
+                            {count}
+                        </span>
+                    )}
+                </>
             )}
         </NavLink>
     );
 };
 
+
+// --- CollapsibleSection and Sidebar remain the same ---
 
 interface CollapsibleSectionProps {
     title: string;
@@ -119,7 +131,7 @@ const Sidebar: React.FC = () => {
     const [userLists] = useAtom(userListNamesAtom);
     const [userTags] = useAtom(userTagNamesAtom);
     const [, setCurrentFilter] = useAtom(currentFilterAtom);
-    const [, setTasks] = useAtom(tasksAtom);
+    // const [, setTasks] = useAtom(tasksAtom);
     const navigate = useNavigate();
 
     // State for the search input
@@ -138,23 +150,6 @@ const Sidebar: React.FC = () => {
             const newListFilter: TaskFilter = `list-${trimmedName}`;
             setCurrentFilter(newListFilter); // Set the filter immediately
             navigate(`/list/${encodeURIComponent(trimmedName)}`); // Navigate to the new list's URL
-
-            // Optionally add a dummy task to make the list persistent if it's derived purely from tasks
-            const now = Date.now();
-            const dummyTask: Task = {
-                id: `task-list-placeholder-${now}`,
-                title: `New task in ${trimmedName}`,
-                completed: false,
-                dueDate: null,
-                list: trimmedName, // Assign to the new list
-                order: 0, // Will be recalculated or needs logic
-                createdAt: now,
-                updatedAt: now,
-                content: '',
-            };
-            // Prepend or append based on desired behavior
-            // setTasks(prev => [dummyTask, ...prev]); // Add to top for immediate visibility
-            // Note: This dummy task approach might clutter things. A dedicated list state is better long-term.
         }
     };
 
@@ -162,8 +157,6 @@ const Sidebar: React.FC = () => {
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
         // Implement search filtering logic here if desired
-        // e.g., set a different filter or modify filteredTasksAtom based on search
-        // For now, it's just a UI element.
     };
 
 
