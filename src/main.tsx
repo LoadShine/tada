@@ -4,8 +4,12 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider as JotaiProvider } from 'jotai';
 import App from './App';
-import './styles/index.css'; // Main CSS import
-// Import react-day-picker base styles (used alongside Tailwind customizations)
+
+// Import Tailwind base styles first
+import './styles/index.css';
+
+// Import react-day-picker base styles AFTER Tailwind components/utilities
+// This allows our Tailwind overrides in index.css to take precedence
 import 'react-day-picker/dist/style.css';
 
 const rootElement = document.getElementById('root');

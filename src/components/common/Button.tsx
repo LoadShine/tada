@@ -44,28 +44,31 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         const baseClasses = clsx(
             'inline-flex items-center justify-center font-medium whitespace-nowrap select-none outline-none relative',
             'focus-visible:ring-1 focus-visible:ring-primary/60 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas',
-            'transition-all duration-150 ease-apple',
+            'transition-all duration-150 ease-apple', // Use consistent apple easing
             isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
             fullWidth && 'w-full',
-            'rounded-md'
+            'rounded-md' // Default rounding
         );
 
         const variantClasses: Record<ButtonVariant, string> = {
             primary: clsx(
                 'bg-primary text-primary-foreground shadow-subtle border border-primary/90',
-                !isDisabled && 'hover:bg-primary-dark active:bg-primary'
+                !isDisabled && 'hover:bg-primary-dark active:bg-primary/95' // Slightly adjust active state
             ),
             secondary: clsx(
-                'bg-gray-100/80 text-gray-700 border border-black/10 shadow-subtle backdrop-blur-sm', // Added glass effect
-                !isDisabled && 'hover:bg-gray-200/90 active:bg-gray-200'
+                // Enhanced glass effect for secondary
+                'bg-glass-alt-100 text-gray-700 border border-black/10 shadow-subtle backdrop-blur-md',
+                !isDisabled && 'hover:bg-glass-alt/80 active:bg-glass-alt/70'
             ),
             outline: clsx(
-                'border border-black/10 text-gray-700 bg-canvas/80 backdrop-blur-sm shadow-subtle', // Added glass effect
-                !isDisabled && 'hover:bg-black/5 active:bg-black/[0.07]' // Subtle hover/active for glass
+                // Enhanced glass effect for outline
+                'border border-black/10 text-gray-700 bg-glass/50 backdrop-blur-sm shadow-subtle',
+                !isDisabled && 'hover:bg-glass-alt/50 active:bg-glass-alt/60' // Subtle hover/active for glass
             ),
             ghost: clsx(
-                'text-gray-600 border border-transparent',
-                !isDisabled && 'hover:bg-black/10 active:bg-black/[0.15] hover:text-gray-800' // Slightly stronger active for glass
+                'text-gray-600 border border-transparent', // Transparent border for consistent sizing
+                // Slightly stronger hover/active for better visibility on glass backgrounds
+                !isDisabled && 'hover:bg-black/15 hover:text-gray-800 active:bg-black/20'
             ),
             link: clsx(
                 'text-primary underline-offset-4 h-auto px-0 py-0 rounded-none border-none bg-transparent shadow-none backdrop-filter-none', // Reset styles, remove blur
@@ -76,17 +79,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 !isDisabled && 'hover:bg-red-600 active:bg-red-700'
             ),
             glass: clsx(
-                'border border-black/10 text-gray-700 shadow-subtle', // Slightly darker border for glass
-                'bg-glass-200 backdrop-blur-md', // Use more pronounced glass background/blur
-                !isDisabled && 'hover:bg-glass-100 active:bg-glass-alt-100' // Transition between glass levels
+                'border border-black/10 text-gray-700 shadow-subtle', // Use subtle shadow
+                // Choose appropriate glass background & blur
+                'bg-glass-100 backdrop-blur-lg', // Use a more opaque glass and stronger blur
+                !isDisabled && 'hover:bg-glass-alt-100 active:bg-glass-alt-200' // Transition between glass levels
             ),
         };
 
         const sizeClasses: Record<ButtonSize, string> = {
-            sm: 'text-xs px-2.5 h-[30px]',
+            sm: 'text-xs px-2.5 h-[30px]', // Slightly smaller padding for sm
             md: 'text-sm px-3 h-[32px]',
             lg: 'text-base px-3.5 h-[36px]',
-            icon: 'h-8 w-8 p-0',
+            icon: 'h-8 w-8 p-0', // Standard icon button size
         };
 
         const iconSizeClasses: Record<ButtonSize, number> = {
@@ -104,7 +108,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         };
 
         const motionProps = !isDisabled
-            ? { whileTap: { scale: 0.97, transition: { duration: 0.08 } } }
+            ? { whileTap: { scale: 0.97, transition: { duration: 0.08, ease: 'easeOut' } } } // Smoother tap animation
             : {};
 
         // Determine Aria Label: Explicitly provided > string child > fallback undefined
@@ -121,7 +125,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 type={type}
                 className={twMerge(
                     baseClasses,
-                    variant !== 'link' && sizeClasses[size],
+                    variant !== 'link' && sizeClasses[size], // Apply size unless link
                     variantClasses[variant],
                     className
                 )}

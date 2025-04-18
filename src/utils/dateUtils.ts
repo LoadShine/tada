@@ -72,17 +72,6 @@ export const formatRelativeDate = (dateInput: Date | number | null | undefined):
     if (diffDays === 1) return 'Tomorrow';
     if (diffDays === -1) return 'Yesterday';
 
-    // Use formatRelative for other cases (e.g., "last Sunday", "next Monday")
-    // This provides more context than just the date
-    // try {
-    //     const relative = formatRelative(date, new Date(), { locale: currentLocale });
-    //     // Capitalize first letter
-    //     return relative.charAt(0).toUpperCase() + relative.slice(1);
-    // } catch (e) {
-    //     // Fallback if formatRelative fails
-    //     console.error("Error formatting relative date:", dateInput, e);
-    // }
-
     // Fallback to standard date format if relative format is not desired or fails
     const currentYear = today.getFullYear();
     const inputYear = inputDay.getFullYear();

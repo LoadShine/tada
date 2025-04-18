@@ -12,29 +12,30 @@ import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'; //
 import { lintKeymap } from '@codemirror/lint';
 import { twMerge } from 'tailwind-merge';
 
-// Enhanced theme with mandatory glass effect integration
+// Enhanced theme with strong glass effect integration for gutters
 const editorTheme = EditorView.theme({
     '&': {
         height: '100%',
-        fontSize: '13.5px',
-        backgroundColor: 'transparent', // CM background must be transparent for glass
-        borderRadius: 'inherit',
+        fontSize: '13.5px', // Consistent font size
+        backgroundColor: 'transparent', // CM background MUST be transparent
+        borderRadius: 'inherit', // Inherit rounding from container
     },
     '.cm-scroller': {
         fontFamily: `var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace)`,
-        lineHeight: '1.65',
+        lineHeight: '1.65', // Improved line spacing
         overflow: 'auto',
         position: 'relative',
         backgroundColor: 'transparent !important', // Ensure scroller is transparent
+        height: '100%', // Ensure scroller takes full height
     },
     '.cm-content': {
-        padding: '12px 14px',
+        padding: '14px 16px', // Slightly more padding
         caretColor: 'hsl(208, 100%, 50%)',
         backgroundColor: 'transparent !important', // Ensure content area is transparent
     },
     // Gutters styled for stronger glassmorphism
     '.cm-gutters': {
-        backgroundColor: 'hsla(220, 40%, 98%, 0.6)', // Match alt glass more closely
+        backgroundColor: 'hsla(220, 40%, 98%, 0.65)', // Match alt glass more closely, slightly less transparent
         borderRight: '1px solid hsla(210, 20%, 85%, 0.4)', // Softer, semi-transparent border
         color: 'hsl(210, 9%, 55%)',
         paddingLeft: '8px',
@@ -42,26 +43,26 @@ const editorTheme = EditorView.theme({
         fontSize: '11px',
         userSelect: 'none',
         WebkitUserSelect: 'none',
-        backdropFilter: 'blur(8px)', // Apply blur to gutters
-        WebkitBackdropFilter: 'blur(8px)',
+        backdropFilter: 'blur(10px)', // Apply blur to gutters
+        WebkitBackdropFilter: 'blur(10px)',
     },
     '.cm-lineNumbers .cm-gutterElement': {
-        minWidth: '22px',
+        minWidth: '24px', // Adjusted width
     },
     '.cm-line': {
-        padding: '0 4px',
+        padding: '0 4px', // Minimal horizontal padding per line
     },
     '.cm-activeLine': {
-        backgroundColor: 'hsla(208, 100%, 50%, 0.08)', // Slightly more visible active line on glass
+        backgroundColor: 'hsla(208, 100%, 50%, 0.10)', // Slightly more visible active line on glass
     },
     '.cm-activeLineGutter': {
-        backgroundColor: 'hsla(208, 100%, 50%, 0.12)', // Slightly more visible gutter highlight on glass
+        backgroundColor: 'hsla(208, 100%, 50%, 0.15)', // Slightly more visible gutter highlight on glass
     },
     '.cm-placeholder': {
         color: 'hsl(210, 9%, 60%)',
         fontStyle: 'italic',
         pointerEvents: 'none',
-        padding: '12px 14px',
+        padding: '14px 16px', // Match content padding
         position: 'absolute',
         top: 0,
         left: 0,
@@ -80,14 +81,18 @@ const editorTheme = EditorView.theme({
     },
     // Search match highlighting
     '.cm-searchMatch': {
-        backgroundColor: 'hsla(50, 100%, 50%, 0.3)', // Yellowish highlight
-        outline: '1px solid hsla(50, 100%, 50%, 0.5)'
+        backgroundColor: 'hsla(50, 100%, 50%, 0.35)', // Yellowish highlight
+        outline: '1px solid hsla(50, 100%, 50%, 0.5)',
+        borderRadius: '2px',
     },
     '.cm-searchMatch-selected': {
-        backgroundColor: 'hsla(50, 100%, 50%, 0.5)', // Darker selected match
+        backgroundColor: 'hsla(50, 100%, 50%, 0.55)', // Darker selected match
         outline: '1px solid hsla(50, 100%, 40%, 0.8)'
     },
-
+    // Selection needs to be visible on glass
+    '.cm-selectionBackground, ::selection': {
+        backgroundColor: 'hsla(208, 100%, 50%, 0.25) !important',
+    },
 });
 
 interface CodeMirrorEditorProps {
@@ -97,7 +102,6 @@ interface CodeMirrorEditorProps {
     placeholder?: string;
     readOnly?: boolean;
     onBlur?: () => void;
-    // useGlassEffect is now implied / always on
 }
 
 export interface CodeMirrorEditorRef {
@@ -163,8 +167,16 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
             let view = viewRef.current;
 
             if (view) {
+                // Optimize reconfigure: only reconfigure if absolutely necessary (e.g., readOnly changes)
+                const currentReadOnly = view.state.facet(EditorState.readOnly);
+                if (currentReadOnly !== readOnly) {
+                    view.dispatch({ effects: StateEffect.reconfigure.of(createExtensions()) });
+                }
+                // Placeholder might also need reconfiguration if it changes
+                // This simple approach reconfigures on any prop change, which is okay for this use case
                 view.dispatch({ effects: StateEffect.reconfigure.of(createExtensions()) });
                 stateRef.current = view.state;
+
             } else {
                 const startState = EditorState.create({ doc: value, extensions: createExtensions() });
                 stateRef.current = startState;
@@ -172,36 +184,36 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 viewRef.current = view;
             }
 
+            // Cleanup on unmount
             return () => {
                 if (viewRef.current) {
                     viewRef.current.destroy();
                     viewRef.current = null;
                 }
             };
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [readOnly, placeholder, onChange, onBlur]);
+            // Dependencies for extension recreation
+        }, [readOnly, placeholder, onChange, onBlur]); // eslint-disable-line react-hooks/exhaustive-deps
 
+        // Effect to handle external value changes
         useEffect(() => {
             const view = viewRef.current;
-            const currentState = stateRef.current;
-            if (view && currentState && value !== currentState.doc.toString()) {
-                if (value !== view.state.doc.toString()){ // Double check
-                    view.dispatch({
-                        changes: { from: 0, to: view.state.doc.length, insert: value || '' },
-                        selection: view.state.selection,
-                        userEvent: "external"
-                    });
-                }
+            if (view && value !== view.state.doc.toString()) {
+                view.dispatch({
+                    changes: { from: 0, to: view.state.doc.length, insert: value || '' },
+                    selection: view.state.selection, // Preserve selection if possible
+                    userEvent: "external" // Mark as external change
+                });
             }
-        }, [value]);
+        }, [value]); // Only depends on external value
 
         return (
+            // Container div defines the glass background and blur
             <div
                 ref={editorRef}
                 className={twMerge(
-                    // Container div now defines the glass background and blur
                     'cm-editor-container relative h-full w-full overflow-hidden rounded-md', // Base structure
-                    'bg-glass-inset-100 backdrop-blur-md border border-black/10 shadow-inner', // Default glass effect
+                    // Apply desired glass effect to the container
+                    'bg-glass-inset-100 backdrop-blur-lg border border-black/10 shadow-inner', // Default inset glass
                     'focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/80', // Focus state on container
                     className // Allow overrides
                 )}
@@ -211,4 +223,4 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
 );
 
 CodeMirrorEditor.displayName = 'CodeMirrorEditor';
-export default memo(CodeMirrorEditor);
+export default memo(CodeMirrorEditor); // Memoize for performance

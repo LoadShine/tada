@@ -63,6 +63,7 @@ export const iconMap = {
     'inbox': LucideIcons.Inbox,
     'x-circle': LucideIcons.XCircle, // For clear search / clear date
     'calendar-check': LucideIcons.CalendarCheck, // For date picker 'Today'
+    'refresh-cw': LucideIcons.RefreshCw,
 };
 
 // Utility type for Icon names based on the map

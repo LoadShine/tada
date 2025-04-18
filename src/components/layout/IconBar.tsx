@@ -1,13 +1,13 @@
 // src/components/layout/IconBar.tsx
-import React, { memo } from 'react';
+import React, {memo, useCallback} from 'react';
 import { NavLink } from 'react-router-dom';
 import Icon from '../common/Icon';
 import { useAtom, useAtomValue } from 'jotai';
 import { currentUserAtom, isSettingsOpenAtom } from '@/store/atoms';
 import { motion } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
-import Button from "@/components/common/Button.tsx";
-import { IconName } from "@/components/common/IconMap.tsx";
+import Button from "@/components/common/Button";
+import { IconName } from "@/components/common/IconMap";
 
 const IconBar: React.FC = () => {
     const currentUser = useAtomValue(currentUserAtom);
@@ -19,22 +19,22 @@ const IconBar: React.FC = () => {
         { path: '/summary', icon: 'sparkles', label: 'AI Summary' },
     ];
 
-    const handleAvatarClick = () => {
+    const handleAvatarClick = useCallback(() => { // Use useCallback
         setIsSettingsOpen(true);
-    };
+    }, [setIsSettingsOpen]);
 
-    const getNavLinkClass = ({ isActive }: { isActive: boolean }): string =>
+    const getNavLinkClass = useCallback(({ isActive }: { isActive: boolean }): string => // Use useCallback
         twMerge(
             'flex items-center justify-center w-10 h-10 rounded-lg transition-colors duration-150 ease-apple group relative',
             // Use glass effect for active/hover states
             isActive
-                ? 'bg-primary/20 text-primary backdrop-blur-sm' // Active glass
-                : 'text-muted-foreground hover:bg-black/15 hover:text-gray-700 hover:backdrop-blur-xs' // Hover glass
-        );
+                ? 'bg-primary/25 text-primary backdrop-blur-md ring-1 ring-inset ring-primary/30' // Active glass with ring
+                : 'text-muted-foreground hover:bg-black/20 hover:text-gray-700 hover:backdrop-blur-sm' // Stronger hover glass
+        ), []); // Empty dependency array
 
     return (
-        // Apply stronger glassmorphism effect
-        <div className="w-16 bg-glass-alt-100 backdrop-blur-xl border-r border-black/10 flex flex-col items-center py-4 flex-shrink-0 z-20 shadow-medium"> {/* Strongest blur */}
+        // Apply stronger glassmorphism effect to the entire bar
+        <div className="w-16 bg-glass-alt-100 backdrop-blur-xl border-r border-black/10 flex flex-col items-center py-4 flex-shrink-0 z-20 shadow-strong"> {/* Strongest blur, stronger shadow */}
             {/* App Logo Placeholder */}
             <div
                 className="mb-6 mt-1 flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary/90 to-blue-500/80 rounded-lg text-white font-bold text-xl shadow-inner"
@@ -52,12 +52,13 @@ const IconBar: React.FC = () => {
                         className={getNavLinkClass}
                         title={item.label}
                         aria-label={item.label}
-                        end={item.path === '/all'}
+                        end={item.path === '/all'} // Ensure 'All Tasks' is only active at exact path
                     >
                         {({ isActive }) => (
                             <motion.div
-                                animate={{ scale: isActive ? 1.1 : 1 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 15, duration: 0.1 }}
+                                // Smoother spring animation for icon scale
+                                animate={{ scale: isActive ? 1.15 : 1 }}
+                                transition={{ type: 'spring', stiffness: 350, damping: 18, duration: 0.15 }}
                             >
                                 <Icon name={item.icon} size={20} strokeWidth={1.75} />
                             </motion.div>
@@ -70,9 +71,9 @@ const IconBar: React.FC = () => {
             <div className="mt-auto mb-1">
                 <Button
                     onClick={handleAvatarClick}
-                    variant="glass" // Use glass variant
+                    variant="glass" // Use glass variant for consistency
                     size="icon"
-                    className="w-9 h-9 rounded-full overflow-hidden p-0 border border-black/10 shadow-inner hover:bg-black/15" // Adjust size, add border, use glass hover
+                    className="w-9 h-9 rounded-full overflow-hidden p-0 border border-black/10 shadow-inner hover:bg-black/15 backdrop-blur-md" // Added blur, consistent hover
                     aria-label="Account Settings"
                 >
                     {currentUser?.avatar ? (
@@ -83,6 +84,7 @@ const IconBar: React.FC = () => {
                         />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white font-medium text-sm">
+                            {/* Show icon if no name */}
                             {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <Icon name="user" size={16} />}
                         </div>
                     )}

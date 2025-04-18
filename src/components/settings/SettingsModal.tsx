@@ -2,14 +2,14 @@
 import React, { useCallback, useMemo } from 'react';
 import { useAtom } from 'jotai';
 import { currentUserAtom, isSettingsOpenAtom, settingsSelectedTabAtom } from '@/store/atoms';
-import { SettingsTab } from '@/types'; // Added User import
+import { SettingsTab } from '@/types';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
 import { IconName } from "@/components/common/IconMap.tsx";
 
-// Define Setting Sections and Items Interface
+// --- Setting Sections Definition ---
 interface SettingsItem {
     id: SettingsTab;
     label: string;
@@ -27,10 +27,10 @@ const settingsSections: SettingsItem[] = [
 
 // --- Placeholder Content Components ---
 
-// Helper component for rows in settings pages
+// Helper component for rows in settings pages (Memoized)
 const SettingsRow: React.FC<{label: string, value?: React.ReactNode, action?: React.ReactNode, children?: React.ReactNode, description?: string}> =
     React.memo(({label, value, action, children, description}) => (
-        <div className="flex justify-between items-center py-2.5 min-h-[40px] border-b border-black/5 last:border-b-0">
+        <div className="flex justify-between items-center py-2.5 min-h-[44px] border-b border-black/5 last:border-b-0"> {/* Slightly taller rows */}
             <div className="flex-1 mr-4">
                 <span className="text-sm text-gray-700 font-medium block">{label}</span>
                 {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
@@ -48,7 +48,7 @@ SettingsRow.displayName = 'SettingsRow';
 // Specific Account Settings Content
 const AccountSettings: React.FC = () => {
     const [currentUser] = useAtom(currentUserAtom);
-    // Placeholder actions
+    // Placeholder actions (useCallback for stability if passed down)
     const handleEdit = useCallback(() => console.log("Edit action"), []);
     const handleChangePassword = useCallback(() => console.log("Change password action"), []);
     const handleUnlink = useCallback(() => console.log("Unlink action"), []);
@@ -59,33 +59,36 @@ const AccountSettings: React.FC = () => {
     const handleLogout = useCallback(() => { console.log("Logout action"); /* Add actual logout logic here */ }, []);
 
     return (
+        // Animate content appearance
         <motion.div
             className="space-y-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.05 }} // Slight delay
         >
             {/* User Profile Header */}
             <div className="flex items-center space-x-4 mb-4">
+                {/* Avatar with subtle glass */}
                 <motion.div
-                    className="w-16 h-16 rounded-full overflow-hidden shadow-medium flex-shrink-0 border-2 border-white backdrop-blur-sm bg-white/30" // Added subtle glass bg
+                    className="w-16 h-16 rounded-full overflow-hidden shadow-medium flex-shrink-0 border-2 border-white backdrop-blur-sm bg-white/40" // Subtle glass bg
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.05, type: 'spring', stiffness: 300, damping: 20 }}
+                    transition={{ delay: 0.1, type: 'spring', stiffness: 300, damping: 20 }} // Spring animation
                 >
                     {currentUser?.avatar ? (
                         <img src={currentUser.avatar} alt={currentUser.name ?? 'User Avatar'} className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-2xl font-medium">
-                            {currentUser?.name?.charAt(0).toUpperCase() || '?'}
+                            {currentUser?.name?.charAt(0).toUpperCase() || <Icon name="user" size={24}/>}
                         </div>
                     )}
                 </motion.div>
                 <div>
                     <h3 className="text-xl font-semibold text-gray-800">{currentUser?.name ?? 'Guest User'}</h3>
-                    <p className="text-sm text-muted-foreground">{currentUser?.email ?? 'No email'}</p>
+                    <p className="text-sm text-muted-foreground">{currentUser?.email ?? 'No email provided'}</p>
+                    {/* Glassy premium badge */}
                     {currentUser?.isPremium && (
-                        <div className="text-xs text-yellow-700 flex items-center mt-1.5 font-medium bg-yellow-400/30 backdrop-blur-sm px-1.5 py-0.5 rounded-full w-fit"> {/* Glassy premium badge */}
+                        <div className="text-xs text-yellow-700 flex items-center mt-1.5 font-medium bg-yellow-400/40 backdrop-blur-sm px-1.5 py-0.5 rounded-full w-fit shadow-inner border border-yellow-500/20">
                             <Icon name="crown" size={12} className="mr-1 text-yellow-600" />
                             <span>Premium Member</span>
                         </div>
@@ -110,6 +113,7 @@ const AccountSettings: React.FC = () => {
             {/* Data Management */}
             <div className="space-y-0">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 mt-4">Data Management</h4>
+                {/* Glass buttons for Backup/Import */}
                 <SettingsRow label="Backup & Restore" description="Save or load your task data.">
                     <Button variant="glass" size="sm" icon="download" onClick={handleBackup}>Backup</Button>
                     <Button variant="glass" size="sm" icon="upload" onClick={handleImport}>Import</Button>
@@ -121,7 +125,8 @@ const AccountSettings: React.FC = () => {
 
             {/* Logout Action */}
             <div className="mt-6">
-                <Button variant="glass" size="md" icon="logout" onClick={handleLogout} className="w-full sm:w-auto"> {/* Use glass button */}
+                {/* Use glass button for Logout */}
+                <Button variant="glass" size="md" icon="logout" onClick={handleLogout} className="w-full sm:w-auto">
                     Logout
                 </Button>
             </div>
@@ -136,7 +141,7 @@ const PlaceholderSettings: React.FC<{ title: string, icon?: IconName }> = ({ tit
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.15 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }} // Smooth transition
     >
         <Icon name={icon} size={44} className="mx-auto mb-4 text-gray-300 opacity-70" />
         <p className="text-base font-medium text-gray-500">{title} Settings</p>
@@ -152,6 +157,7 @@ const SettingsModal: React.FC = () => {
 
     const handleClose = useCallback(() => setIsSettingsOpen(false), [setIsSettingsOpen]);
 
+    // Memoize content rendering based on selectedTab
     const renderContent = useMemo(() => {
         switch (selectedTab) {
             case 'account': return <AccountSettings />;
@@ -168,7 +174,7 @@ const SettingsModal: React.FC = () => {
 
     return (
         <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-lg z-40 flex items-center justify-center p-4" // Stronger backdrop
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-40 flex items-center justify-center p-4" // Stronger backdrop
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -182,12 +188,12 @@ const SettingsModal: React.FC = () => {
             <motion.div
                 className={twMerge(
                     "bg-glass-100 backdrop-blur-xl w-full max-w-3xl h-[75vh] max-h-[600px]", // Strongest glass bg and blur
-                    "rounded-lg shadow-strong flex overflow-hidden border border-black/10"
+                    "rounded-xl shadow-strong flex overflow-hidden border border-black/10" // Use larger radius
                 )}
-                initial={{ scale: 0.95, y: 10, opacity: 0 }}
+                initial={{ scale: 0.95, y: 15, opacity: 0 }} // Start slightly lower
                 animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.95, y: 5, opacity: 0, transition: { duration: 0.15 } }}
-                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                exit={{ scale: 0.95, y: 10, opacity: 0, transition: { duration: 0.15, ease: 'easeIn' } }} // Faster exit
+                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }} // Emphasized ease
                 onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
             >
                 {/* Settings Sidebar - Apply STRONG glass effect */}
@@ -198,10 +204,10 @@ const SettingsModal: React.FC = () => {
                                 key={item.id}
                                 onClick={() => setSelectedTab(item.id)}
                                 className={twMerge(
-                                    'flex items-center w-full px-2 py-1 h-7 text-sm rounded-md transition-colors duration-100 ease-apple',
+                                    'flex items-center w-full px-2 py-1 h-7 text-sm rounded-md transition-colors duration-150 ease-apple', // Smoother transition
                                     selectedTab === item.id
-                                        ? 'bg-primary/20 text-primary font-medium backdrop-blur-xs' // Active glass
-                                        : 'text-gray-600 hover:bg-black/15 hover:text-gray-800 hover:backdrop-blur-xs' // Hover glass
+                                        ? 'bg-primary/25 text-primary font-medium backdrop-blur-sm' // Brighter active glass
+                                        : 'text-gray-600 hover:bg-black/15 hover:text-gray-800 hover:backdrop-blur-sm' // Hover glass
                                 )}
                                 aria-current={selectedTab === item.id ? 'page' : undefined}
                             >
@@ -215,8 +221,9 @@ const SettingsModal: React.FC = () => {
                 {/* Content Area - Use subtle glass */}
                 <div className="flex-1 flex flex-col overflow-hidden bg-glass backdrop-blur-lg relative"> {/* Primary content glass */}
                     {/* Header within content area - Subtle tint */}
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-black/10 flex-shrink-0 h-[53px] bg-glass-alt-200 backdrop-blur-md"> {/* Header glass */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-black/10 flex-shrink-0 h-[53px] bg-glass-alt-200 backdrop-blur-lg"> {/* Header glass (stronger) */}
                         <h2 id="settingsModalTitle" className="text-lg font-semibold text-gray-800">
+                            {/* Find label safely */}
                             {settingsSections.find(s => s.id === selectedTab)?.label ?? 'Settings'}
                         </h2>
                         <Button
@@ -224,20 +231,21 @@ const SettingsModal: React.FC = () => {
                             size="icon"
                             icon="x" // Use icon prop
                             onClick={handleClose}
-                            className="text-muted-foreground hover:bg-black/10 w-7 h-7 -mr-2"
+                            className="text-muted-foreground hover:bg-black/15 w-7 h-7 -mr-2" // Glassy hover
                             aria-label="Close settings"
                         />
                     </div>
 
                     {/* Scrollable Content */}
                     <div className="flex-1 p-5 overflow-y-auto styled-scrollbar">
+                        {/* Animate content switching */}
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={selectedTab} // Key change triggers animation
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.15, ease: 'easeOut' }}
+                                transition={{ duration: 0.18, ease: 'easeOut' }} // Slightly faster transition
                             >
                                 {renderContent}
                             </motion.div>
