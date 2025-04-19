@@ -1,5 +1,4 @@
 // src/components/layout/Sidebar.tsx
-// Removed count badge animation and collapsible section animation
 import React, {useCallback, useEffect, useState, useRef, useMemo} from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../common/Icon';

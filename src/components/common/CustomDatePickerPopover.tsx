@@ -1,6 +1,4 @@
 // src/components/common/CustomDatePickerPopover.tsx
-// Updated styles to pixel-perfectly match the screenshot
-// Implemented hover-only tooltips
 import React, { useState, useMemo, useCallback } from 'react';
 import {
     startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,

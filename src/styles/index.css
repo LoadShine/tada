@@ -21,9 +21,6 @@
     --primary-h: 208;
     --primary-s: 100%;
     --primary-l: 50%;
-    /* --rdp-cell-size: 36px; /* Removed, using Tailwind size classes now */
-    /* --rdp-accent-color: hsl(var(--primary-h), var(--primary-s), var(--primary-l)); */
-    /* --rdp-background-color: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15); */
   }
 }
 
@@ -49,9 +46,6 @@
   .styled-scrollbar::-webkit-scrollbar-thumb:active {
     @apply bg-black/40;
   }
-
-  /* Remove react-day-picker custom styles as we style directly in component */
-  /* Ensure NO .rdp- prefix styles are here unless absolutely necessary */
 
   /* --- CodeMirror Editor adjustments --- */
   .cm-editor-container { }

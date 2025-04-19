@@ -1,5 +1,4 @@
 // src/components/common/AddListModal.tsx
-// Removed framer-motion animations
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAtom } from 'jotai';
 import { isAddListModalOpenAtom, userListNamesAtom } from '@/store/atoms';

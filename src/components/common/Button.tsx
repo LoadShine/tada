@@ -1,5 +1,4 @@
 // src/components/common/Button.tsx
-// Removed framer-motion and tap animation
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 import { clsx } from 'clsx';

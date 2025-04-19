@@ -1,5 +1,4 @@
 // src/components/summary/SummaryView.tsx
-// Removed loading overlay animation
 import React, {useCallback, useState, useMemo, useRef} from 'react';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
@@ -9,7 +8,6 @@ import { tasksAtom } from '@/store/atoms';
 import {
     endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subMonths, isValid, safeParseDate, startOfDay, endOfDay, subWeeks, enUS
 } from '@/utils/dateUtils';
-// Removed AnimatePresence, motion
 import { twMerge } from "tailwind-merge";
 
 type SummaryPeriod = 'this-week' | 'last-week' | 'this-month' | 'last-month';

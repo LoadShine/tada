@@ -1,5 +1,4 @@
 // src/components/layout/MainLayout.tsx
-// Removed sidebar animation and modal animation
 import React, { Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import IconBar from './IconBar';

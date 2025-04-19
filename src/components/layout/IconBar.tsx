@@ -1,5 +1,4 @@
 // src/components/layout/IconBar.tsx
-// Removed icon scale animation
 import React, {memo, useCallback} from 'react';
 import { NavLink } from 'react-router-dom';
 import Icon from '../common/Icon';

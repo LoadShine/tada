@@ -1,5 +1,4 @@
 // src/pages/CalendarPage.tsx
-// No changes needed
 import React from 'react';
 import CalendarView from '../components/calendar/CalendarView';
 

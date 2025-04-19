@@ -1,5 +1,4 @@
 // src/pages/SummaryPage.tsx
-// No changes needed
 import React from 'react';
 import SummaryView from '../components/summary/SummaryView';
 

@@ -1,5 +1,4 @@
 // src/components/calendar/CalendarView.tsx
-// Removed framer-motion animations except for DragOverlay logic
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
 import { tasksAtom, selectedTaskIdAtom } from '@/store/atoms';

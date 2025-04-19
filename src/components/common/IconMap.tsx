@@ -1,5 +1,4 @@
 // src/components/common/IconMap.tsx
-// Added 'bell' and 'refresh-cw' if they weren't explicitly present
 import * as LucideIcons from "lucide-react";
 
 export const iconMap = {

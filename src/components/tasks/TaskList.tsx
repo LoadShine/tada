@@ -1,6 +1,4 @@
 // src/components/tasks/TaskList.tsx
-// Kept task item add/remove/reorder animation, removed header/empty state animation
-// Optimized callbacks and dependencies
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import TaskItem from './TaskItem';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';

@@ -1,5 +1,4 @@
 // src/store/atoms.ts
-// Added memoization checks and optimized derived atoms where possible
 import { atom } from 'jotai';
 import { atomWithStorage, RESET } from 'jotai/utils';
 import { User, Task, TaskFilter, TaskGroupCategory, SettingsTab } from '@/types';

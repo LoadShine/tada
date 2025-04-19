@@ -1,5 +1,4 @@
 // src/App.tsx
-// No animation changes needed here, RouteChangeHandler optimization in atoms.ts
 import React, { useEffect } from 'react';
 import { Routes, Route, useParams, Navigate, useLocation, Outlet } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';

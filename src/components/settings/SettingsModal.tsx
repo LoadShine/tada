@@ -1,5 +1,4 @@
 // src/components/settings/SettingsModal.tsx
-// Removed all framer-motion animations
 import React, { useCallback, useMemo } from 'react';
 import { useAtom } from 'jotai';
 import { currentUserAtom, isSettingsOpenAtom, settingsSelectedTabAtom } from '@/store/atoms';

@@ -1,5 +1,4 @@
 // src/components/tasks/TaskItem.tsx
-// Kept essential DND styles, removed others. Memoized.
 import React, { useMemo, useCallback } from 'react';
 import { Task, TaskGroupCategory } from '@/types';
 import { formatRelativeDate, isOverdue, safeParseDate } from '@/utils/dateUtils';

@@ -1,5 +1,4 @@
 // src/components/common/Icon.tsx
-// No animation changes needed
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
