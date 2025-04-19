@@ -335,8 +335,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle, filter: _pageFilte
                             <Button variant="primary" size="sm" icon="plus" onClick={handleAddTask}
                                     className="px-2.5 !h-[30px]"> Add </Button>
                         )}
-                        <Button variant="ghost" size="icon" icon="more-horizontal" aria-label="List options"
-                                className="w-7 h-7 text-muted-foreground hover:bg-black/15"/>
                     </div>
                 </div>
 
