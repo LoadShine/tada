@@ -1,31 +1,29 @@
 // src/components/common/AddListModal.tsx
+// Removed framer-motion animations
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAtom } from 'jotai';
 import { isAddListModalOpenAtom, userListNamesAtom } from '@/store/atoms';
 import Button from './Button';
-import { motion } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
 
 interface AddListModalProps {
-    onAdd: (listName: string) => void; // Callback when list is added
+    onAdd: (listName: string) => void;
 }
 
 const AddListModal: React.FC<AddListModalProps> = ({ onAdd }) => {
-    const [, setIsOpen] = useAtom(isAddListModalOpenAtom);
-    const [allListNames] = useAtom(userListNamesAtom); // Get existing names for validation
+    const [isOpen, setIsOpen] = useAtom(isAddListModalOpenAtom);
+    const [allListNames] = useAtom(userListNamesAtom);
     const [listName, setListName] = useState('');
     const [error, setError] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleClose = useCallback(() => setIsOpen(false), [setIsOpen]);
 
-    // Focus input on mount
     useEffect(() => {
-        const timer = setTimeout(() => {
+        if (isOpen) { // Focus only when modal becomes open
             inputRef.current?.focus();
-        }, 50); // Short delay for animation
-        return () => clearTimeout(timer);
-    }, []);
+        }
+    }, [isOpen]);
 
 
     const handleSubmit = useCallback((e: React.FormEvent) => {
@@ -53,45 +51,38 @@ const AddListModal: React.FC<AddListModalProps> = ({ onAdd }) => {
         handleClose();
     }, [listName, allListNames, onAdd, handleClose]);
 
+    // Return null if not open, as AnimatePresence is removed from parent
+    if (!isOpen) return null;
+
     return (
-        <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-40 flex items-center justify-center p-4" // Stronger backdrop blur
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
+        // Removed outer motion.div
+        <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-40 flex items-center justify-center p-4"
             onClick={handleClose}
             aria-modal="true"
             role="dialog"
             aria-labelledby="addListModalTitle"
         >
-            {/* Modal Content with STRONG scale-in glass effect */}
-            <motion.div
+            {/* Removed inner motion.div */}
+            <div
                 className={twMerge(
-                    // Strongest glass for the main modal panel
                     "bg-glass-100 backdrop-blur-xl w-full max-w-sm rounded-xl shadow-strong overflow-hidden border border-black/10",
                     "flex flex-col"
                 )}
-                initial={{ scale: 0.9, opacity: 0, y: 20 }} // Slightly more dramatic entrance
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 10, transition: { duration: 0.15 } }}
-                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }} // Emphasized ease
                 onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
             >
-                {/* Header - Slightly less prominent glass */}
-                <div className="px-4 py-3 border-b border-black/10 flex justify-between items-center flex-shrink-0 bg-glass-alt-100 backdrop-blur-lg"> {/* Header glass */}
+                <div className="px-4 py-3 border-b border-black/10 flex justify-between items-center flex-shrink-0 bg-glass-alt-100 backdrop-blur-lg">
                     <h2 id="addListModalTitle" className="text-base font-semibold text-gray-800">Create New List</h2>
                     <Button
                         variant="ghost"
                         size="icon"
-                        icon="x" // Use icon prop
+                        icon="x"
                         onClick={handleClose}
-                        className="text-muted-foreground hover:bg-black/15 w-7 h-7 -mr-1" // Glassy hover
+                        className="text-muted-foreground hover:bg-black/15 w-7 h-7 -mr-1"
                         aria-label="Close modal"
                     />
                 </div>
 
-                {/* Form Body */}
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
                     <div>
                         <label htmlFor="listNameInput" className="block text-xs font-medium text-muted-foreground mb-1.5">
@@ -108,10 +99,9 @@ const AddListModal: React.FC<AddListModalProps> = ({ onAdd }) => {
                             }}
                             placeholder="e.g., Groceries, Project X"
                             className={twMerge(
-                                // Input with inset glass effect
-                                "w-full h-9 px-3 text-sm bg-glass-inset-100 backdrop-blur-md border rounded-md focus:border-primary/50 focus:ring-1 focus:ring-primary/30 placeholder:text-muted shadow-inner", // Inset glass
-                                error ? 'border-red-400 focus:border-red-500 focus:ring-red-200' : 'border-black/10', // Use glass-friendly border
-                                "focus:bg-glass-inset-200" // Change bg on focus
+                                "w-full h-9 px-3 text-sm bg-glass-inset-100 backdrop-blur-md border rounded-md focus:border-primary/50 focus:ring-1 focus:ring-primary/30 placeholder:text-muted shadow-inner",
+                                error ? 'border-red-400 focus:border-red-500 focus:ring-red-200' : 'border-black/10',
+                                "focus:bg-glass-inset-200"
                             )}
                             aria-required="true"
                             aria-invalid={!!error}
@@ -120,9 +110,7 @@ const AddListModal: React.FC<AddListModalProps> = ({ onAdd }) => {
                         {error && <p id="listNameError" className="text-xs text-red-600 mt-1.5">{error}</p>}
                     </div>
 
-                    {/* Footer Actions */}
                     <div className="flex justify-end space-x-2 pt-2">
-                        {/* Use glass button for Cancel */}
                         <Button variant="glass" size="md" onClick={handleClose}>
                             Cancel
                         </Button>
@@ -131,8 +119,8 @@ const AddListModal: React.FC<AddListModalProps> = ({ onAdd }) => {
                         </Button>
                     </div>
                 </form>
-            </motion.div>
-        </motion.div>
+            </div>
+        </div>
     );
 };
 

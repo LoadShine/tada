@@ -1,10 +1,10 @@
 // src/components/layout/IconBar.tsx
+// Removed icon scale animation
 import React, {memo, useCallback} from 'react';
 import { NavLink } from 'react-router-dom';
 import Icon from '../common/Icon';
 import { useAtom, useAtomValue } from 'jotai';
 import { currentUserAtom, isSettingsOpenAtom } from '@/store/atoms';
-import { motion } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
 import Button from "@/components/common/Button";
 import { IconName } from "@/components/common/IconMap";
@@ -19,23 +19,20 @@ const IconBar: React.FC = () => {
         { path: '/summary', icon: 'sparkles', label: 'AI Summary' },
     ];
 
-    const handleAvatarClick = useCallback(() => { // Use useCallback
+    const handleAvatarClick = useCallback(() => {
         setIsSettingsOpen(true);
     }, [setIsSettingsOpen]);
 
-    const getNavLinkClass = useCallback(({ isActive }: { isActive: boolean }): string => // Use useCallback
+    const getNavLinkClass = useCallback(({ isActive }: { isActive: boolean }): string =>
         twMerge(
             'flex items-center justify-center w-10 h-10 rounded-lg transition-colors duration-150 ease-apple group relative',
-            // Use glass effect for active/hover states
             isActive
-                ? 'bg-primary/25 text-primary backdrop-blur-md ring-1 ring-inset ring-primary/30' // Active glass with ring
-                : 'text-muted-foreground hover:bg-black/20 hover:text-gray-700 hover:backdrop-blur-sm' // Stronger hover glass
-        ), []); // Empty dependency array
+                ? 'bg-primary/25 text-primary backdrop-blur-md ring-1 ring-inset ring-primary/30'
+                : 'text-muted-foreground hover:bg-black/20 hover:text-gray-700 hover:backdrop-blur-sm'
+        ), []);
 
     return (
-        // Apply stronger glassmorphism effect to the entire bar
-        <div className="w-16 bg-glass-alt-100 backdrop-blur-xl border-r border-black/10 flex flex-col items-center py-4 flex-shrink-0 z-20 shadow-strong"> {/* Strongest blur, stronger shadow */}
-            {/* App Logo Placeholder */}
+        <div className="w-16 bg-glass-alt-100 backdrop-blur-xl border-r border-black/10 flex flex-col items-center py-4 flex-shrink-0 z-20 shadow-strong">
             <div
                 className="mb-6 mt-1 flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary/90 to-blue-500/80 rounded-lg text-white font-bold text-xl shadow-inner"
                 aria-label="Tada App Logo"
@@ -43,7 +40,6 @@ const IconBar: React.FC = () => {
                 <span className="-mt-0.5">T</span>
             </div>
 
-            {/* Navigation Links */}
             <nav className="flex flex-col items-center space-y-2 flex-1">
                 {navigationItems.map((item) => (
                     <NavLink
@@ -52,28 +48,20 @@ const IconBar: React.FC = () => {
                         className={getNavLinkClass}
                         title={item.label}
                         aria-label={item.label}
-                        end={item.path === '/all'} // Ensure 'All Tasks' is only active at exact path
+                        end={item.path === '/all'}
                     >
-                        {({ isActive }) => (
-                            <motion.div
-                                // Smoother spring animation for icon scale
-                                animate={{ scale: isActive ? 1.15 : 1 }}
-                                transition={{ type: 'spring', stiffness: 350, damping: 18, duration: 0.15 }}
-                            >
-                                <Icon name={item.icon} size={20} strokeWidth={1.75} />
-                            </motion.div>
-                        )}
+                        {/* Removed motion.div for icon scale */}
+                        <Icon name={item.icon} size={20} strokeWidth={1.75} />
                     </NavLink>
                 ))}
             </nav>
 
-            {/* Avatar / Settings Trigger */}
             <div className="mt-auto mb-1">
                 <Button
                     onClick={handleAvatarClick}
-                    variant="glass" // Use glass variant for consistency
+                    variant="glass"
                     size="icon"
-                    className="w-9 h-9 rounded-full overflow-hidden p-0 border border-black/10 shadow-inner hover:bg-black/15 backdrop-blur-md" // Added blur, consistent hover
+                    className="w-9 h-9 rounded-full overflow-hidden p-0 border border-black/10 shadow-inner hover:bg-black/15 backdrop-blur-md"
                     aria-label="Account Settings"
                 >
                     {currentUser?.avatar ? (
@@ -84,7 +72,6 @@ const IconBar: React.FC = () => {
                         />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white font-medium text-sm">
-                            {/* Show icon if no name */}
                             {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <Icon name="user" size={16} />}
                         </div>
                     )}
@@ -94,4 +81,4 @@ const IconBar: React.FC = () => {
     );
 };
 
-export default memo(IconBar); // Memoize as it only depends on atoms
+export default memo(IconBar);

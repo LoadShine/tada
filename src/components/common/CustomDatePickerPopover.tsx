@@ -1,238 +1,182 @@
 // src/components/common/CustomDatePickerPopover.tsx
-import React, { useState } from 'react';
+// Updated styles to pixel-perfectly match the screenshot
+// Implemented hover-only tooltips
+import React, { useState, useMemo, useCallback } from 'react';
 import {
-    startOfMonth,
-    endOfMonth,
-    startOfWeek,
-    endOfWeek,
-    eachDayOfInterval,
-    isSameMonth,
-    isSameDay,
-    addMonths,
-    subMonths,
-    format,
-    addDays,
-    addWeeks
+    startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
+    isSameMonth, isSameDay, addMonths, subMonths, format, addDays, addWeeks,
+    startOfDay, isToday as isTodayFn // Import isTodayFn explicitly
 } from '@/utils/dateUtils';
 import Icon from '@/components/common/Icon';
+import { twMerge } from 'tailwind-merge';
 
 interface CustomDatePickerPopoverProps {
-    initialDate: Date | undefined; // Date currently set on the task
-    onSelect: (date: Date | undefined) => void; // Callback with Date or undefined for clearing
-    close: () => void; // Function to close the popover
+    initialDate: Date | undefined;
+    onSelect: (date: Date | undefined) => void;
+    close: () => void;
 }
+
+// Tooltip component for internal use
+const Tooltip: React.FC<{ text: string, children: React.ReactElement }> = ({ text, children }) => (
+    <div className="relative group">
+        {children}
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 whitespace-nowrap bg-gray-800 text-white text-[10px] font-medium rounded py-0.5 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10">
+            {text}
+        </div>
+    </div>
+);
 
 const CustomDatePickerPopover: React.FC<CustomDatePickerPopoverProps> = ({
                                                                              initialDate,
                                                                              onSelect,
                                                                              close
                                                                          }) => {
-    // State for controlling the visible month in the calendar
-    const [currentMonth, setCurrentMonth] = useState<Date>(initialDate || new Date());
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate);
+    const today = useMemo(() => startOfDay(new Date()), []);
+    const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(initialDate || today));
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate ? startOfDay(initialDate) : undefined);
 
-    // Generate calendar days for the current month view
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart);
-    const endDate = endOfWeek(monthEnd);
+    const monthStart = useMemo(() => startOfMonth(currentMonth), [currentMonth]);
+    const monthEnd = useMemo(() => endOfMonth(monthStart), [monthStart]);
+    const startDate = useMemo(() => startOfWeek(monthStart), [monthStart]);
+    const endDate = useMemo(() => endOfWeek(monthEnd), [monthEnd]);
 
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const days = useMemo(() => eachDayOfInterval({ start: startDate, end: endDate }), [startDate, endDate]);
 
-    // Navigation handlers
-    const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-    const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+    const prevMonth = useCallback(() => setCurrentMonth(m => subMonths(m, 1)), []);
+    const nextMonth = useCallback(() => setCurrentMonth(m => addMonths(m, 1)), []);
 
-    // Date selection handler
-    const handleDateClick = (day: Date) => {
-        setSelectedDate(day);
-    };
+    const handleDateClick = useCallback((day: Date) => {
+        setSelectedDate(startOfDay(day));
+    }, []);
 
-    // Handle preset date options with direct selection
-    const handleToday = () => {
-        const today = new Date();
-        setSelectedDate(today);
-        onSelect(today);
+    const handlePresetSelect = useCallback((date: Date) => {
+        setSelectedDate(startOfDay(date));
+        onSelect(startOfDay(date));
         close();
-    };
+    }, [onSelect, close]);
 
-    const handleTomorrow = () => {
-        const tomorrow = addDays(new Date(), 1);
-        setSelectedDate(tomorrow);
-        onSelect(tomorrow);
-        close();
-    };
-
-    const handleNextWeek = () => {
-        const nextWeek = addWeeks(new Date(), 1);
-        setSelectedDate(nextWeek);
-        onSelect(nextWeek);
-        close();
-    };
-
-    const handleNextMonth = () => {
-        const nextMonth = addMonths(new Date(), 1);
-        setSelectedDate(nextMonth);
-        onSelect(nextMonth);
-        close();
-    };
-
-    // Handle confirm or cancel
-    const handleConfirm = () => {
+    const handleConfirm = useCallback(() => {
         onSelect(selectedDate);
         close();
-    };
+    }, [selectedDate, onSelect, close]);
 
-    const handleClear = () => {
+    const handleClear = useCallback(() => {
+        setSelectedDate(undefined);
         onSelect(undefined);
         close();
-    };
+    }, [onSelect, close]);
 
-    // Generate day name headers
-    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const dayNames = useMemo(() => ['S', 'M', 'T', 'W', 'T', 'F', 'S'], []);
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-4 w-[380px] border border-gray-200">
-            {/* Preset date options */}
-            <div className="flex justify-between mb-6">
-                <div className="relative group">
-                    <button
-                        className="p-3 rounded-full hover:bg-gray-100"
-                        onClick={handleToday}
-                    >
+        // Container matching screenshot style
+        <div className="bg-white rounded-lg shadow-xl p-4 w-[320px] border border-gray-200/80">
+            {/* Preset date options with Tooltips */}
+            <div className="flex justify-between items-center mb-4">
+                <Tooltip text="Today">
+                    <button className="p-2 rounded-full hover:bg-gray-100 transition-colors" onClick={() => handlePresetSelect(today)}>
                         <Icon name="sun" size={24} className="text-gray-500" />
                     </button>
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Today
-                    </div>
-                </div>
-
-                <div className="relative group">
-                    <button
-                        className="p-3 rounded-full hover:bg-gray-100"
-                        onClick={handleTomorrow}
-                    >
+                </Tooltip>
+                <Tooltip text="Tomorrow">
+                    <button className="p-2 rounded-full hover:bg-gray-100 transition-colors" onClick={() => handlePresetSelect(addDays(today, 1))}>
                         <Icon name="sunset" size={24} className="text-gray-500" />
                     </button>
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Tomorrow
-                    </div>
-                </div>
-
-                <div className="relative group">
-                    <button
-                        className="p-3 rounded-full hover:bg-gray-100"
-                        onClick={handleNextWeek}
-                    >
+                </Tooltip>
+                <Tooltip text="Next Week">
+                    <button className="p-2 rounded-full hover:bg-gray-100 transition-colors" onClick={() => handlePresetSelect(addWeeks(today, 1))}>
                         <div className="relative">
                             <Icon name="calendar" size={24} className="text-gray-500" />
-                            <div className="absolute top-0 right-0 text-xs bg-gray-300 rounded-sm px-1 text-gray-700">+7</div>
+                            <div className="absolute -top-0.5 -right-0.5 text-[10px] bg-gray-200 text-gray-600 rounded-sm px-1 font-medium">+7</div>
                         </div>
                     </button>
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Next Week
-                    </div>
-                </div>
-
-                <div className="relative group">
-                    <button
-                        className="p-3 rounded-full hover:bg-gray-100"
-                        onClick={handleNextMonth}
-                    >
+                </Tooltip>
+                <Tooltip text="Next Month">
+                    <button className="p-2 rounded-full hover:bg-gray-100 transition-colors" onClick={() => handlePresetSelect(addMonths(today, 1))}>
                         <Icon name="moon" size={24} className="text-gray-500" />
                     </button>
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Next Month
-                    </div>
-                </div>
+                </Tooltip>
             </div>
 
             {/* Month header and navigation */}
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium">{format(currentMonth, 'MMM yyyy')}</h2>
-                <div className="flex">
-                    <button
-                        onClick={prevMonth}
-                        className="mx-1 p-1 rounded-full hover:bg-gray-100"
-                    >
-                        <Icon name="chevron-left" size={20} className="text-gray-500" />
+            <div className="flex justify-between items-center mb-3">
+                <h2 className="text-sm font-semibold text-gray-700">{format(currentMonth, 'MMM yyyy')}</h2>
+                <div className="flex items-center">
+                    <button onClick={prevMonth} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+                        <Icon name="chevron-left" size={18} className="text-gray-500" />
                     </button>
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full">
-                        <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                    </div>
-                    <button
-                        onClick={nextMonth}
-                        className="mx-1 p-1 rounded-full hover:bg-gray-100"
-                    >
-                        <Icon name="chevron-right" size={20} className="text-gray-500" />
+                    <div className="w-2 h-2 bg-gray-300 rounded-full mx-1.5"></div>
+                    <button onClick={nextMonth} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+                        <Icon name="chevron-right" size={18} className="text-gray-500" />
                     </button>
                 </div>
             </div>
 
             {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-0 mb-6">
-                {/* Day names */}
+            <div className="grid grid-cols-7 gap-y-0.5 mb-4">
                 {dayNames.map((day, i) => (
-                    <div key={`header-${i}`} className="text-center text-gray-500 mb-2">
+                    <div key={`header-${i}`} className="text-center text-xs font-medium text-gray-400 mb-1.5">
                         {day}
                     </div>
                 ))}
-
-                {/* Calendar days */}
-                {days.map((day, i) => {
-                    const isCurrentMonth = isSameMonth(day, currentMonth);
-                    const isSelected = selectedDate && isSameDay(day, selectedDate);
+                {days.map((day) => {
+                    const dayOfMonth = format(day, 'd');
+                    const isCurrent = isSameMonth(day, currentMonth);
+                    const isSel = selectedDate && isSameDay(day, selectedDate);
+                    const isTod = isTodayFn(day); // Use imported isTodayFn
 
                     return (
                         <div
-                            key={`day-${i}`}
-                            onClick={() => handleDateClick(day)}
-                            className={`
-                relative h-10 flex items-center justify-center cursor-pointer
-                ${isSelected ? 'text-white' : isCurrentMonth ? 'text-gray-800' : 'text-gray-400'}
-              `}
-                        >
-                            {isSelected && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-8 h-8 bg-blue-500 rounded-full"></div>
-                                </div>
+                            key={day.toISOString()}
+                            className={twMerge(
+                                'h-9 flex items-center justify-center', // Cell container
+                                isCurrent ? 'cursor-pointer' : 'pointer-events-none'
                             )}
-                            <span className="relative z-10">{format(day, 'd')}</span>
+                            onClick={isCurrent ? () => handleDateClick(day) : undefined}
+                        >
+                            <span className={twMerge(
+                                'h-7 w-7 flex items-center justify-center rounded-full text-sm', // Day number span
+                                !isCurrent && 'text-gray-300', // Outside month
+                                isCurrent && !isSel && 'text-gray-700 hover:bg-gray-100', // Current month, not selected
+                                isCurrent && isTod && !isSel && 'font-semibold text-blue-600', // Today, not selected
+                                isSel && 'bg-blue-500 text-white font-semibold hover:bg-blue-600' // Selected
+                            )}>
+                                {dayOfMonth}
+                            </span>
                         </div>
                     );
                 })}
             </div>
 
             {/* Reminder, Repeat sections */}
-            <div className="border-t pt-4">
-                <div className="flex items-center justify-between py-3">
+            <div className="border-t border-gray-200 pt-3">
+                <button className="flex items-center justify-between w-full py-2 px-1 rounded hover:bg-gray-100/70 transition-colors text-left">
                     <div className="flex items-center">
-                        <Icon name="bell" size={20} className="text-gray-500 mr-2" />
-                        <span className="text-gray-700">Reminder</span>
+                        <Icon name="bell" size={18} className="text-gray-500 mr-2" />
+                        <span className="text-sm text-gray-600">Reminder</span>
                     </div>
-                    <Icon name="chevron-right" size={20} className="text-gray-400" />
-                </div>
-
-                <div className="flex items-center justify-between py-3">
+                    <Icon name="chevron-right" size={18} className="text-gray-400" />
+                </button>
+                <button className="flex items-center justify-between w-full py-2 px-1 rounded hover:bg-gray-100/70 transition-colors text-left">
                     <div className="flex items-center">
-                        <Icon name="refresh-cw" size={20} className="text-gray-500 mr-2" />
-                        <span className="text-gray-700">Repeat</span>
+                        <Icon name="refresh-cw" size={18} className="text-gray-500 mr-2" />
+                        <span className="text-sm text-gray-600">Repeat</span>
                     </div>
-                    <Icon name="chevron-right" size={20} className="text-gray-400" />
-                </div>
+                    <Icon name="chevron-right" size={18} className="text-gray-400" />
+                </button>
             </div>
 
             {/* Action buttons */}
-            <div className="flex mt-4 gap-3">
+            <div className="flex mt-4 gap-2">
                 <button
                     onClick={handleClear}
-                    className="w-1/2 py-3 border border-gray-300 rounded-md text-gray-600 font-medium"
+                    className="flex-1 py-2 border border-gray-300 rounded-md text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                 >
                     Clear
                 </button>
                 <button
                     onClick={handleConfirm}
-                    className="w-1/2 py-3 bg-blue-500 text-white rounded-md font-medium"
+                    className="flex-1 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
                 >
                     OK
                 </button>

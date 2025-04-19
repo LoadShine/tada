@@ -3,60 +3,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Define base layer styles */
 @layer base {
-  /* Apply base font stack, background, text color, and smoothing */
   body {
-    @apply bg-canvas-alt font-sans text-gray-900 antialiased; /* Use alt canvas for base */
+    @apply bg-canvas-alt font-sans text-gray-900 antialiased;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-
-  /* Define consistent focus-visible styles using primary color */
   *:focus-visible {
-    /* Use a slightly softer, inset ring */
     @apply outline-none ring-1 ring-primary/70 ring-offset-1 ring-offset-canvas;
   }
-
-  /* Remove default outline on buttons when focused (use focus-visible instead) */
   button:focus {
     outline: none;
   }
-
-  /* Define CSS variable for monospace font stack for CodeMirror */
   :root {
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    /* Define primary color HSL vars for potential use */
     --primary-h: 208;
     --primary-s: 100%;
     --primary-l: 50%;
-    /* Day Picker Variables (can be overridden) */
-    --rdp-cell-size: 36px; /* Slightly larger cell size for the custom picker */
-    --rdp-accent-color: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-    --rdp-background-color: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15); /* Semi-transparent background for selected */
+    /* --rdp-cell-size: 36px; /* Removed, using Tailwind size classes now */
+    /* --rdp-accent-color: hsl(var(--primary-h), var(--primary-s), var(--primary-l)); */
+    /* --rdp-background-color: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15); */
   }
 }
 
-/* Define component layer styles */
 @layer components {
-  /* Custom refined scrollbar styling */
   .styled-scrollbar::-webkit-scrollbar {
-    width: 8px; /* Slightly wider */
+    width: 8px;
     height: 8px;
   }
-
   .styled-scrollbar::-webkit-scrollbar-track {
-    background-color: transparent; /* Fully transparent track */
+    background-color: transparent;
   }
-
   .styled-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-black/20 rounded-full border-[2.5px] border-solid border-transparent; /* Darker thumb, adjust border for inset look */
+    @apply bg-black/20 rounded-full border-[2.5px] border-solid border-transparent;
     background-clip: padding-box;
     transition: background-color 0.15s ease-out;
   }
-
-  /* Darker scrollbar thumb on hover */
   .styled-scrollbar:hover::-webkit-scrollbar-thumb {
     @apply bg-black/30;
   }
@@ -67,162 +50,26 @@
     @apply bg-black/40;
   }
 
-
-  /* --- react-day-picker Custom Styles for CustomDatePickerPopover --- */
-
-  /* Scope custom styles to avoid affecting other DayPicker instances if any */
-  .rdp-custom {
-    margin: 0; /* Reset default margin */
-    font-size: 0.8rem; /* Base font size */
-  }
-
-  .rdp-custom .rdp-month {
-    @apply space-y-1.5 p-1; /* Adjust padding and spacing */
-  }
-
-  .rdp-custom .rdp-caption {
-    @apply flex justify-center relative items-center h-8 mb-1.5; /* Centered caption */
-  }
-
-  .rdp-custom .rdp-caption_label {
-    @apply text-sm font-medium text-gray-800; /* Caption text style */
-  }
-
-  .rdp-custom .rdp-nav {
-    @apply space-x-1 flex items-center; /* Navigation container */
-  }
-
-  /* Style for prev/next navigation buttons */
-  .rdp-custom .rdp-nav_button {
-    @apply h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 flex items-center justify-center rounded-md;
-    @apply hover:bg-black/10 active:bg-black/15 transition-colors duration-150 ease-apple; /* Glassy hover/active */
-    @apply focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:outline-none; /* Focus style */
-  }
-  .rdp-custom .rdp-nav_button--prev {
-    @apply absolute left-1; /* Position left */
-  }
-  .rdp-custom .rdp-nav_button--next {
-    @apply absolute right-1; /* Position right */
-  }
-
-  /* Table structure */
-  .rdp-custom .rdp-table {
-    @apply w-full border-collapse; /* Full width table */
-  }
-  .rdp-custom .rdp-head_row,
-  .rdp-custom .rdp-row {
-    @apply flex w-full mt-1; /* Flex rows */
-  }
-
-  /* Cell container */
-  .rdp-custom .rdp-cell {
-    @apply text-center text-sm p-0 relative w-[var(--rdp-cell-size)] h-[var(--rdp-cell-size)] flex items-center justify-center;
-    /* Apply focus ring to the button inside the cell if focused */
-    &:has(> .rdp-day:focus-visible) {
-      /* No extra style needed on cell itself, focus is on the day */
-    }
-  }
-
-  /* Weekday headers (S, M, T, W, T, F, S) */
-  .rdp-custom .rdp-head_cell {
-    @apply text-muted-foreground font-medium text-[0.7rem] w-[var(--rdp-cell-size)]; /* Smaller, muted weekday labels */
-  }
-
-  /* Individual day button styling */
-  .rdp-custom .rdp-day {
-    @apply h-[calc(var(--rdp-cell-size)-4px)] w-[calc(var(--rdp-cell-size)-4px)] p-0 font-normal flex items-center justify-center rounded-md text-gray-700; /* Slightly smaller, rounded day */
-    @apply transition-colors duration-100 ease-apple; /* Smooth transitions */
-    @apply hover:bg-black/10 aria-selected:opacity-100; /* Default hover, ensure selected is fully opaque */
-    @apply focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 focus-visible:bg-black/5; /* Focus style */
-  }
-
-  /* Today's date (not selected) */
-  .rdp-custom .rdp-day_today:not(.rdp-day_selected) {
-    @apply font-semibold text-primary bg-primary/10 border border-primary/30; /* Highlight today */
-  }
-
-  /* Selected date */
-  .rdp-custom .rdp-day_selected,
-  .rdp-custom .rdp-day_selected:hover,
-  .rdp-custom .rdp-day_selected:focus {
-    @apply bg-primary text-primary-foreground font-semibold; /* Primary color for selected */
-    @apply hover:bg-primary-dark focus:bg-primary; /* Hover/focus on selected */
-  }
-
-  /* Days outside the current month */
-  .rdp-custom .rdp-day_outside {
-    @apply text-muted opacity-40; /* Fade out outside days */
-    pointer-events: none; /* Not interactive */
-  }
-
-  /* Disabled days */
-  .rdp-custom .rdp-day_disabled {
-    @apply text-muted opacity-40; /* Fade out disabled days */
-    pointer-events: none; /* Not interactive */
-  }
-  /* --- End react-day-picker Custom Styles --- */
-
+  /* Remove react-day-picker custom styles as we style directly in component */
+  /* Ensure NO .rdp- prefix styles are here unless absolutely necessary */
 
   /* --- CodeMirror Editor adjustments --- */
-  /* Base container gets the glass effect */
-  .cm-editor-container {
-    /* Applied via className prop in component */
-  }
-
-  /* Editor needs to be transparent */
-  .cm-editor {
-    @apply text-sm h-full bg-transparent;
-    &.cm-focused { outline: none; }
-  }
-
-  /* Scroller needs to be transparent */
-  .cm-scroller {
-    @apply h-full styled-scrollbar bg-transparent; /* Ensure transparency */
-    font-family: var(--font-mono);
-    line-height: 1.65; /* Increased line height */
-  }
-
-  /* Gutters get stronger glass */
-  .cm-gutters {
-    @apply bg-glass-alt-100/80 backdrop-blur-lg border-r border-black/10 text-muted text-xs opacity-90 pr-2; /* Stronger glass */
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .cm-activeLineGutter { @apply bg-primary/20; } /* Slightly brighter active gutter */
-
-  /* Content area needs to be transparent */
-  .cm-content {
-    @apply p-3.5 bg-transparent; /* Match editor padding */
-    caret-color: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-  }
-  .cm-line { @apply leading-relaxed px-1; } /* Adjust line padding */
-  .cm-placeholder {
-    @apply text-muted italic opacity-70 pointer-events-none absolute top-0 left-0 p-3.5; /* Match content padding */
-  }
-  /* Selection background needs high contrast on glass */
-  .cm-selectionBackground, ::selection {
-    @apply bg-primary/30; /* More visible selection */
-  }
-  /* Active line slightly more visible on glass */
-  .cm-activeLine { background-color: hsla(var(--primary-h), var(--primary-s), 95%, 0.75); } /* Slightly more opaque */
-  .cm-foldMarker {
-    color: hsl(210, 10%, 65%); margin-left: 2px; padding: 0 2px; cursor: pointer;
-    &:hover { color: hsl(210, 10%, 45%); }
-  }
+  .cm-editor-container { }
+  .cm-editor { @apply text-sm h-full bg-transparent; &.cm-focused { outline: none; } }
+  .cm-scroller { @apply h-full styled-scrollbar bg-transparent; font-family: var(--font-mono); line-height: 1.65; }
+  .cm-gutters { @apply bg-glass-alt-100/80 backdrop-blur-lg border-r border-black/10 text-muted text-xs opacity-90 pr-2; user-select: none; -webkit-user-select: none; }
+  .cm-activeLineGutter { @apply bg-primary/20; }
+  .cm-content { @apply p-3.5 bg-transparent; caret-color: hsl(var(--primary-h), var(--primary-s), var(--primary-l)); }
+  .cm-line { @apply leading-relaxed px-1; }
+  .cm-placeholder { @apply text-muted italic opacity-70 pointer-events-none absolute top-0 left-0 p-3.5; }
+  .cm-selectionBackground, ::selection { @apply bg-primary/30; }
+  .cm-activeLine { background-color: hsla(var(--primary-h), var(--primary-s), 95%, 0.75); }
+  .cm-foldMarker { color: hsl(210, 10%, 65%); margin-left: 2px; padding: 0 2px; cursor: pointer; &:hover { color: hsl(210, 10%, 45%); } }
   .cm-foldGutter .cm-gutterElement { padding-left: 4px !important; text-align: center; }
-  /* Search match styling */
-  .cm-searchMatch {
-    @apply bg-yellow-300/50 outline-none rounded-[2px]; /* Brighter search match */
-  }
-  .cm-searchMatch-selected {
-    @apply bg-yellow-400/70; /* Brighter selected search match */
-  }
+  .cm-searchMatch { @apply bg-yellow-300/50 outline-none rounded-[2px]; }
+  .cm-searchMatch-selected { @apply bg-yellow-400/70; }
 }
 
-/* Utility layer (can add custom utilities if needed) */
 @layer utilities {
-  /* Example utility */
-  .content-auto {
-    content-visibility: auto;
-  }
+  .content-auto { content-visibility: auto; }
 }

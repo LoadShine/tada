@@ -8,61 +8,59 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { bracketMatching, indentOnInput, foldKeymap } from '@codemirror/language';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'; // Added highlightSelectionMatches
+import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap } from '@codemirror/lint';
 import { twMerge } from 'tailwind-merge';
 
-// Enhanced theme with strong glass effect integration for gutters
 const editorTheme = EditorView.theme({
     '&': {
         height: '100%',
-        fontSize: '13.5px', // Consistent font size
-        backgroundColor: 'transparent', // CM background MUST be transparent
-        borderRadius: 'inherit', // Inherit rounding from container
+        fontSize: '13.5px',
+        backgroundColor: 'transparent',
+        borderRadius: 'inherit',
     },
     '.cm-scroller': {
         fontFamily: `var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace)`,
-        lineHeight: '1.65', // Improved line spacing
+        lineHeight: '1.65',
         overflow: 'auto',
         position: 'relative',
-        backgroundColor: 'transparent !important', // Ensure scroller is transparent
-        height: '100%', // Ensure scroller takes full height
+        backgroundColor: 'transparent !important',
+        height: '100%',
     },
     '.cm-content': {
-        padding: '14px 16px', // Slightly more padding
+        padding: '14px 16px',
         caretColor: 'hsl(208, 100%, 50%)',
-        backgroundColor: 'transparent !important', // Ensure content area is transparent
+        backgroundColor: 'transparent !important',
     },
-    // Gutters styled for stronger glassmorphism
     '.cm-gutters': {
-        backgroundColor: 'hsla(220, 40%, 98%, 0.65)', // Match alt glass more closely, slightly less transparent
-        borderRight: '1px solid hsla(210, 20%, 85%, 0.4)', // Softer, semi-transparent border
+        backgroundColor: 'hsla(220, 40%, 98%, 0.65)',
+        borderRight: '1px solid hsla(210, 20%, 85%, 0.4)',
         color: 'hsl(210, 9%, 55%)',
         paddingLeft: '8px',
         paddingRight: '4px',
         fontSize: '11px',
         userSelect: 'none',
         WebkitUserSelect: 'none',
-        backdropFilter: 'blur(10px)', // Apply blur to gutters
+        backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
     },
     '.cm-lineNumbers .cm-gutterElement': {
-        minWidth: '24px', // Adjusted width
+        minWidth: '24px',
     },
     '.cm-line': {
-        padding: '0 4px', // Minimal horizontal padding per line
+        padding: '0 4px',
     },
     '.cm-activeLine': {
-        backgroundColor: 'hsla(208, 100%, 50%, 0.10)', // Slightly more visible active line on glass
+        backgroundColor: 'hsla(208, 100%, 50%, 0.10)',
     },
     '.cm-activeLineGutter': {
-        backgroundColor: 'hsla(208, 100%, 50%, 0.15)', // Slightly more visible gutter highlight on glass
+        backgroundColor: 'hsla(208, 100%, 50%, 0.15)',
     },
     '.cm-placeholder': {
         color: 'hsl(210, 9%, 60%)',
         fontStyle: 'italic',
         pointerEvents: 'none',
-        padding: '14px 16px', // Match content padding
+        padding: '14px 16px',
         position: 'absolute',
         top: 0,
         left: 0,
@@ -79,17 +77,15 @@ const editorTheme = EditorView.theme({
             color: 'hsl(210, 10%, 50%)',
         },
     },
-    // Search match highlighting
     '.cm-searchMatch': {
-        backgroundColor: 'hsla(50, 100%, 50%, 0.35)', // Yellowish highlight
+        backgroundColor: 'hsla(50, 100%, 50%, 0.35)',
         outline: '1px solid hsla(50, 100%, 50%, 0.5)',
         borderRadius: '2px',
     },
     '.cm-searchMatch-selected': {
-        backgroundColor: 'hsla(50, 100%, 50%, 0.55)', // Darker selected match
+        backgroundColor: 'hsla(50, 100%, 50%, 0.55)',
         outline: '1px solid hsla(50, 100%, 40%, 0.8)'
     },
-    // Selection needs to be visible on glass
     '.cm-selectionBackground, ::selection': {
         backgroundColor: 'hsla(208, 100%, 50%, 0.25) !important',
     },
@@ -140,11 +136,11 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 closeBrackets(),
                 autocompletion(),
                 rectangularSelection(),
-                highlightSelectionMatches(), // Add search match highlighting
+                highlightSelectionMatches(),
                 keymap.of([
                     ...closeBracketsKeymap,
                     ...defaultKeymap,
-                    ...searchKeymap, // Include search keys (like Ctrl/Cmd+F)
+                    ...searchKeymap,
                     ...historyKeymap,
                     ...foldKeymap,
                     ...completionKeymap,
@@ -167,14 +163,14 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
             let view = viewRef.current;
 
             if (view) {
-                // Optimize reconfigure: only reconfigure if absolutely necessary (e.g., readOnly changes)
+                // Optimize reconfigure: Reconfigure only if necessary properties change
                 const currentReadOnly = view.state.facet(EditorState.readOnly);
-                if (currentReadOnly !== readOnly) {
+                const currentPlaceholder = !!placeholder !== !!view.dom.querySelector('.cm-placeholder');
+                // Simplification: Reconfigure if readOnly or placeholder itself changes (instance comparison might be tricky)
+                if (currentReadOnly !== readOnly || currentPlaceholder) {
                     view.dispatch({ effects: StateEffect.reconfigure.of(createExtensions()) });
                 }
-                // Placeholder might also need reconfiguration if it changes
-                // This simple approach reconfigures on any prop change, which is okay for this use case
-                view.dispatch({ effects: StateEffect.reconfigure.of(createExtensions()) });
+                // Also update state reference
                 stateRef.current = view.state;
 
             } else {
@@ -184,38 +180,36 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 viewRef.current = view;
             }
 
-            // Cleanup on unmount
             return () => {
                 if (viewRef.current) {
                     viewRef.current.destroy();
                     viewRef.current = null;
                 }
             };
-            // Dependencies for extension recreation
-        }, [readOnly, placeholder, onChange, onBlur]); // eslint-disable-line react-hooks/exhaustive-deps
+        }, [readOnly, placeholder, onChange, onBlur, value]); // Added value to dependencies to handle external updates correctly in initial setup
 
-        // Effect to handle external value changes
+        // Effect to handle external value changes more reliably
         useEffect(() => {
             const view = viewRef.current;
             if (view && value !== view.state.doc.toString()) {
                 view.dispatch({
                     changes: { from: 0, to: view.state.doc.length, insert: value || '' },
-                    selection: view.state.selection, // Preserve selection if possible
-                    userEvent: "external" // Mark as external change
+                    // Preserve selection and scroll position if possible
+                    selection: view.state.selection,
+                    // scrollIntoView: true, // Optional: ensure cursor is visible after update
+                    userEvent: "external"
                 });
             }
-        }, [value]); // Only depends on external value
+        }, [value]);
 
         return (
-            // Container div defines the glass background and blur
             <div
                 ref={editorRef}
                 className={twMerge(
-                    'cm-editor-container relative h-full w-full overflow-hidden rounded-md', // Base structure
-                    // Apply desired glass effect to the container
-                    'bg-glass-inset-100 backdrop-blur-lg border border-black/10 shadow-inner', // Default inset glass
-                    'focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/80', // Focus state on container
-                    className // Allow overrides
+                    'cm-editor-container relative h-full w-full overflow-hidden rounded-md',
+                    'bg-glass-inset-100 backdrop-blur-lg border border-black/10 shadow-inner',
+                    'focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/80',
+                    className
                 )}
             />
         );
@@ -223,4 +217,4 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
 );
 
 CodeMirrorEditor.displayName = 'CodeMirrorEditor';
-export default memo(CodeMirrorEditor); // Memoize for performance
+export default memo(CodeMirrorEditor);

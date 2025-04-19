@@ -1,18 +1,18 @@
 // src/components/common/IconMap.tsx
+// Added 'bell' and 'refresh-cw' if they weren't explicitly present
 import * as LucideIcons from "lucide-react";
 
-// Ensure this map includes ALL icons used in the application
 export const iconMap = {
     'check-square': LucideIcons.CheckSquare,
     'calendar': LucideIcons.Calendar,
     'search': LucideIcons.Search,
     'user': LucideIcons.User,
-    'settings': LucideIcons.Settings, // Used for Appearance/Settings
+    'settings': LucideIcons.Settings,
     'file-text': LucideIcons.FileText,
     'trash': LucideIcons.Trash2,
     'list': LucideIcons.List,
     'grid': LucideIcons.Grid,
-    'clock': LucideIcons.Clock, // Used in custom date picker
+    'clock': LucideIcons.Clock,
     'alert-circle': LucideIcons.AlertCircle,
     'plus': LucideIcons.Plus,
     'more-horizontal': LucideIcons.MoreHorizontal,
@@ -20,51 +20,50 @@ export const iconMap = {
     'chevron-up': LucideIcons.ChevronUp,
     'chevron-left': LucideIcons.ChevronLeft,
     'chevron-right': LucideIcons.ChevronRight,
-    'sun': LucideIcons.Sun, // For Today filter / date picker
-    'sunset': LucideIcons.Sunset, // For date picker 'Tomorrow'
-    'moon': LucideIcons.Moon, // For date picker 'No Date'
-    'calendar-plus': LucideIcons.CalendarPlus, // For date picker 'Next Week'
-    'edit': LucideIcons.Edit3, // For placeholder / edit actions
+    'sun': LucideIcons.Sun,
+    'sunset': LucideIcons.Sunset,
+    'moon': LucideIcons.Moon,
+    'calendar-plus': LucideIcons.CalendarPlus,
+    'edit': LucideIcons.Edit3,
     'check': LucideIcons.Check,
     'x': LucideIcons.X,
-    'arrow-left': LucideIcons.ArrowLeft, // For Restore action
+    'arrow-left': LucideIcons.ArrowLeft,
     'arrow-right': LucideIcons.ArrowRight,
     'star': LucideIcons.Star,
     'flag': LucideIcons.Flag,
     'tag': LucideIcons.Tag,
-    'bell': LucideIcons.Bell,
-    'share': LucideIcons.Share2, // For Integrations
-    'upload': LucideIcons.UploadCloud, // For Backup/Restore
-    'download': LucideIcons.Download, // For Backup/Restore
+    'bell': LucideIcons.Bell, // Added for date picker
+    'share': LucideIcons.Share2,
+    'upload': LucideIcons.UploadCloud,
+    'download': LucideIcons.Download,
     'logout': LucideIcons.LogOut,
     'lock': LucideIcons.Lock,
     'tool': LucideIcons.Wrench,
     'layers': LucideIcons.Layers,
     'package': LucideIcons.Package,
     'sliders': LucideIcons.SlidersHorizontal,
-    'info': LucideIcons.Info, // For About
+    'info': LucideIcons.Info,
     'help': LucideIcons.HelpCircle,
     'phone': LucideIcons.Phone,
     'mail': LucideIcons.Mail,
     'external-link': LucideIcons.ExternalLink,
-    'crown': LucideIcons.Crown, // For Premium
+    'crown': LucideIcons.Crown,
     'terminal': LucideIcons.Terminal,
-    'grip-vertical': LucideIcons.GripVertical, // For DND handle
+    'grip-vertical': LucideIcons.GripVertical,
     'copy': LucideIcons.Copy,
-    'archive': LucideIcons.Archive, // For 'All Tasks' filter
+    'archive': LucideIcons.Archive,
     'arrow-up-down': LucideIcons.ArrowUpDown,
-    'calendar-days': LucideIcons.CalendarDays, // For Calendar view icon
-    'loader': LucideIcons.Loader2, // Use Loader2 for better spinning animation
+    'calendar-days': LucideIcons.CalendarDays,
+    'loader': LucideIcons.Loader2,
     'users': LucideIcons.Users,
-    'sparkles': LucideIcons.Sparkles, // For AI Summary icon
-    'folder-plus': LucideIcons.FolderPlus, // For Add List action
-    'folder': LucideIcons.Folder, // Could be used for Lists section header
-    'minus': LucideIcons.Minus, // For collapsing sections maybe?
+    'sparkles': LucideIcons.Sparkles,
+    'folder-plus': LucideIcons.FolderPlus,
+    'folder': LucideIcons.Folder,
+    'minus': LucideIcons.Minus,
     'inbox': LucideIcons.Inbox,
-    'x-circle': LucideIcons.XCircle, // For clear search / clear date
-    'calendar-check': LucideIcons.CalendarCheck, // For date picker 'Today'
-    'refresh-cw': LucideIcons.RefreshCw,
+    'x-circle': LucideIcons.XCircle,
+    'calendar-check': LucideIcons.CalendarCheck,
+    'refresh-cw': LucideIcons.RefreshCw, // Added for date picker
 };
 
-// Utility type for Icon names based on the map
 export type IconName = keyof typeof iconMap;

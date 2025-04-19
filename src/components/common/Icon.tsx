@@ -1,10 +1,10 @@
 // src/components/common/Icon.tsx
+// No animation changes needed
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
-import { iconMap, IconName } from "@/components/common/IconMap"; // Ensure IconName is imported
+import { iconMap, IconName } from "@/components/common/IconMap";
 
-// Use LucideProps for better type safety, excluding 'ref' as we handle it with forwardRef
 interface IconProps extends Omit<LucideIcons.LucideProps, 'ref'> {
     name: IconName;
     size?: number | string;
@@ -17,7 +17,6 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
 
         if (!IconComponent) {
             console.warn(`Icon "${name}" not found in iconMap. Rendering fallback.`);
-            // Render a fallback icon (HelpCircle) and make it visually distinct (red)
             return (
                 <LucideIcons.HelpCircle
                     ref={ref}
@@ -25,7 +24,7 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
                     strokeWidth={strokeWidth}
                     absoluteStrokeWidth={false}
                     className={twMerge(
-                        'inline-block flex-shrink-0 stroke-current text-red-500 animate-pulse', // Add pulse for visibility
+                        'inline-block flex-shrink-0 stroke-current text-red-500 animate-pulse',
                         className
                     )}
                     {...props}
@@ -38,12 +37,12 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
                 ref={ref}
                 size={size}
                 strokeWidth={strokeWidth}
-                absoluteStrokeWidth={false} // Ensure stroke width scales with size unless overridden
+                absoluteStrokeWidth={false}
                 className={twMerge(
-                    'inline-block flex-shrink-0 stroke-current', // Base classes: ensures inline behavior and uses parent text color
-                    className // Allow overriding/extending classes
+                    'inline-block flex-shrink-0 stroke-current',
+                    className
                 )}
-                {...props} // Pass remaining props (like onClick, etc.)
+                {...props}
             />
         );
     }

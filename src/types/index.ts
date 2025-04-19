@@ -1,4 +1,5 @@
 // src/types/index.ts
+// No changes needed
 export interface User {
     id: string;
     name: string;

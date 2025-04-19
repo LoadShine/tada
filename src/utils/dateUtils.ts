@@ -1,4 +1,5 @@
 // src/utils/dateUtils.ts
+// No changes needed
 import {
     format as formatFns,
     isToday as isTodayFns,
@@ -22,7 +23,7 @@ import {
     addWeeks,
     subWeeks,
     subDays,
-    // formatRelative, // Added for relative formatting
+    // formatRelative,
 } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 
@@ -72,13 +73,12 @@ export const formatRelativeDate = (dateInput: Date | number | null | undefined):
     if (diffDays === 1) return 'Tomorrow';
     if (diffDays === -1) return 'Yesterday';
 
-    // Fallback to standard date format if relative format is not desired or fails
     const currentYear = today.getFullYear();
     const inputYear = inputDay.getFullYear();
     if (inputYear !== currentYear) {
-        return formatDate(date, 'MMM d, yyyy'); // e.g., Sep 13, 2023
+        return formatDate(date, 'MMM d, yyyy');
     }
-    return formatDate(date, 'MMM d'); // e.g., Sep 13
+    return formatDate(date, 'MMM d');
 };
 
 /** Checks if a date is today */
@@ -92,9 +92,8 @@ export const isWithinNext7Days = (dateInput: Date | number | null | undefined): 
     const date = safeParseDate(dateInput);
     if (!date || !isValid(date)) return false;
     const today = startOfDay(new Date());
-    const dateOnly = startOfDay(date); // Compare start of day
+    const dateOnly = startOfDay(date);
     const sevenDaysFromToday = addDays(today, 7);
-    // Check if date is on or after today AND strictly before 7 days from today (start of day 8)
     return !isBefore(dateOnly, today) && isBefore(dateOnly, sevenDaysFromToday);
 };
 
@@ -103,7 +102,7 @@ export const isOverdue = (dateInput: Date | number | null | undefined): boolean 
     const date = safeParseDate(dateInput);
     if (!date || !isValid(date)) return false;
     const today = startOfDay(new Date());
-    return isBefore(startOfDay(date), today); // Compare start of day
+    return isBefore(startOfDay(date), today);
 };
 
 // Re-export necessary functions
