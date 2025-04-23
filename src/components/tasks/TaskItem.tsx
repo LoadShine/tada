@@ -1,6 +1,6 @@
 // src/components/tasks/TaskItem.tsx
 import React, { useCallback, useMemo, memo, useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom'; // Keep ReactDOM for portals from TaskItem
+import ReactDOM from 'react-dom';
 import { Task, TaskGroupCategory } from '@/types';
 import { formatDate, formatRelativeDate, isOverdue, safeParseDate, isValid, startOfDay } from '@/utils/dateUtils';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
@@ -18,6 +18,7 @@ import CustomDatePickerPopover from "@/components/common/CustomDatePickerPopover
 import { usePopper } from "react-popper";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskItemMenu } from '@/context/TaskItemMenuContext';
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal"; // Import the modal
 
 interface TaskItemProps {
     task: Task;
@@ -51,11 +52,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
 
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // <<<--- State for delete confirmation modal
 
     const [datePickerReferenceElement, setDatePickerReferenceElement] = useState<HTMLButtonElement | null>(null);
     const [datePickerPopperElement, setDatePickerPopperElement] = useState<HTMLDivElement | null>(null);
 
-    // --- Popper for TaskItem Date Picker (Keep FIXED strategy, Keep boundary) ---
+    // Popper for TaskItem Date Picker (logic unchanged)
     const { styles: datePickerStyles, attributes: datePickerAttributes, update: updateDatePickerPopper } = usePopper(
         datePickerReferenceElement,
         datePickerPopperElement,
@@ -69,35 +71,32 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             ],
         }
     );
-    // ---
-
-    // --- Effect to update TaskItem's Date Picker Popper (logic unchanged) ---
+    // Effect to update TaskItem's Date Picker Popper (logic unchanged)
     useEffect(() => {
         if (isDatePickerOpen && scrollContainerRef?.current && updateDatePickerPopper) {
             const rafId = requestAnimationFrame(() => updateDatePickerPopper());
             return () => cancelAnimationFrame(rafId);
         }
     }, [isDatePickerOpen, updateDatePickerPopper, scrollContainerRef]);
-    // ---
 
-    // Refs for actions menu positioning and click away
+    // Refs for actions menu positioning and click away (logic unchanged)
     const actionsTriggerRef = useRef<HTMLButtonElement>(null);
     const actionsContentRef = useRef<HTMLDivElement>(null);
     const [actionsStyle, setActionsStyle] = useState<React.CSSProperties>({
         position: 'fixed', opacity: 0, pointerEvents: 'none', zIndex: 55,
     });
 
-    // Memoized derived states (remain the same)
+    // Memoized derived states (logic unchanged)
     const isTrashItem = useMemo(() => task.list === 'Trash', [task.list]);
     const isCompleted = useMemo(() => task.completed && !isTrashItem, [task.completed, isTrashItem]);
     const isSortable = useMemo(() => !isCompleted && !isTrashItem && !isOverlay, [isCompleted, isTrashItem, isOverlay]);
 
-    // DND hook (remains the same)
+    // DND hook (logic unchanged)
     const { attributes, listeners, setNodeRef, transform, transition: dndTransition, isDragging } = useSortable({
         id: task.id, disabled: !isSortable, data: { task, type: 'task-item', groupCategory: groupCategory ?? task.groupCategory },
     });
 
-    // Memoized style (remains the same)
+    // Memoized style (logic unchanged)
     const style = useMemo(() => ({
         ...overlayStyle, transform: CSS.Transform.toString(transform),
         transition: isDragging ? (dndTransition || 'transform 50ms ease-apple') : (overlayStyle ? undefined : 'background-color 0.2s ease-apple, border-color 0.2s ease-apple'),
@@ -111,10 +110,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         if (openItemId !== task.id) {
             if (isMoreActionsOpen) setIsMoreActionsOpen(false);
             if (isDatePickerOpen) setIsDatePickerOpen(false);
+            // Also ensure delete dialog closes if another item's menu opens
+            // if (isDeleteDialogOpen) setIsDeleteDialogOpen(false); // Optional: decide if needed
         }
     }, [openItemId, task.id, isMoreActionsOpen, isDatePickerOpen]);
 
-    // Actions Menu Positioning Logic (remains the same)
+    // Actions Menu Positioning Logic (logic unchanged)
     const calculateActionsPosition = useCallback(() => {
         if (!actionsTriggerRef.current || !actionsContentRef.current) return;
         const triggerRect = actionsTriggerRef.current.getBoundingClientRect();
@@ -154,7 +155,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         };
     }, [isMoreActionsOpen, calculateActionsPosition, scrollContainerRef]);
 
-
     // Task Click (logic unchanged)
     const handleTaskClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
@@ -162,10 +162,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             actionsTriggerRef.current?.contains(target) ||
             datePickerReferenceElement?.contains(target) ||
             target.closest('.ignore-click-away') || // Check for class on target or ancestors
-            actionsContentRef.current?.contains(target)
+            actionsContentRef.current?.contains(target) ||
+            target.closest('.react-tooltip') || // Ignore clicks inside react-tooltip
+            target.closest('[role="dialog"]') // Ignore clicks inside any dialog (like ConfirmDeleteModal)
         ) { return; }
         setSelectedTaskId(id => (id === task.id ? null : task.id));
-        setOpenItemId(null);
+        setOpenItemId(null); // Close any open menu
     }, [setSelectedTaskId, task.id, datePickerReferenceElement, setOpenItemId]);
 
 
@@ -221,13 +223,10 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         }
     }, [setOpenItemId, openItemId, task.id]);
 
-    // ** FIX: Apply onClick directly to MenuItem **
     const handleSetDueDateClickFromDropdown = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
-        // Ensure the event target is treated as a button for reference
         setDatePickerReferenceElement(event.currentTarget as HTMLButtonElement);
         setIsDatePickerOpen(true);
-        // No need to set isMoreActionsOpen false here, as opening date picker handles it
         setOpenItemId(task.id); // Keep the item context
     }, [setOpenItemId, task.id]);
 
@@ -239,11 +238,27 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         setSelectedTaskId(newTask.id);
         closeActionsDropdown();
     }, [task, setTasks, setSelectedTaskId, closeActionsDropdown]);
-    const handleDeleteTask = useCallback(() => {
+
+    // --- Delete Confirmation Handlers ---
+    const openDeleteConfirm = useCallback(() => {
+        setIsDeleteDialogOpen(true);
+        closeActionsDropdown(); // Close the dropdown when opening the modal
+    }, [closeActionsDropdown]);
+
+    const closeDeleteConfirm = useCallback(() => {
+        setIsDeleteDialogOpen(false);
+        // Keep item context (openItemId) unchanged when just closing the modal
+    }, []);
+
+    const confirmDeleteTask = useCallback(() => {
         updateTask({ list: 'Trash', completed: false });
-        if (isSelected) { setSelectedTaskId(null); }
-        closeActionsDropdown();
-    }, [task.id, updateTask, isSelected, setSelectedTaskId, closeActionsDropdown]);
+        if (isSelected) {
+            setSelectedTaskId(null); // Deselect if it was selected
+        }
+        // Modal is closed automatically by its onConfirm/onClose logic
+        // setOpenItemId(null); // Reset open item context after delete confirmation
+    }, [updateTask, isSelected, setSelectedTaskId]);
+    // --- End Delete Confirmation Handlers ---
 
 
     // Click Away for Actions Dropdown (logic unchanged)
@@ -254,7 +269,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             const isClickInsideTrigger = actionsTriggerRef.current?.contains(target);
             const isClickInsideContent = actionsContentRef.current?.contains(target);
             const isClickInsideDatePicker = datePickerPopperElement?.contains(target); // Check against date picker ref
-            const shouldIgnore = (target instanceof Element) && target.closest('.ignore-click-away');
+            const shouldIgnore = (target instanceof Element) && (target.closest('.ignore-click-away') || target.closest('.react-tooltip')); // Add tooltip check
 
             if (!isClickInsideTrigger && !isClickInsideContent && !isClickInsideDatePicker && !shouldIgnore) {
                 closeActionsDropdown();
@@ -272,7 +287,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     }, [isMoreActionsOpen, closeActionsDropdown, datePickerPopperElement]); // Add datePickerPopperElement dependency
 
 
-    // Memoized values (remain the same)
+    // Memoized values (logic unchanged)
     const dueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
     const isValidDueDate = useMemo(() => dueDate && isValid(dueDate), [dueDate]);
     const overdue = useMemo(() => isValidDueDate && !isCompleted && !isTrashItem && isOverdue(dueDate!), [isValidDueDate, isCompleted, isTrashItem, dueDate]);
@@ -289,131 +304,133 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
 
     // --- Render ---
     return (
-        <div
-            ref={setNodeRef} style={style} className={baseClasses} onClick={handleTaskClick}
-            role="button" tabIndex={0}
-            onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTaskClick(e as unknown as React.MouseEvent<HTMLDivElement>); } }}
-            aria-selected={isSelected} aria-label={`Task: ${task.title || 'Untitled'}${task.completed ? ' (Completed)' : ''}`}
-        >
-            {/* Drag Handle */}
-            <div className="flex-shrink-0 h-full flex items-center mr-2 self-stretch">
-                {isSortable ? ( <button {...attributes} {...listeners} onClick={(e) => e.stopPropagation()} className={dragHandleClasses} aria-label="Drag task to reorder" tabIndex={-1}> <Icon name="grip-vertical" size={15} strokeWidth={2}/> </button>
-                ) : ( <div className="w-[27px]" aria-hidden="true"></div> )}
-            </div>
+        <> {/* Use fragment to wrap item and modal */}
+            <div
+                ref={setNodeRef} style={style} className={baseClasses} onClick={handleTaskClick}
+                role="button" tabIndex={0}
+                onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTaskClick(e as unknown as React.MouseEvent<HTMLDivElement>); } }}
+                aria-selected={isSelected} aria-label={`Task: ${task.title || 'Untitled'}${task.completed ? ' (Completed)' : ''}`}
+            >
+                {/* Drag Handle */}
+                <div className="flex-shrink-0 h-full flex items-center mr-2 self-stretch">
+                    {isSortable ? ( <button {...attributes} {...listeners} onClick={(e) => e.stopPropagation()} className={dragHandleClasses} aria-label="Drag task to reorder" tabIndex={-1}> <Icon name="grip-vertical" size={15} strokeWidth={2}/> </button>
+                    ) : ( <div className="w-[27px]" aria-hidden="true"></div> )}
+                </div>
 
-            {/* Checkbox */}
-            <div className="flex-shrink-0 mr-2.5 pt-[3px]">
-                <input type="checkbox" id={`task-checkbox-${task.id}`} checked={task.completed} onChange={handleCheckboxChange} onClick={(e) => e.stopPropagation()} className={checkboxClasses} aria-labelledby={`task-title-${task.id}`} disabled={isTrashItem} tabIndex={0}/>
-                <label htmlFor={`task-checkbox-${task.id}`} className="sr-only"> Complete task {task.title || 'Untitled'} </label>
-            </div>
+                {/* Checkbox */}
+                <div className="flex-shrink-0 mr-2.5 pt-[3px]">
+                    <input type="checkbox" id={`task-checkbox-${task.id}`} checked={task.completed} onChange={handleCheckboxChange} onClick={(e) => e.stopPropagation()} className={checkboxClasses} aria-labelledby={`task-title-${task.id}`} disabled={isTrashItem} tabIndex={0}/>
+                    <label htmlFor={`task-checkbox-${task.id}`} className="sr-only"> Complete task {task.title || 'Untitled'} </label>
+                </div>
 
-            {/* Task Info */}
-            <div className="flex-1 min-w-0 pt-[1px] pb-[1px]">
-                <Highlighter {...highlighterProps} textToHighlight={task.title || 'Untitled Task'} id={`task-title-${task.id}`} className={titleClasses} />
-                <div className="flex items-center flex-wrap text-[11px] text-muted-foreground space-x-2 mt-1 leading-tight gap-y-0.5 min-h-[17px]">
-                    {/* Priority Indicator */}
-                    {!!task.priority && task.priority <= 4 && !isCompleted && !isTrashItem && ( <span className={clsx("flex items-center", priorityMap[task.priority]?.iconColor )} title={`Priority ${priorityMap[task.priority]?.label}`}> <Icon name="flag" size={11} strokeWidth={2.5}/> </span> )}
-                    {/* Due Date & Reschedule Button */}
-                    {isValidDueDate && (
-                        <span className="flex items-center task-item-reschedule">
-                            <span className={clsx('whitespace-nowrap', overdue && 'text-red-600 font-medium', (isCompleted || isTrashItem) && 'line-through opacity-70')} title={formatDate(dueDate!)}>
-                                <Icon name="calendar" size={11} className="mr-0.5 opacity-70"/> {formatRelativeDate(dueDate!)}
+                {/* Task Info */}
+                <div className="flex-1 min-w-0 pt-[1px] pb-[1px]">
+                    <Highlighter {...highlighterProps} textToHighlight={task.title || 'Untitled Task'} id={`task-title-${task.id}`} className={titleClasses} />
+                    <div className="flex items-center flex-wrap text-[11px] text-muted-foreground space-x-2 mt-1 leading-tight gap-y-0.5 min-h-[17px]">
+                        {/* Priority Indicator */}
+                        {!!task.priority && task.priority <= 4 && !isCompleted && !isTrashItem && ( <span className={clsx("flex items-center", priorityMap[task.priority]?.iconColor )} title={`Priority ${priorityMap[task.priority]?.label}`}> <Icon name="flag" size={11} strokeWidth={2.5}/> </span> )}
+                        {/* Due Date & Reschedule Button */}
+                        {isValidDueDate && (
+                            <span className="flex items-center task-item-reschedule">
+                                <span className={clsx('whitespace-nowrap', overdue && 'text-red-600 font-medium', (isCompleted || isTrashItem) && 'line-through opacity-70')} title={formatDate(dueDate!)}>
+                                    <Icon name="calendar" size={11} className="mr-0.5 opacity-70"/> {formatRelativeDate(dueDate!)}
+                                </span>
+                                {overdue && !isOverlay && !isCompleted && !isTrashItem && (
+                                    <button
+                                        className="ml-1 p-0.5 rounded hover:bg-red-500/15 focus-visible:ring-1 focus-visible:ring-red-400 outline-none ignore-click-away"
+                                        onClick={openDatePicker} // Triggers portaled date picker
+                                        aria-label="Reschedule task" title="Reschedule"
+                                    >
+                                        <Icon name="calendar-plus" size={12} className="text-red-500 opacity-70 group-hover/task-item-reschedule:opacity-100" />
+                                    </button>
+                                )}
                             </span>
-                            {overdue && !isOverlay && !isCompleted && !isTrashItem && (
-                                <button
-                                    className="ml-1 p-0.5 rounded hover:bg-red-500/15 focus-visible:ring-1 focus-visible:ring-red-400 outline-none ignore-click-away"
-                                    onClick={openDatePicker} // This still triggers the portaled date picker
-                                    aria-label="Reschedule task" title="Reschedule"
-                                >
-                                    <Icon name="calendar-plus" size={12} className="text-red-500 opacity-70 group-hover/task-item-reschedule:opacity-100" />
-                                </button>
-                            )}
-                        </span>
-                    )}
-                    {/* List Name */}
-                    {task.list && task.list !== 'Inbox' && ( <span className={clsx("flex items-center whitespace-nowrap bg-black/10 text-muted-foreground px-1 py-0 rounded-[4px] text-[10px] max-w-[80px] truncate backdrop-blur-sm", (isCompleted || isTrashItem) && 'line-through opacity-70')} title={task.list}> <Icon name={listIcon} size={10} className="mr-0.5 opacity-70 flex-shrink-0"/> <span className="truncate">{task.list}</span> </span> )}
-                    {/* Tags */}
-                    {task.tags && task.tags.length > 0 && ( <span className={clsx("flex items-center space-x-1 flex-wrap gap-y-0.5", (isCompleted || isTrashItem) && 'opacity-70')}> {task.tags.slice(0, 2).map(tag => ( <span key={tag} className={clsx("bg-black/10 text-muted-foreground px-1 py-0 rounded-[4px] text-[10px] max-w-[70px] truncate backdrop-blur-sm", (isCompleted || isTrashItem) && 'line-through')} title={tag}> #{tag} </span> ))} {task.tags.length > 2 && <span className="text-muted-foreground text-[10px]">+{task.tags.length - 2}</span>} </span> )}
-                    {/* Content Snippet Highlight */}
-                    {showContentHighlight && ( <Highlighter {...highlighterProps} textToHighlight={generateContentSnippet(task.content!, searchTerm)} className={clsx("block truncate text-[11px] text-muted italic w-full mt-0.5", (isCompleted || isTrashItem) && 'line-through')} /> )}
-                </div>
-            </div>
-
-            {/* More Actions Button & Dropdown (Portal + Manual Fixed Positioning) */}
-            {!isOverlay && !isCompleted && !isTrashItem && (
-                <div className="task-item-actions absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-30 ease-apple" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} >
-                    <Button
-                        ref={actionsTriggerRef}
-                        variant="ghost" size="icon" icon="more-horizontal"
-                        className="h-6 w-6 text-muted-foreground hover:bg-black/15"
-                        onClick={toggleActionsDropdown}
-                        aria-label={`More actions for ${task.title || 'task'}`}
-                        aria-haspopup="true"
-                        aria-expanded={isMoreActionsOpen}
-                        tabIndex={0}
-                    />
-                    {/* Portal for Actions Dropdown Content */}
-                    {ReactDOM.createPortal(
-                        <AnimatePresence>
-                            {isMoreActionsOpen && (
-                                <motion.div
-                                    ref={actionsContentRef} style={actionsStyle} className={actionsMenuClasses}
-                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.1 } }}
-                                    transition={{ duration: 0.15, ease: 'easeOut' }}
-                                    onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}
-                                >
-                                    {/* Menu Items */}
-                                    <div className="space-y-0.5">
-                                        {/* ** FIX: Remove outer button, apply props to MenuItem ** */}
-                                        <MenuItem
-                                            icon="calendar-plus"
-                                            onClick={handleSetDueDateClickFromDropdown}
-                                            className="w-full ignore-click-away" // Apply necessary classes
-                                        >
-                                            Set Due Date...
-                                        </MenuItem>
-                                        {/* --- End Fix --- */}
-                                        <hr className="my-1 border-black/10" />
-                                        <div className="px-2.5 pt-1 pb-0.5 text-xs text-muted-foreground font-medium">Priority</div>
-                                        {[1, 2, 3, 4, null].map(p => ( <MenuItem key={p ?? 'none'} icon="flag" iconColor={p ? priorityMap[p]?.iconColor : undefined} selected={task.priority === p} onClick={() => handlePriorityChange(p)}> {p ? `P${p} ${priorityMap[p]?.label}` : 'None'} </MenuItem> ))}
-                                        <hr className="my-1 border-black/10" />
-                                        <div className="px-2.5 pt-1 pb-0.5 text-xs text-muted-foreground font-medium">Move to List</div>
-                                        <div className="max-h-32 overflow-y-auto styled-scrollbar px-0.5">
-                                            {availableLists.map(list => ( <MenuItem key={list} icon={list === 'Inbox' ? 'inbox' : 'list'} selected={task.list === list} onClick={() => handleListChange(list)}> {list} </MenuItem> ))}
-                                        </div>
-                                        <hr className="my-1 border-black/10" />
-                                        <MenuItem icon="copy-plus" onClick={handleDuplicateTask}> Duplicate Task </MenuItem>
-                                        <MenuItem icon="trash" className="!text-red-600 hover:!bg-red-500/15" onClick={handleDeleteTask}> Move to Trash </MenuItem>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>,
-                        document.body
-                    )}
-                </div>
-            )}
-
-            {/* Portal for Date Picker Popover (triggered from WITHIN this item's actions) */}
-            {isDatePickerOpen && datePickerReferenceElement && ReactDOM.createPortal(
-                (
-                    // Use the popper state for positioning this portal
-                    <div ref={setDatePickerPopperElement} style={{ ...datePickerStyles.popper, zIndex: 60 }} // Keep high zIndex
-                         {...datePickerAttributes.popper} className="ignore-click-away date-picker-popover-wrapper">
-                        {/* usePortal={false} is correct here because the portal is handled above */}
-                        {/* Pass triggerElement so the date picker's internal click-away ignores it */}
-                        <CustomDatePickerPopover
-                            usePortal={false}
-                            initialDate={dueDate ?? undefined}
-                            onSelect={handleDateSelect}
-                            close={closeDatePicker}
-                            triggerElement={datePickerReferenceElement} // Pass the trigger element ref
-                        />
+                        )}
+                        {/* List Name */}
+                        {task.list && task.list !== 'Inbox' && ( <span className={clsx("flex items-center whitespace-nowrap bg-black/10 text-muted-foreground px-1 py-0 rounded-[4px] text-[10px] max-w-[80px] truncate backdrop-blur-sm", (isCompleted || isTrashItem) && 'line-through opacity-70')} title={task.list}> <Icon name={listIcon} size={10} className="mr-0.5 opacity-70 flex-shrink-0"/> <span className="truncate">{task.list}</span> </span> )}
+                        {/* Tags */}
+                        {task.tags && task.tags.length > 0 && ( <span className={clsx("flex items-center space-x-1 flex-wrap gap-y-0.5", (isCompleted || isTrashItem) && 'opacity-70')}> {task.tags.slice(0, 2).map(tag => ( <span key={tag} className={clsx("bg-black/10 text-muted-foreground px-1 py-0 rounded-[4px] text-[10px] max-w-[70px] truncate backdrop-blur-sm", (isCompleted || isTrashItem) && 'line-through')} title={tag}> #{tag} </span> ))} {task.tags.length > 2 && <span className="text-muted-foreground text-[10px]">+{task.tags.length - 2}</span>} </span> )}
+                        {/* Content Snippet Highlight */}
+                        {showContentHighlight && ( <Highlighter {...highlighterProps} textToHighlight={generateContentSnippet(task.content!, searchTerm)} className={clsx("block truncate text-[11px] text-muted italic w-full mt-0.5", (isCompleted || isTrashItem) && 'line-through')} /> )}
                     </div>
-                ), document.body
-            )}
+                </div>
 
-        </div>
+                {/* More Actions Button & Dropdown (Portal + Manual Fixed Positioning) */}
+                {!isOverlay && !isCompleted && !isTrashItem && (
+                    <div className="task-item-actions absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-30 ease-apple" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} >
+                        <Button
+                            ref={actionsTriggerRef}
+                            variant="ghost" size="icon" icon="more-horizontal"
+                            className="h-6 w-6 text-muted-foreground hover:bg-black/15"
+                            onClick={toggleActionsDropdown}
+                            aria-label={`More actions for ${task.title || 'task'}`}
+                            aria-haspopup="true"
+                            aria-expanded={isMoreActionsOpen}
+                            tabIndex={0}
+                        />
+                        {/* Portal for Actions Dropdown Content */}
+                        {ReactDOM.createPortal(
+                            <AnimatePresence>
+                                {isMoreActionsOpen && (
+                                    <motion.div
+                                        ref={actionsContentRef} style={actionsStyle} className={actionsMenuClasses}
+                                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.1 } }}
+                                        transition={{ duration: 0.15, ease: 'easeOut' }}
+                                        onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}
+                                    >
+                                        {/* Menu Items */}
+                                        <div className="space-y-0.5">
+                                            <MenuItem icon="calendar-plus" onClick={handleSetDueDateClickFromDropdown} className="w-full ignore-click-away"> Set Due Date... </MenuItem>
+                                            <hr className="my-1 border-black/10" />
+                                            <div className="px-2.5 pt-1 pb-0.5 text-xs text-muted-foreground font-medium">Priority</div>
+                                            {[1, 2, 3, 4, null].map(p => ( <MenuItem key={p ?? 'none'} icon="flag" iconColor={p ? priorityMap[p]?.iconColor : undefined} selected={task.priority === p} onClick={() => handlePriorityChange(p)}> {p ? `P${p} ${priorityMap[p]?.label}` : 'None'} </MenuItem> ))}
+                                            <hr className="my-1 border-black/10" />
+                                            <div className="px-2.5 pt-1 pb-0.5 text-xs text-muted-foreground font-medium">Move to List</div>
+                                            <div className="max-h-32 overflow-y-auto styled-scrollbar px-0.5">
+                                                {availableLists.map(list => ( <MenuItem key={list} icon={list === 'Inbox' ? 'inbox' : 'list'} selected={task.list === list} onClick={() => handleListChange(list)}> {list} </MenuItem> ))}
+                                            </div>
+                                            <hr className="my-1 border-black/10" />
+                                            <MenuItem icon="copy-plus" onClick={handleDuplicateTask}> Duplicate Task </MenuItem>
+                                            {/* <<<--- MODIFIED: Call openDeleteConfirm instead of handleDeleteTask ---<<< */}
+                                            <MenuItem icon="trash" className="!text-red-600 hover:!bg-red-500/15" onClick={openDeleteConfirm}> Move to Trash </MenuItem>
+                                            {/* <<<--- END MODIFICATION ---<<< */}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>,
+                            document.body
+                        )}
+                    </div>
+                )}
+
+                {/* Portal for Date Picker Popover (triggered from WITHIN this item's actions) */}
+                {isDatePickerOpen && datePickerReferenceElement && ReactDOM.createPortal(
+                    (
+                        <div ref={setDatePickerPopperElement} style={{ ...datePickerStyles.popper, zIndex: 60 }}
+                             {...datePickerAttributes.popper} className="ignore-click-away date-picker-popover-wrapper">
+                            <CustomDatePickerPopover
+                                usePortal={false}
+                                initialDate={dueDate ?? undefined}
+                                onSelect={handleDateSelect}
+                                close={closeDatePicker}
+                                triggerElement={datePickerReferenceElement} // Pass the trigger element ref
+                            />
+                        </div>
+                    ), document.body
+                )}
+
+            </div> {/* End of main task item div */}
+
+            {/* <<<--- ADDED: Render the Confirmation Modal conditionally ---<<< */}
+            <ConfirmDeleteModal
+                isOpen={isDeleteDialogOpen}
+                onClose={closeDeleteConfirm}
+                onConfirm={confirmDeleteTask}
+                taskTitle={task.title || 'Untitled Task'}
+            />
+            {/* <<<--- END ADDITION ---<<< */}
+        </>
     );
 });
 TaskItem.displayName = 'TaskItem';
