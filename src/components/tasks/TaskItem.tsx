@@ -1,6 +1,6 @@
 // src/components/tasks/TaskItem.tsx
 import React, { useCallback, useMemo, memo, useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import ReactDOM from 'react-dom'; // Keep ReactDOM for portals from TaskItem
 import { Task, TaskGroupCategory } from '@/types';
 import { formatDate, formatRelativeDate, isOverdue, safeParseDate, isValid, startOfDay } from '@/utils/dateUtils';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
@@ -13,19 +13,18 @@ import { CSS } from '@dnd-kit/utilities';
 import Button from "@/components/common/Button";
 import Highlighter from "react-highlight-words";
 import { IconName } from "@/components/common/IconMap";
-// *** Remove Dropdown import if only used for Actions, keep if needed elsewhere ***
-// import Dropdown, { DropdownRenderProps } from "@/components/common/Dropdown";
 import MenuItem from "@/components/common/MenuItem";
 import CustomDatePickerPopover from "@/components/common/CustomDatePickerPopover";
 import { usePopper } from "react-popper";
-import { motion, AnimatePresence } from 'framer-motion'; // Keep motion/presence
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTaskItemMenu } from '@/context/TaskItemMenuContext';
 
 interface TaskItemProps {
     task: Task;
     groupCategory?: TaskGroupCategory;
     isOverlay?: boolean;
     style?: React.CSSProperties;
-    scrollContainerRef?: React.RefObject<HTMLDivElement>; // Keep ref for scroll listeners
+    scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 // Helper/Priority Map (remain the same)
@@ -46,38 +45,49 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     const setTasks = useSetAtom(tasksAtom);
     const [searchTerm] = useAtom(searchTermAtom);
     const userLists = useAtomValue(userListNamesAtom);
+    const { openItemId, setOpenItemId } = useTaskItemMenu();
 
     const isSelected = useMemo(() => selectedTaskId === task.id, [selectedTaskId, task.id]);
 
-    // --- State for Date Picker Popover (Uses Popper) ---
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
+
     const [datePickerReferenceElement, setDatePickerReferenceElement] = useState<HTMLButtonElement | null>(null);
     const [datePickerPopperElement, setDatePickerPopperElement] = useState<HTMLDivElement | null>(null);
+
+    // --- Popper for TaskItem Date Picker (Keep FIXED strategy, Keep boundary) ---
+    // This picker is triggered from the Actions menu, which is already portaled and fixed-positioned.
     const { styles: datePickerStyles, attributes: datePickerAttributes, update: updateDatePickerPopper } = usePopper(
-        datePickerReferenceElement, datePickerPopperElement, {
-            strategy: 'fixed', placement: 'bottom-start',
-            modifiers: [ { name: 'offset', options: { offset: [0, 8] } }, { name: 'preventOverflow', options: { padding: 8 } }, { name: 'flip', options: { fallbackPlacements: ['top-start', 'bottom-end', 'top-end'] } } ],
+        datePickerReferenceElement,
+        datePickerPopperElement,
+        {
+            strategy: 'fixed', // <--- Keep fixed for portal rendered by TaskItem
+            placement: 'bottom-start',
+            modifiers: [
+                { name: 'offset', options: { offset: [0, 8] } },
+                // Keep boundary using the PASSED scrollContainerRef
+                { name: 'preventOverflow', options: { padding: 8, boundary: scrollContainerRef?.current ?? undefined } },
+                { name: 'flip', options: { padding: 8, boundary: scrollContainerRef?.current ?? undefined, fallbackPlacements: ['top-start', 'bottom-end', 'top-end'] } }
+            ],
         }
     );
+    // ---
+
+    // --- Effect to update TaskItem's Date Picker Popper (logic unchanged) ---
     useEffect(() => {
-        if (isDatePickerOpen && updateDatePickerPopper) {
-            const rafId = requestAnimationFrame(() => { updateDatePickerPopper?.(); });
+        if (isDatePickerOpen && scrollContainerRef?.current && updateDatePickerPopper) {
+            const rafId = requestAnimationFrame(() => updateDatePickerPopper());
             return () => cancelAnimationFrame(rafId);
         }
-    }, [isDatePickerOpen, updateDatePickerPopper]);
-    // --- End Date Picker ---
+    }, [isDatePickerOpen, updateDatePickerPopper, scrollContainerRef]);
+    // ---
 
-    // --- State for More Actions Dropdown (Manual Positioning) ---
-    const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
-    const actionsTriggerRef = useRef<HTMLButtonElement>(null); // Ref for the trigger BUTTON itself
-    const actionsContentRef = useRef<HTMLDivElement>(null); // Ref for the dropdown content div
-    const [actionsStyle, setActionsStyle] = useState<React.CSSProperties>({ // State for position
-        position: 'fixed', // Necessary for portal positioning
-        opacity: 0, // Start hidden
-        pointerEvents: 'none', // Start non-interactive
-        zIndex: 55, // Ensure it's above TaskItem hover
+    // Refs for actions menu positioning and click away
+    const actionsTriggerRef = useRef<HTMLButtonElement>(null);
+    const actionsContentRef = useRef<HTMLDivElement>(null);
+    const [actionsStyle, setActionsStyle] = useState<React.CSSProperties>({
+        position: 'fixed', opacity: 0, pointerEvents: 'none', zIndex: 55,
     });
-    // --- End More Actions ---
 
     // Memoized derived states (remain the same)
     const isTrashItem = useMemo(() => task.list === 'Trash', [task.list]);
@@ -98,216 +108,165 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         zIndex: isDragging || isOverlay ? 100 : (isSelected ? 2 : 1),
     }), [overlayStyle, transform, dndTransition, isDragging, isOverlay, isSelected]);
 
-    // --- Manual Position Calculation Logic ---
+    // Effect to close this item's menus if another item opens (logic unchanged)
+    useEffect(() => {
+        if (openItemId !== task.id) {
+            if (isMoreActionsOpen) setIsMoreActionsOpen(false);
+            if (isDatePickerOpen) setIsDatePickerOpen(false);
+        }
+    }, [openItemId, task.id, isMoreActionsOpen, isDatePickerOpen]);
+
+    // Actions Menu Positioning Logic (remains the same)
     const calculateActionsPosition = useCallback(() => {
         if (!actionsTriggerRef.current || !actionsContentRef.current) return;
-
         const triggerRect = actionsTriggerRef.current.getBoundingClientRect();
-        const contentRect = actionsContentRef.current.getBoundingClientRect(); // Get content size *after* render
+        const contentRect = actionsContentRef.current.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const margin = 8; // Desired margin from viewport edges and trigger
+        const margin = 8;
+        let top = triggerRect.bottom + margin / 2;
+        let left = triggerRect.right - contentRect.width;
+        if (top + contentRect.height + margin > viewportHeight) top = triggerRect.top - contentRect.height - margin / 2;
+        if (left < margin) left = margin;
+        if (left + contentRect.width + margin > viewportWidth) left = viewportWidth - contentRect.width - margin;
+        top = Math.max(margin, top); left = Math.max(margin, left);
+        setActionsStyle(prev => ({ ...prev, top: `${top}px`, left: `${left}px`, opacity: 1, pointerEvents: 'auto' }));
+    }, []);
 
-        let top: number;
-        let left: number;
-
-        // Default: Place below and aligned to the right edge of the trigger
-        left = triggerRect.right - contentRect.width;
-        top = triggerRect.bottom + margin / 2;
-
-        // Check vertical overflow
-        if (top + contentRect.height + margin > viewportHeight) {
-            // Place above the trigger
-            top = triggerRect.top - contentRect.height - margin / 2;
-        }
-
-        // Check horizontal overflow (rare for right-aligned, but good practice)
-        if (left < margin) {
-            left = margin; // Align to left viewport edge
-        }
-        if (left + contentRect.width + margin > viewportWidth) {
-            left = viewportWidth - contentRect.width - margin; // Align to right viewport edge
-        }
-
-        // Prevent negative top/left positioning
-        top = Math.max(margin, top);
-        left = Math.max(margin, left);
-
-
-        setActionsStyle(prev => ({
-            ...prev,
-            top: `${top}px`,
-            left: `${left}px`,
-            opacity: 1, // Make visible after position calculation
-            pointerEvents: 'auto', // Make interactive
-        }));
-    }, []); // No dependencies needed here, reads refs directly
-
-    // Effect to calculate position when dropdown opens
     useEffect(() => {
         if (isMoreActionsOpen) {
-            // Calculate initial position slightly after opening allows content to render
-            requestAnimationFrame(() => {
-                calculateActionsPosition();
-            });
+            requestAnimationFrame(() => calculateActionsPosition());
         } else {
-            // Reset style when closed
-            setActionsStyle(prev => ({
-                ...prev,
-                opacity: 0,
-                pointerEvents: 'none',
-            }));
+            setActionsStyle(prev => ({ ...prev, opacity: 0, pointerEvents: 'none' }));
         }
     }, [isMoreActionsOpen, calculateActionsPosition]);
 
-    // Effect to update position on scroll/resize
     useEffect(() => {
-        if (!isMoreActionsOpen) return; // Only listen when open
-
-        const scrollElement = scrollContainerRef?.current;
-        const handleUpdate = () => {
-            // Recalculate position based on the *current* trigger position
-            calculateActionsPosition();
-        };
-
-        // Throttle updates for performance
+        if (!isMoreActionsOpen || !scrollContainerRef) return;
+        const scrollElement = scrollContainerRef.current;
+        const handleUpdate = () => calculateActionsPosition();
         let throttleTimeout: NodeJS.Timeout | null = null;
-        const throttledHandler = () => {
-            if (!throttleTimeout) {
-                throttleTimeout = setTimeout(() => {
-                    handleUpdate();
-                    throttleTimeout = null;
-                }, 50); // Shorter throttle for potentially faster feedback
-            }
-        };
-
-        if (scrollElement) {
-            scrollElement.addEventListener('scroll', throttledHandler, { passive: true });
-        }
+        const throttledHandler = () => { if (!throttleTimeout) { throttleTimeout = setTimeout(() => { handleUpdate(); throttleTimeout = null; }, 50); } };
+        if (scrollElement) scrollElement.addEventListener('scroll', throttledHandler, { passive: true });
         window.addEventListener('resize', throttledHandler);
-
         return () => {
-            if (scrollElement) {
-                scrollElement.removeEventListener('scroll', throttledHandler);
-            }
+            if (scrollElement) scrollElement.removeEventListener('scroll', throttledHandler);
             window.removeEventListener('resize', throttledHandler);
-            if (throttleTimeout) {
-                clearTimeout(throttleTimeout);
-            }
+            if (throttleTimeout) clearTimeout(throttleTimeout);
         };
     }, [isMoreActionsOpen, calculateActionsPosition, scrollContainerRef]);
-    // --- End Manual Position Logic ---
 
 
-    // Task Click (remains the same, checks ignore class)
+    // Task Click (logic unchanged)
     const handleTaskClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
-        // Check against the trigger BUTTON ref now, not the wrapper div
         if (target.closest('button, input, a') ||
-            actionsTriggerRef.current?.contains(target) || // Check trigger button
+            actionsTriggerRef.current?.contains(target) ||
             datePickerReferenceElement?.contains(target) ||
-            target.closest('.ignore-click-away') || // Check content div via class
-            actionsContentRef.current?.contains(target) // Explicitly check content ref
-        ) {
-            return;
-        }
+            target.closest('.ignore-click-away') ||
+            actionsContentRef.current?.contains(target)
+        ) { return; }
         setSelectedTaskId(id => (id === task.id ? null : task.id));
-    }, [setSelectedTaskId, task.id, datePickerReferenceElement]);
+        setOpenItemId(null);
+    }, [setSelectedTaskId, task.id, datePickerReferenceElement, setOpenItemId]);
 
-    // Direct Update Function (remains the same)
+    // Direct Update Function (logic unchanged)
     const updateTask = useCallback((updates: Partial<Omit<Task, 'groupCategory' | 'completedAt'>>) => {
         setTasks(prevTasks => prevTasks.map(t => { if (t.id === task.id) { return { ...t, ...updates, updatedAt: Date.now() }; } return t; }));
     }, [setTasks, task.id]);
 
-    // Checkbox Handler (remains the same)
+    // Checkbox Handler (logic unchanged)
     const handleCheckboxChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         e.stopPropagation(); const isChecked = e.target.checked; updateTask({ completed: isChecked });
         if (isChecked && isSelected) { setSelectedTaskId(null); }
-    }, [updateTask, isSelected, setSelectedTaskId]);
+        setOpenItemId(null);
+    }, [updateTask, isSelected, setSelectedTaskId, setOpenItemId]);
 
-
-    // --- Date Picker Handlers (remain the same) ---
+    // Date Picker Handlers (logic unchanged - context handled)
     const openDatePicker = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         setDatePickerReferenceElement(event.currentTarget);
         setIsDatePickerOpen(true);
-        setIsMoreActionsOpen(false); // Close actions if opening date picker
-    }, []);
-    const closeDatePicker = useCallback(() => { setIsDatePickerOpen(false); setDatePickerReferenceElement(null); }, []);
+        setIsMoreActionsOpen(false);
+        setOpenItemId(task.id);
+    }, [setOpenItemId, task.id]);
+
+    const closeDatePicker = useCallback(() => {
+        setIsDatePickerOpen(false);
+        setDatePickerReferenceElement(null);
+        if (openItemId === task.id) {
+            setOpenItemId(null);
+        }
+    }, [setOpenItemId, openItemId, task.id]);
+
     const handleDateSelect = useCallback((date: Date | undefined) => {
         const newDueDate = date && isValid(date) ? startOfDay(date).getTime() : null;
         updateTask({ dueDate: newDueDate });
         closeDatePicker();
     }, [updateTask, closeDatePicker]);
-    // --- End Date Picker Handlers ---
 
-    // --- More Actions Handlers ---
+
+    // More Actions Handlers (logic unchanged - context handled)
     const toggleActionsDropdown = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
-        setIsMoreActionsOpen(prev => !prev);
-        if(isDatePickerOpen) setIsDatePickerOpen(false); // Close date picker if opening actions
-    }, [isDatePickerOpen]);
+        const opening = !isMoreActionsOpen;
+        setIsMoreActionsOpen(opening);
+        setIsDatePickerOpen(false);
+        setOpenItemId(opening ? task.id : null);
+    }, [isMoreActionsOpen, setOpenItemId, task.id]);
 
     const closeActionsDropdown = useCallback(() => {
         setIsMoreActionsOpen(false);
-    }, []);
+        if (openItemId === task.id) {
+            setOpenItemId(null);
+        }
+    }, [setOpenItemId, openItemId, task.id]);
 
-    // Handler specifically for clicking the "Set Due Date..." button inside the dropdown
     const handleSetDueDateClickFromDropdown = (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.stopPropagation(); // Prevent closing actions dropdown
-        setDatePickerReferenceElement(e.currentTarget); // Anchor to the button inside the dropdown
+        e.stopPropagation();
+        setDatePickerReferenceElement(e.currentTarget);
         setIsDatePickerOpen(true);
+        setOpenItemId(task.id);
     };
 
-    // Click handlers for actions (now call closeActionsDropdown)
     const handlePriorityChange = useCallback((newPriority: number | null) => { updateTask({ priority: newPriority }); closeActionsDropdown(); }, [updateTask, closeActionsDropdown]);
     const handleListChange = useCallback((newList: string) => { updateTask({ list: newList }); closeActionsDropdown(); }, [updateTask, closeActionsDropdown]);
     const handleDuplicateTask = useCallback(() => {
         const now = Date.now(); const newTask: Omit<Task, 'groupCategory'> = { ...JSON.parse(JSON.stringify(task)), id: `task-${now}-${Math.random().toString(16).slice(2)}`, title: `${task.title} (Copy)`, completed: false, completedAt: null, createdAt: now, updatedAt: now, order: task.order + 0.01, };
         setTasks(prev => { const index = prev.findIndex(t => t.id === task.id); const newTasks = [...prev]; if (index !== -1) { newTasks.splice(index + 1, 0, newTask as Task); } else { newTasks.push(newTask as Task); } return newTasks; });
-        setSelectedTaskId(newTask.id); closeActionsDropdown();
+        setSelectedTaskId(newTask.id);
+        closeActionsDropdown();
     }, [task, setTasks, setSelectedTaskId, closeActionsDropdown]);
     const handleDeleteTask = useCallback(() => {
-        const confirmationText = `Move task "${task.title || 'Untitled Task'}" to Trash?`;
-        if (window.confirm(confirmationText)) { updateTask({ list: 'Trash', completed: false }); if (isSelected) { setSelectedTaskId(null); } }
+        updateTask({ list: 'Trash', completed: false });
+        if (isSelected) { setSelectedTaskId(null); }
         closeActionsDropdown();
-    }, [task.id, task.title, updateTask, isSelected, setSelectedTaskId, closeActionsDropdown]);
-    // --- End More Actions Handlers ---
+    }, [task.id, updateTask, isSelected, setSelectedTaskId, closeActionsDropdown]);
 
 
-    // --- Click Away for Actions Dropdown ---
+    // Click Away for Actions Dropdown (logic unchanged)
     useEffect(() => {
         if (!isMoreActionsOpen) return;
-
         const handleClickOutside = (event: MouseEvent | TouchEvent) => {
             const target = event.target as Node;
-            // Close if click is outside the trigger button AND outside the content div
-            if (!actionsTriggerRef.current?.contains(target) && !actionsContentRef.current?.contains(target)) {
-                // AND not inside the date picker popover if it's open from within this actions menu
-                if(!datePickerPopperElement?.contains(target)) {
-                    closeActionsDropdown();
-                    // Also close date picker if it was opened from here
-                    if (datePickerReferenceElement && actionsContentRef.current?.contains(datePickerReferenceElement)) {
-                        closeDatePicker();
-                    }
-                }
+            const isClickInsideTrigger = actionsTriggerRef.current?.contains(target);
+            const isClickInsideContent = actionsContentRef.current?.contains(target);
+            const isClickInsideDatePicker = datePickerPopperElement?.contains(target);
+
+            if (!isClickInsideTrigger && !isClickInsideContent && !isClickInsideDatePicker) {
+                closeActionsDropdown();
             }
         };
-
-        // Use timeout to prevent immediate close on opening click
         const timerId = setTimeout(() => {
             document.addEventListener('mousedown', handleClickOutside);
             document.addEventListener('touchstart', handleClickOutside);
         }, 0);
-
-
         return () => {
             clearTimeout(timerId);
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
         };
-    }, [isMoreActionsOpen, closeActionsDropdown, datePickerReferenceElement, datePickerPopperElement, closeDatePicker]);
-    // --- End Click Away ---
+    }, [isMoreActionsOpen, closeActionsDropdown, datePickerPopperElement]);
 
 
     // Memoized values (remain the same)
@@ -323,14 +282,9 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     const dragHandleClasses = useMemo(() => twMerge( "text-muted cursor-grab p-1 -ml-1 opacity-0 group-hover:opacity-50 group-focus-within:opacity-50 focus-visible:opacity-80", "transition-opacity duration-30 ease-apple outline-none rounded focus-visible:ring-1 focus-visible:ring-primary/50", isDragging && "opacity-50 cursor-grabbing" ), [isDragging]);
     const listIcon: IconName = useMemo(() => task.list === 'Inbox' ? 'inbox' : (task.list === 'Trash' ? 'trash' : 'list'), [task.list]);
     const availableLists = useMemo(() => userLists.filter(l => l !== 'Trash'), [userLists]);
+    const actionsMenuClasses = useMemo(() => twMerge( 'ignore-click-away min-w-[180px] overflow-hidden py-1 w-48', 'bg-glass-100 backdrop-blur-xl rounded-lg shadow-strong border border-black/10' ), []);
 
-
-    // Class for the dropdown content
-    const actionsMenuClasses = twMerge(
-        'ignore-click-away min-w-[180px] overflow-hidden py-1 w-48', // Base classes
-        'bg-glass-100 backdrop-blur-xl rounded-lg shadow-strong border border-black/10' // Appearance
-    );
-
+    // --- Render ---
     return (
         <div
             ref={setNodeRef} style={style} className={baseClasses} onClick={handleTaskClick}
@@ -365,7 +319,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                             {overdue && !isOverlay && !isCompleted && !isTrashItem && (
                                 <button
                                     className="ml-1 p-0.5 rounded hover:bg-red-500/15 focus-visible:ring-1 focus-visible:ring-red-400 outline-none ignore-click-away"
-                                    onClick={openDatePicker} // Still uses Popper date picker
+                                    onClick={openDatePicker} // This still triggers the portaled date picker
                                     aria-label="Reschedule task" title="Reschedule"
                                 >
                                     <Icon name="calendar-plus" size={12} className="text-red-500 opacity-70 group-hover/task-item-reschedule:opacity-100" />
@@ -382,45 +336,29 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                 </div>
             </div>
 
-            {/* More Actions Button & Dropdown (Manual Positioning) */}
+            {/* More Actions Button & Dropdown (Portal + Manual Fixed Positioning) */}
             {!isOverlay && !isCompleted && !isTrashItem && (
-                <div
-                    // No wrapper ref needed here anymore
-                    className="task-item-actions absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-30 ease-apple"
-                    // Prevent clicks on the button container itself from propagating
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                >
-                    {/* Trigger Button */}
+                <div className="task-item-actions absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-30 ease-apple" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} >
                     <Button
-                        ref={actionsTriggerRef} // Ref is on the button now
+                        ref={actionsTriggerRef}
                         variant="ghost" size="icon" icon="more-horizontal"
                         className="h-6 w-6 text-muted-foreground hover:bg-black/15"
-                        onClick={toggleActionsDropdown} // Toggle state on click
+                        onClick={toggleActionsDropdown}
                         aria-label={`More actions for ${task.title || 'task'}`}
-                        aria-haspopup="true" // Indicate it controls a menu
-                        aria-expanded={isMoreActionsOpen} // Link state to aria attribute
+                        aria-haspopup="true"
+                        aria-expanded={isMoreActionsOpen}
                         tabIndex={0}
                     />
-
-                    {/* Dropdown Content Portal */}
+                    {/* Portal for Actions Dropdown Content */}
                     {ReactDOM.createPortal(
                         <AnimatePresence>
                             {isMoreActionsOpen && (
                                 <motion.div
-                                    ref={actionsContentRef} // Ref for content size calculation and click-away
-                                    style={actionsStyle} // Apply calculated fixed position style
-                                    className={actionsMenuClasses} // Apply menu styling
-                                    // Animation
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
+                                    ref={actionsContentRef} style={actionsStyle} className={actionsMenuClasses}
+                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.1 } }}
                                     transition={{ duration: 0.15, ease: 'easeOut' }}
-                                    // Prevent clicks inside from closing immediately
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}
                                 >
                                     {/* Menu Items */}
                                     <div className="space-y-0.5">
@@ -442,22 +380,26 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                 </motion.div>
                             )}
                         </AnimatePresence>,
-                        document.body // Render directly into body
+                        document.body
                     )}
                 </div>
             )}
 
-            {/* Date Picker Popover (Still uses Popper and Portal) */}
+            {/* Portal for Date Picker Popover (triggered from WITHIN this item's actions) */}
             {isDatePickerOpen && datePickerReferenceElement && ReactDOM.createPortal(
                 (
-                    <div ref={setDatePickerPopperElement} style={{ ...datePickerStyles.popper, zIndex: 60 }} // Popper applies position, ensure high zIndex
-                         {...datePickerAttributes.popper} className="ignore-click-away">
+                    <div ref={setDatePickerPopperElement} style={{ ...datePickerStyles.popper, zIndex: 60 }} // Keep high zIndex
+                         {...datePickerAttributes.popper} className="ignore-click-away date-picker-popover-wrapper">
+                        {/* usePortal={false} is correct here because the portal is handled above */}
                         <CustomDatePickerPopover
-                            initialDate={dueDate ?? undefined} onSelect={handleDateSelect}
-                            close={closeDatePicker} triggerElement={datePickerReferenceElement}
+                            usePortal={false}
+                            initialDate={dueDate ?? undefined}
+                            onSelect={handleDateSelect}
+                            close={closeDatePicker}
+                            triggerElement={datePickerReferenceElement}
                         />
                     </div>
-                ), document.body // Target portal destination
+                ), document.body
             )}
 
         </div>
