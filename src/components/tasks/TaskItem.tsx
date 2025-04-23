@@ -25,7 +25,7 @@ interface TaskItemProps {
     groupCategory?: TaskGroupCategory;
     isOverlay?: boolean;
     style?: React.CSSProperties;
-    scrollContainerRef: React.RefObject<HTMLDivElement>; // Keep ref for scroll listeners
+    scrollContainerRef?: React.RefObject<HTMLDivElement>; // Keep ref for scroll listeners
 }
 
 // Helper/Priority Map (remain the same)
