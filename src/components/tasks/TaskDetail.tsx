@@ -126,12 +126,14 @@ const TaskDetail: React.FC = () => {
 
             // Auto-focus title if it's empty and not already focused
             if (selectedTask.title === '' && !isTitleFocused && !isContentFocused && !isTagsFocused) {
+                // *** FIX: Increase timeout delay ***
+                // Delay focus until after the panel slide-in and container resize animations (300ms)
                 const timer = setTimeout(() => {
-                    if (isMountedRef.current) {
-                        titleInputRef.current?.focus();
-                        titleInputRef.current?.select();
+                    if (isMountedRef.current && titleInputRef.current) {
+                        titleInputRef.current.focus();
+                        titleInputRef.current.select();
                     }
-                }, 50);
+                }, 350); // Increased delay from 50 to 350ms
                 return () => clearTimeout(timer);
             }
 
@@ -150,7 +152,7 @@ const TaskDetail: React.FC = () => {
         }
         // Only run when selectedTask.id changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTask?.id]);
+    }, [selectedTask?.id]); // Keep dependency on selectedTask.id
 
     // --- Update Refs on Local State Change ---
     useEffect(() => { latestTitleRef.current = localTitle; }, [localTitle]);
@@ -365,8 +367,8 @@ const TaskDetail: React.FC = () => {
                                     </Button>
                                 }
                                 contentClassName="date-picker-popover p-0 border-0 shadow-none bg-transparent"
-                                placement="bottom-end">
-                                {(props) => (<CustomDatePickerPopover initialDate={displayDueDateForPicker} onSelect={handleDatePickerSelect} close={props.close}/>)}
+                                placement="bottom-end" usePortal={true}>
+                                {(props) => (<CustomDatePickerPopover initialDate={displayDueDateForPicker} onSelect={handleDatePickerSelect} close={props.close} usePortal={true}/>)}
                             </Dropdown>
                         </MetaRow>
                         {/* List Row */}
@@ -377,7 +379,7 @@ const TaskDetail: React.FC = () => {
                                             className="text-xs h-7 px-1.5 w-full text-left justify-start text-gray-700 font-normal disabled:text-muted disabled:line-through truncate hover:bg-black/10 backdrop-blur-sm disabled:hover:!bg-transparent disabled:cursor-not-allowed"
                                             disabled={isTrash}> {displayList} </Button>
                                 }
-                                contentClassName="max-h-48 overflow-y-auto styled-scrollbar py-1">
+                                contentClassName="max-h-48 overflow-y-auto styled-scrollbar py-1" usePortal={true}>
                                 {(props) => (<> {availableLists.map(list => (<button key={list} onClick={() => handleListChange(list, props.close)} className={twMerge("block w-full text-left px-2.5 py-1 text-sm hover:bg-black/15 transition-colors duration-100 ease-apple focus:outline-none focus-visible:bg-black/10 rounded-[3px]", displayList === list && "bg-primary/20 text-primary font-medium")} role="menuitemradio" aria-checked={displayList === list}> {list} </button>))} </>)}
                             </Dropdown>
                         </MetaRow>
@@ -389,7 +391,7 @@ const TaskDetail: React.FC = () => {
                                             className={twMerge("text-xs h-7 px-1.5 w-full text-left justify-start font-normal disabled:text-muted disabled:line-through truncate hover:bg-black/10 backdrop-blur-sm", displayPriority ? priorityMap[displayPriority]?.iconColor : 'text-gray-700', isTrash && 'hover:!bg-transparent cursor-not-allowed')}
                                             icon={displayPriority ? 'flag' : undefined} disabled={isTrash}> {displayPriority ? `P${displayPriority} ${priorityMap[displayPriority]?.label}` : 'Set Priority'} </Button>
                                 }
-                                contentClassName="py-1">
+                                contentClassName="py-1" usePortal={true}>
                                 {(props) => (<> {[1, 2, 3, 4, null].map(p => (<button key={p ?? 'none'} onClick={() => handlePriorityChange(p, props.close)} className={twMerge("block w-full text-left px-2.5 py-1 text-sm hover:bg-black/15 transition-colors duration-100 ease-apple flex items-center focus:outline-none focus-visible:bg-black/10 rounded-[3px]", displayPriority === p && "bg-primary/20 text-primary font-medium", p && priorityMap[p]?.iconColor)} role="menuitemradio" aria-checked={displayPriority === p}> {p && <Icon name="flag" size={14} className="mr-1.5 flex-shrink-0" />} {p ? `P${p} ${priorityMap[p]?.label}` : 'None'} </button>))} </>)}
                             </Dropdown>
                         </MetaRow>

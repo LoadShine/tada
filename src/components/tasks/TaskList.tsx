@@ -361,6 +361,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     const closeDndDatePicker = useCallback(() => {
         setDndDatePickerState(null);
     }, []);
+
+    // *** FIX: Removed the setTimeout focus call from handleAddTask ***
     const handleAddTask = useCallback(() => {
         const now = Date.now();
         let defaultList = 'Inbox';
@@ -392,7 +394,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         }
         const newTask: Omit<Task, 'groupCategory'> = {
             id: `task-${now}-${Math.random().toString(16).slice(2)}`,
-            title: '',
+            title: '', // Keep title empty
             completed: false,
             completedAt: null,
             list: defaultList,
@@ -406,11 +408,10 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         };
         setTasks(prev => [newTask as Task, ...prev]);
         setSelectedTaskId(newTask.id);
-        setTimeout(() => {
-            const titleInput = document.getElementById(`task-title-input-${newTask.id}`) as HTMLInputElement | null;
-            titleInput?.focus();
-        }, 100);
+        // *** The setTimeout focus call previously here was removed ***
+        // We rely on TaskDetail's useEffect (with its 350ms delay) to handle focus.
     }, [currentFilterGlobal, setTasks, setSelectedTaskId, sortableItems, allTasks]);
+    // *** END FIX ***
 
     // --- Header Reschedule Handlers (remain the same) ---
     const handleOpenHeaderDatePicker = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
