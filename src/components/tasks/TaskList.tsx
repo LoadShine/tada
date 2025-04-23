@@ -12,7 +12,7 @@ import {
 } from '@/store/atoms';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
-import CustomDatePickerPopover from '../common/CustomDatePickerPopover';
+import CustomDatePickerPopover from '../common/CustomDatePickerPopover'; // Keep import for header popover
 import {Task, TaskGroupCategory} from '@/types';
 import {
     closestCenter,
@@ -40,23 +40,14 @@ import {
     isValid,
     isWithinNext7Days,
     safeParseDate,
-    startOfDay
+    startOfDay,
+    subDays // Make sure subDays is imported
 } from '@/utils/dateUtils';
 import {twMerge} from 'tailwind-merge';
 import {TaskItemMenuProvider} from '@/context/TaskItemMenuContext';
 
-// Removed ReactDOM import as it's no longer needed here
-
 interface TaskListProps {
     title: string;
-}
-
-// DNDDatePickerState remains the same
-interface DndDatePickerState {
-    taskId: string;
-    targetCategory: TaskGroupCategory;
-    referenceElement: HTMLElement;
-    isVisible: boolean;
 }
 
 // HeaderDatePickerState remains the same
@@ -65,7 +56,7 @@ interface HeaderDatePickerState {
     isVisible: boolean;
 }
 
-// TaskGroupHeader remains the same
+// TaskGroupHeader component remains unchanged
 const TaskGroupHeader: React.FC<{
     title: string;
     groupKey: TaskGroupCategory;
@@ -96,6 +87,7 @@ const TaskGroupHeader: React.FC<{
 ));
 TaskGroupHeader.displayName = 'TaskGroupHeader';
 
+// Constants (dropAnimationConfig, groupTitles, groupOrder) remain unchanged
 const dropAnimationConfig: DropAnimation = {sideEffects: defaultDropAnimationSideEffects({styles: {active: {opacity: '0.4'}}}),};
 const groupTitles: Record<TaskGroupCategory, string> = {
     overdue: 'Overdue',
@@ -107,6 +99,7 @@ const groupTitles: Record<TaskGroupCategory, string> = {
 const groupOrder: TaskGroupCategory[] = ['overdue', 'today', 'next7days', 'later', 'nodate'];
 
 const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
+    // Atom hooks remain unchanged
     const allTasks = useAtomValue(tasksAtom);
     const setTasks = useSetAtom(tasksAtom);
     const currentFilterGlobal = useAtomValue(currentFilterAtom);
@@ -115,81 +108,32 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     const rawSearchResults = useAtomValue(rawSearchResultsAtom);
     const searchTerm = useAtomValue(searchTermAtom);
 
+    // Refs and state hooks
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-
     const [draggingTask, setDraggingTask] = useState<Task | null>(null);
-    const [dndDatePickerState, setDndDatePickerState] = useState<DndDatePickerState | null>(null);
-    const [dndPopperElement, setDndPopperElement] = useState<HTMLDivElement | null>(null);
-
-    // --- Popper for DND Date Picker (Use ABSOLUTE strategy, NO portal) ---
-    const {styles: dndPopperStyles, attributes: dndPopperAttributes, update: updateDndPopper} = usePopper(
-        dndDatePickerState?.referenceElement,
-        dndPopperElement,
-        {
-            placement: 'bottom-start',
-            strategy: 'absolute', // <--- Use absolute positioning
-            modifiers: [
-                {name: 'offset', options: {offset: [0, 8]}},
-                {name: 'preventOverflow', options: {padding: 8, boundary: scrollContainerRef.current ?? undefined}},
-                {
-                    name: 'flip',
-                    options: {
-                        padding: 8,
-                        boundary: scrollContainerRef.current ?? undefined,
-                        fallbackPlacements: ['top-start', 'bottom-end', 'top-end']
-                    }
-                }
-            ]
-        }
-    );
-    // ---
-
-    // --- Popper for Header Date Picker (Use ABSOLUTE strategy, NO portal) ---
+    // REMOVED dndDatePickerState and dndPopperElement state
     const [headerDatePickerState, setHeaderDatePickerState] = useState<HeaderDatePickerState>({
         isVisible: false,
         referenceElement: null
     });
     const [headerPopperElement, setHeaderPopperElement] = useState<HTMLDivElement | null>(null);
+
+    // REMOVED usePopper hook for DND date picker
+
+    // Popper for Header Date Picker (unchanged)
     const {styles: headerPopperStyles, attributes: headerPopperAttributes, update: updateHeaderPopper} = usePopper(
-        headerDatePickerState.referenceElement,
-        headerPopperElement,
-        {
-            placement: 'bottom-end',
-            strategy: 'absolute', // <--- Use absolute positioning
-            modifiers: [
-                {name: 'offset', options: {offset: [0, 8]}},
-                {name: 'preventOverflow', options: {padding: 8, boundary: scrollContainerRef.current ?? undefined}},
-                {
-                    name: 'flip',
-                    options: {
-                        padding: 8,
-                        boundary: scrollContainerRef.current ?? undefined,
-                        fallbackPlacements: ['top-end', 'bottom-start', 'top-start']
-                    }
-                }
-            ]
-        }
+        headerDatePickerState.referenceElement, headerPopperElement,
+        { placement: 'bottom-end', strategy: 'absolute', modifiers: [ {name: 'offset', options: {offset: [0, 8]}}, {name: 'preventOverflow', options: {padding: 8, boundary: scrollContainerRef.current ?? undefined}}, { name: 'flip', options: { padding: 8, boundary: scrollContainerRef.current ?? undefined, fallbackPlacements: ['top-end', 'bottom-start', 'top-start'] } } ] }
     );
-    // ---
 
-    // --- Effects to update Popper instances when they become visible (still useful for initial render) ---
-    useEffect(() => {
-        if (dndDatePickerState?.isVisible && scrollContainerRef.current && updateDndPopper) {
-            const rafId = requestAnimationFrame(() => updateDndPopper());
-            return () => cancelAnimationFrame(rafId);
-        }
-    }, [dndDatePickerState?.isVisible, updateDndPopper]);
+    // REMOVED useEffect for DND popper update
 
-    useEffect(() => {
-        if (headerDatePickerState.isVisible && scrollContainerRef.current && updateHeaderPopper) {
-            const rafId = requestAnimationFrame(() => updateHeaderPopper());
-            return () => cancelAnimationFrame(rafId);
-        }
-    }, [headerDatePickerState.isVisible, updateHeaderPopper]);
-    // ---
+    // Effect for Header popper update (unchanged)
+    useEffect(() => { if (headerDatePickerState.isVisible && scrollContainerRef.current && updateHeaderPopper) { const rafId = requestAnimationFrame(() => updateHeaderPopper()); return () => cancelAnimationFrame(rafId); } }, [headerDatePickerState.isVisible, updateHeaderPopper]);
 
-    // tasksToDisplay, isGroupedView, isSearching memo remains the same
+    // tasksToDisplay, isGroupedView, isSearching memo remains unchanged
     const {tasksToDisplay, isGroupedView, isSearching} = useMemo(() => {
+        // ... (filtering logic remains the same) ...
         const searching = searchTerm.trim().length > 0;
         let displayData: Task[] | Record<TaskGroupCategory, Task[]> = [];
         let grouped = false;
@@ -242,6 +186,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         return {tasksToDisplay: displayData, isGroupedView: grouped, isSearching: searching};
     }, [searchTerm, currentFilterGlobal, groupedTasks, rawSearchResults, allTasks]);
 
+    // sortableItems memo remains unchanged
     const sortableItems: UniqueIdentifier[] = useMemo(() => {
         if (isGroupedView) {
             return groupOrder.flatMap(groupKey => (tasksToDisplay as Record<TaskGroupCategory, Task[]>)[groupKey]?.map(task => task.id) ?? []);
@@ -249,9 +194,11 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
             return (tasksToDisplay as Task[]).map(task => task.id);
         }
     }, [tasksToDisplay, isGroupedView]);
+
+    // sensors setup remains unchanged
     const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 8}}), useSensor(KeyboardSensor, {coordinateGetter: sortableKeyboardCoordinates}));
 
-    // DND Handlers (remain the same)
+    // handleDragStart remains unchanged
     const handleDragStart = useCallback((event: DragStartEvent) => {
         const {active} = event;
         const activeTask = (isGroupedView ? Object.values(tasksToDisplay as Record<TaskGroupCategory, Task[]>).flat() : (tasksToDisplay as Task[])).find((task: Task) => task.id === active.id) ?? allTasks.find((task: Task) => task.id === active.id);
@@ -262,35 +209,38 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
             setDraggingTask(null);
         }
     }, [tasksToDisplay, isGroupedView, setSelectedTaskId, allTasks]);
+
+    // *** MODIFIED handleDragEnd ***
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         const {active, over} = event;
-        setDraggingTask(null);
+        setDraggingTask(null); // Always clear dragging state
+
+        // Exit if no drop target, dragging invalid item, or dropped on self
         if (!over || !active.data.current?.task || active.id === over.id) {
             return;
         }
+
         const activeId = active.id as string;
         const overId = over.id as string;
         const originalTask = active.data.current.task as Task;
-        const overElement = document.getElementById(`task-item-${overId}`);
+
         let targetGroupCategory: TaskGroupCategory | undefined = undefined;
+
+        // Determine target group only if in 'all' view and dropped onto a task item
         if (currentFilterGlobal === 'all' && over.data.current?.type === 'task-item') {
             targetGroupCategory = over.data.current?.groupCategory as TaskGroupCategory | undefined;
         }
+
         const categoryChanged = targetGroupCategory && targetGroupCategory !== originalTask.groupCategory;
-        const needsDatePicker = categoryChanged && targetGroupCategory && ['overdue', 'next7days', 'later'].includes(targetGroupCategory) && overElement;
-        if (needsDatePicker) {
-            setDndDatePickerState({
-                taskId: activeId,
-                targetCategory: targetGroupCategory!,
-                referenceElement: overElement,
-                isVisible: true,
-            });
-            return;
-        }
+
+        // The date picker is no longer triggered by category drops
+        // Proceed directly with updating task order and potentially dueDate
         setTasks((currentTasks) => {
+            // --- Task Order Calculation (unchanged) ---
             const oldIndex = currentTasks.findIndex(t => t.id === activeId);
             const newIndex = currentTasks.findIndex(t => t.id === overId);
-            if (oldIndex === -1 || newIndex === -1) return currentTasks;
+            if (oldIndex === -1 || newIndex === -1) return currentTasks; // Should not happen
+
             const currentVisualOrderIds = sortableItems;
             const activeVisualIndex = currentVisualOrderIds.indexOf(activeId);
             const overVisualIndex = currentVisualOrderIds.indexOf(overId);
@@ -324,46 +274,68 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                 newOrderValue = Date.now();
                 console.warn("Order calc fallback (Date.now()).");
             }
-            let newDueDate: number | null | undefined = undefined;
-            if (categoryChanged && !needsDatePicker && targetGroupCategory) {
-                if (targetGroupCategory === 'today') newDueDate = startOfDay(new Date()).getTime(); else if (targetGroupCategory === 'nodate') newDueDate = null;
+            // --- End Task Order Calculation ---
+
+            // --- Due Date Calculation (Modified) ---
+            let newDueDate: number | null | undefined = undefined; // Use undefined to signal "no change" initially
+
+            // Calculate a new due date only if the category actually changed
+            if (categoryChanged && targetGroupCategory) {
+                const todayStart = startOfDay(new Date());
+                switch (targetGroupCategory) {
+                    case 'today':
+                        newDueDate = todayStart.getTime();
+                        break;
+                    case 'next7days':
+                        newDueDate = startOfDay(addDays(new Date(), 1)).getTime(); // Tomorrow
+                        break;
+                    case 'later':
+                        newDueDate = startOfDay(addDays(new Date(), 8)).getTime(); // 8 days later
+                        break;
+                    // *** CHANGE 1: Handle 'overdue' drop ***
+                    case 'overdue':
+                        newDueDate = startOfDay(subDays(new Date(), 1)).getTime(); // Yesterday
+                        break;
+                    case 'nodate':
+                        newDueDate = null;
+                        break;
+                }
+
+                // Check if the calculated newDueDate is actually different from the original date
                 const currentDueDateObj = safeParseDate(originalTask.dueDate);
                 const currentDueDayStart = currentDueDateObj && isValid(currentDueDateObj) ? startOfDay(currentDueDateObj).getTime() : null;
                 const newDueDayStart = newDueDate !== null && newDueDate !== undefined ? startOfDay(new Date(newDueDate)).getTime() : null;
+
+                // If the *day* part of the date hasn't changed, don't update dueDate
                 if (currentDueDayStart === newDueDayStart) {
-                    newDueDate = undefined;
+                    newDueDate = undefined; // Reset to undefined to signify no date change needed
                 }
             }
+            // --- End Due Date Calculation ---
+
+            // Update the task in the array
             return currentTasks.map((task: Task) => {
                 if (task.id === activeId) {
                     const updatedTask = {
                         ...task,
-                        order: newOrderValue,
-                        updatedAt: Date.now(), ...(newDueDate !== undefined && {dueDate: newDueDate}),
+                        order: newOrderValue, // Always update order
+                        updatedAt: Date.now(), // Always update timestamp
+                        // Conditionally update dueDate only if newDueDate has a defined value (not undefined)
+                        ...(newDueDate !== undefined && { dueDate: newDueDate }),
                     };
+                    // The setter in atoms.ts will recalculate groupCategory automatically
                     return updatedTask;
                 }
                 return task;
             });
         });
-    }, [setTasks, currentFilterGlobal, sortableItems]);
-    const handleDndDatePick = useCallback((date: Date | undefined) => {
-        if (!dndDatePickerState) return;
-        const {taskId} = dndDatePickerState;
-        const newDueDate = date && isValid(date) ? startOfDay(date).getTime() : null;
-        setTasks(currentTasks => currentTasks.map((t: Task) => t.id === taskId ? {
-            ...t,
-            dueDate: newDueDate,
-            updatedAt: Date.now()
-        } : t));
-        setDndDatePickerState(null);
-    }, [dndDatePickerState, setTasks]);
-    const closeDndDatePicker = useCallback(() => {
-        setDndDatePickerState(null);
-    }, []);
+    }, [setTasks, currentFilterGlobal, sortableItems]); // Dependencies remain the same
 
-    // *** FIX: Removed the setTimeout focus call from handleAddTask ***
+    // REMOVED handleDndDatePick and closeDndDatePicker callbacks
+
+    // handleAddTask remains unchanged
     const handleAddTask = useCallback(() => {
+        // ... (add task logic remains the same) ...
         const now = Date.now();
         let defaultList = 'Inbox';
         let defaultDueDate: number | null = null;
@@ -408,12 +380,9 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         };
         setTasks(prev => [newTask as Task, ...prev]);
         setSelectedTaskId(newTask.id);
-        // *** The setTimeout focus call previously here was removed ***
-        // We rely on TaskDetail's useEffect (with its 350ms delay) to handle focus.
     }, [currentFilterGlobal, setTasks, setSelectedTaskId, sortableItems, allTasks]);
-    // *** END FIX ***
 
-    // --- Header Reschedule Handlers (remain the same) ---
+    // Header Reschedule Handlers remain unchanged
     const handleOpenHeaderDatePicker = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         setHeaderDatePickerState({referenceElement: event.currentTarget, isVisible: true});
@@ -440,9 +409,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         );
         handleCloseHeaderDatePicker();
     }, [setTasks, handleCloseHeaderDatePicker]);
-    // ---
 
-    // Render group function (pass scrollContainerRef to TaskItem) - logic unchanged
+    // Render group function remains unchanged
     const renderTaskGroup = useCallback((groupTasks: Task[], groupKey: TaskGroupCategory | 'flat-list' | string) => (
         <AnimatePresence initial={false} key={`group-anim-${groupKey}`}>
             {groupTasks.map((task: Task) => (
@@ -460,7 +428,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         </AnimatePresence>
     ), [isGroupedView, scrollContainerRef]); // Add scrollContainerRef dependency
 
-    // Memos (remain the same)
+    // Memos (isEmpty, emptyStateTitle, headerClass, showAddTaskButton) remain unchanged
     const isEmpty = useMemo(() => {
         if (isGroupedView) {
             return Object.values(tasksToDisplay as Record<TaskGroupCategory, Task[]>).every((group: Task[]) => group.length === 0);
@@ -477,11 +445,11 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     const headerClass = useMemo(() => twMerge("px-3 py-2 border-b border-black/10 flex justify-between items-center flex-shrink-0 h-11 z-10", "bg-glass-alt-100 backdrop-blur-lg"), []);
     const showAddTaskButton = useMemo(() => !['completed', 'trash'].includes(currentFilterGlobal) && !isSearching, [currentFilterGlobal, isSearching]);
 
+    // --- JSX Return Structure (unchanged) ---
     return (
         <TaskItemMenuProvider>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd} measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
-                {/* Position relative needed for absolute positioning of popovers */}
                 <div className="h-full flex flex-col bg-transparent overflow-hidden relative">
                     {/* Header */}
                     <div className={headerClass}>
@@ -492,7 +460,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                     className="px-2.5 !h-[30px]"> Add </Button>)} </div>
                     </div>
 
-                    {/* Scrollable Task List Area - Attach ref here */}
+                    {/* Scrollable Task List Area */}
                     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto styled-scrollbar relative">
                         {isEmpty ? (<div
                                 className="flex flex-col items-center justify-center h-full text-gray-400 px-6 text-center pt-10">
@@ -527,30 +495,15 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                             </div>
                         )}
 
-                        {/* Render DND Date Picker Popover *WITHOUT Portal* */}
-                        <AnimatePresence>
-                            {dndDatePickerState?.isVisible && (
-                                // Apply popper styles and attributes directly
-                                <div ref={setDndPopperElement}
-                                     style={{...dndPopperStyles.popper, zIndex: 60}} {...dndPopperAttributes.popper}
-                                     className="ignore-click-away">
-                                    {/* Component does NOT use portal internally */}
-                                    <CustomDatePickerPopover usePortal={false} initialDate={undefined}
-                                                             onSelect={handleDndDatePick} close={closeDndDatePicker}
-                                                             triggerElement={dndDatePickerState.referenceElement}/>
-                                </div>
-                            )}
-                        </AnimatePresence>
+                        {/* REMOVED DND Date Picker Popover rendering */}
 
-                        {/* Render Header Date Picker Popover *WITHOUT Portal* */}
+                        {/* Header Date Picker Popover (unchanged) */}
                         <AnimatePresence>
                             {headerDatePickerState.isVisible && headerDatePickerState.referenceElement && (
-                                // Apply popper styles and attributes directly
                                 <div ref={setHeaderPopperElement} style={{
                                     ...headerPopperStyles.popper,
                                     zIndex: 60
                                 }} {...headerPopperAttributes.popper} className="ignore-click-away">
-                                    {/* Component does NOT use portal internally */}
                                     <CustomDatePickerPopover
                                         usePortal={false}
                                         initialDate={undefined}
@@ -562,12 +515,10 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                             )}
                         </AnimatePresence>
 
-                    </div>
-                    {/* End scrollable area */}
-                </div>
-                {/* End main flex container */}
+                    </div> {/* End scrollable area */}
+                </div> {/* End main flex container */}
 
-                {/* Drag Overlay (Portal is fine here as it's temporary and covers UI) */}
+                {/* Drag Overlay (unchanged) */}
                 <DragOverlay dropAnimation={dropAnimationConfig}> {draggingTask ? (
                     <TaskItem task={draggingTask} isOverlay={true}
                               scrollContainerRef={scrollContainerRef}/>) : null} </DragOverlay>
