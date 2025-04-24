@@ -23,6 +23,7 @@ import {
     endOfMonth,
     addWeeks,
     subWeeks,
+    getMonth, getYear, setMonth, setYear
 } from 'date-fns';
 import { enUS } from 'date-fns/locale'; // Use English locale
 
@@ -163,6 +164,7 @@ export {
     addMonths, subMonths, isSameMonth, isSameDay, getDay,
     startOfDay, endOfDay, isBefore, isAfter, addDays, subDays, addWeeks, subWeeks,
     differenceInCalendarDays,
+    getMonth, getYear, setMonth, setYear,
     isTodayFns as isTodayFns, // Export original under different name if needed
 };
 export { enUS }; // Export locale if needed elsewhere

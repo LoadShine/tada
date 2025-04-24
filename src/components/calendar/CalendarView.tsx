@@ -9,7 +9,8 @@ import {
     format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
     addMonths, subMonths, // Import year functions
     isSameMonth, isSameDay, // Import date part functions
-    startOfDay, isBefore, enUS, safeParseDate, isToday as isTodayFn, isValid
+    startOfDay, isBefore, enUS, safeParseDate, isToday as isTodayFn, isValid,
+    getMonth, getYear, setMonth, setYear // Ensure these are imported from dateUtils or directly
 } from '@/utils/dateUtils';
 import { twMerge } from 'tailwind-merge';
 import { clsx } from 'clsx';
@@ -19,7 +20,7 @@ import {
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import Icon from "@/components/common/Icon";
-import {getMonth, getYear, setMonth, setYear} from "date-fns";
+// Removed direct date-fns import, assuming they are exported from dateUtils
 
 // --- Draggable Task Item (Refined Glassmorphism) ---
 interface DraggableTaskProps {
@@ -170,7 +171,7 @@ const MonthYearSelector: React.FC<MonthYearSelectorProps> = ({ currentDate, onCh
             <div className="grid grid-cols-4 gap-1">
                 {months.map((month, index) => (
                     <Button
-                        key={month}
+                        key={month} // Using month name as key is fine here as they are unique
                         variant={(index === currentMonth && displayYear === currentYear) ? 'primary' : 'ghost'}
                         size="sm"
                         onClick={() => handleMonthChange(index)}
@@ -189,6 +190,7 @@ const MonthYearSelector: React.FC<MonthYearSelectorProps> = ({ currentDate, onCh
         </div>
     );
 };
+MonthYearSelector.displayName = 'MonthYearSelector'; // Added displayName
 
 
 // --- Droppable Day Cell Content (Refined Glassmorphism) ---
@@ -335,7 +337,8 @@ const CalendarView: React.FC = () => {
 
         return (
             <DroppableDayCell
-                key={day.toISOString()}
+                // *** FIX: Use a more robust unique key for day cells ***
+                key={dateKey} // Use 'yyyy-MM-dd' format as the key
                 day={day}
                 // Styling: Subtle border, background based on month
                 className={twMerge(
@@ -360,10 +363,11 @@ const CalendarView: React.FC = () => {
                 </div>
 
                 {/* Task Area - Refined */}
+                {/* Assuming styled-scrollbar-thin exists or using default */}
                 <div className="flex-1 space-y-0.5 px-1 pb-1 overflow-y-auto styled-scrollbar-thin min-h-[60px]">
                     {isCurrentMonthDay && dayTasks.slice(0, MAX_VISIBLE_TASKS).map((task) => (
                         <DraggableCalendarTask
-                            key={task.id}
+                            key={task.id} // Task ID is unique
                             task={task}
                             onClick={() => handleTaskClick(task.id)}
                         />
@@ -373,14 +377,10 @@ const CalendarView: React.FC = () => {
                             + {dayTasks.length - MAX_VISIBLE_TASKS} more
                         </div>
                     )}
-                    {/* Optional: Add a subtle indicator for empty days? */}
-                    {/* {isCurrentMonthDay && dayTasks.length === 0 && (
-                       <div className="h-full w-full flex items-center justify-center text-gray-300 text-3xl">-</div>
-                    )} */}
                 </div>
             </DroppableDayCell>
         );
-    }, [tasksByDueDate, currentMonthDate, handleTaskClick]); // Ensure dependencies are correct
+    }, [tasksByDueDate, currentMonthDate, handleTaskClick]); // Dependencies
 
     const isTodayButtonDisabled = useMemo(() => isSameMonth(currentMonthDate, new Date()) && isSameDay(currentMonthDate, new Date()), [currentMonthDate]);
 
@@ -420,9 +420,10 @@ const CalendarView: React.FC = () => {
                                 placement="bottom"
                                 contentClassName="!p-0 !shadow-xl" // Override default padding/shadow for custom content
                                 trigger={
-                                    <Button variant="ghost" size="sm" className="!h-8 px-2 text-sm font-medium text-center tabular-nums text-gray-700 hover:bg-black/15">
+                                    <Button variant="ghost" size="sm" className="!h-8 px-2 text-sm font-medium w-32 text-center tabular-nums text-gray-700 hover:bg-black/15">
                                         {format(currentMonthDate, 'MMMM yyyy', { locale: enUS })}
-                                        <Icon name="chevron-down" size={14} className="ml-1 opacity-60"/>
+                                        {/* Use ml-1.5 or ml-2 for spacing */}
+                                        <Icon name="chevron-down" size={14} className="ml-1.5 opacity-60"/>
                                     </Button>
                                 }
                             >
@@ -446,8 +447,9 @@ const CalendarView: React.FC = () => {
                 <div className="flex-1 overflow-hidden flex flex-col p-2 md:p-3">
                     {/* Weekday Headers - Refined */}
                     <div className="grid grid-cols-7 flex-shrink-0 mb-1 px-0.5">
-                        {weekDays.map((day) => (
-                            <div key={day} className="text-center py-1 text-[11px] font-semibold text-gray-500/80 tracking-wide">
+                        {/* *** FIX: Use unique key for weekday headers *** */}
+                        {weekDays.map((day, index) => (
+                            <div key={`${day}-${index}`} className="text-center py-1 text-[11px] font-semibold text-gray-500/80 tracking-wide">
                                 {day}
                             </div>
                         ))}
