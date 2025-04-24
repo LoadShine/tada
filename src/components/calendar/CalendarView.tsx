@@ -7,8 +7,8 @@ import Dropdown, { DropdownRenderProps } from '../common/Dropdown'; // Import Dr
 import { Task } from '@/types';
 import {
     format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
-    addMonths, subMonths,
-    isSameMonth, isSameDay,
+    addMonths, subMonths, // Import year functions
+    isSameMonth, isSameDay, // Import date part functions
     startOfDay, isBefore, enUS, safeParseDate, isToday as isTodayFn, isValid
 } from '@/utils/dateUtils';
 import { twMerge } from 'tailwind-merge';
@@ -165,20 +165,6 @@ const MonthYearSelector: React.FC<MonthYearSelectorProps> = ({ currentDate, onCh
                     aria-label="Next year range"
                 />
             </div>
-            {/* Year Quick Select (optional refinement) */}
-            {/* <div className="grid grid-cols-4 gap-1 mb-3">
-                {years.map(year => (
-                    <Button
-                        key={year}
-                        variant={year === displayYear ? 'secondary' : 'ghost'}
-                        size='sm'
-                        onClick={() => handleYearChange(year)} // Consider direct year change?
-                        className={twMerge("text-xs !h-6 justify-center", year === displayYear && "bg-gray-200")}
-                    >
-                        {year}
-                    </Button>
-                ))}
-            </div> */}
 
             {/* Month Grid */}
             <div className="grid grid-cols-4 gap-1">
@@ -434,7 +420,7 @@ const CalendarView: React.FC = () => {
                                 placement="bottom"
                                 contentClassName="!p-0 !shadow-xl" // Override default padding/shadow for custom content
                                 trigger={
-                                    <Button variant="ghost" size="sm" className="!h-8 px-2 text-sm font-medium w-32 text-center tabular-nums text-gray-700 hover:bg-black/15">
+                                    <Button variant="ghost" size="sm" className="!h-8 px-2 text-sm font-medium text-center tabular-nums text-gray-700 hover:bg-black/15">
                                         {format(currentMonthDate, 'MMMM yyyy', { locale: enUS })}
                                         <Icon name="chevron-down" size={14} className="ml-1 opacity-60"/>
                                     </Button>
