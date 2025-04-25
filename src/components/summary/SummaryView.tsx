@@ -1,252 +1,340 @@
 // src/components/summary/SummaryView.tsx
-import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react';
-import Icon from '../common/Icon';
-import Button from '../common/Button';
-import CodeMirrorEditor, { CodeMirrorEditorRef } from '../common/CodeMirrorEditor';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAtomValue } from 'jotai';
-import { tasksAtom } from '@/store/atoms';
-import { Task } from '@/types'; // Import Task type
+import { tasksAtom, userListNamesAtom } from '@/store/atoms';
+import Button from '../common/Button';
+import Dropdown, { DropdownRenderProps } from '../common/Dropdown';
+import MenuItem from '../common/MenuItem';
+import CodeMirrorEditor, { CodeMirrorEditorRef } from '../common/CodeMirrorEditor';
 import {
-    endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subMonths, isValid, safeParseDate, startOfDay, endOfDay, subWeeks, enUS
+    startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+    subMonths, subDays, startOfDay, endOfDay,
+    isValid, safeParseDate, formatRelativeDate
 } from '@/utils/dateUtils';
-import { twMerge } from "tailwind-merge";
+import Icon from "@/components/common/Icon";
+import {isWithinInterval} from "date-fns";
 
-type SummaryPeriod = 'this-week' | 'last-week' | 'this-month' | 'last-month';
+// --- Period Definitions ---
+type PeriodOption =
+    | 'today'
+    | 'yesterday'
+    | 'this_week'
+    | 'last_week'
+    | 'this_month'
+    | 'last_month';
 
-// --- Custom Hook for Date Calculations (Memoized internally) ---
-const useDateCalculations = () => {
-    // Performance: useCallback for functions
-    const getDateRange = useCallback((period: SummaryPeriod): { start: Date, end: Date } => {
-        const now = new Date();
-        const todayStart = startOfDay(now);
-        let startDt: Date, endDt: Date;
+interface Period {
+    id: PeriodOption;
+    label: string;
+    getInterval: () => { start: Date; end: Date };
+}
 
-        switch (period) {
-            case 'last-week':
-                startDt = startOfWeek(subWeeks(todayStart, 1), { locale: enUS });
-                endDt = endOfWeek(subWeeks(todayStart, 1), { locale: enUS });
-                break;
-            case 'this-month':
-                startDt = startOfMonth(todayStart);
-                endDt = endOfMonth(todayStart);
-                break;
-            case 'last-month':
-                startDt = startOfMonth(subMonths(todayStart, 1));
-                endDt = endOfMonth(subMonths(todayStart, 1));
-                break;
-            case 'this-week':
-            default:
-                startDt = startOfWeek(todayStart, { locale: enUS });
-                endDt = endOfWeek(todayStart, { locale: enUS });
-                break;
+const periodOptions: Period[] = [
+    {
+        id: 'today', label: 'Today', getInterval: () => {
+            const now = startOfDay(new Date());
+            return { start: now, end: endOfDay(now) };
         }
-        // Ensure end date captures the whole day for filtering
-        return { start: startOfDay(startDt), end: endOfDay(endDt) };
-    }, []);
-
-    const formatDateRange = useCallback((startDt: Date, endDt: Date): string => {
-        if (!isValid(startDt) || !isValid(endDt)) return "Invalid Date Range";
-        const startFormat = 'MMM d';
-        const endFormat = 'MMM d, yyyy';
-
-        if (startDt.getFullYear() !== endDt.getFullYear()) {
-            return `${format(startDt, 'MMM d, yyyy')} - ${format(endDt, endFormat)}`;
+    },
+    {
+        id: 'yesterday', label: 'Yesterday', getInterval: () => {
+            const yesterday = startOfDay(subDays(new Date(), 1));
+            return { start: yesterday, end: endOfDay(yesterday) };
         }
-        if (startDt.getMonth() !== endDt.getMonth()) {
-            return `${format(startDt, startFormat)} - ${format(endDt, endFormat)}`;
+    },
+    {
+        id: 'this_week', label: 'This Week', getInterval: () => {
+            const now = new Date();
+            return { start: startOfDay(startOfWeek(now)), end: endOfDay(endOfWeek(now)) };
         }
-        return `${format(startDt, startFormat)} - ${format(endDt, 'd, yyyy')}`;
-    }, []);
-
-    const getPeriodLabel = useCallback((p: SummaryPeriod): string => {
-        switch (p) {
-            case 'this-week': return 'This Week';
-            case 'last-week': return 'Last Week';
-            case 'this-month': return 'This Month';
-            case 'last-month': return 'Last Month';
-            default: return '';
+    },
+    {
+        id: 'last_week', label: 'Last Week', getInterval: () => {
+            const lastWeekStart = startOfDay(startOfWeek(subDays(new Date(), 7)));
+            return { start: lastWeekStart, end: endOfDay(endOfWeek(lastWeekStart)) };
         }
-    }, []);
+    },
+    {
+        id: 'this_month', label: 'This Month', getInterval: () => {
+            const now = new Date();
+            return { start: startOfDay(startOfMonth(now)), end: endOfDay(endOfMonth(now)) };
+        }
+    },
+    {
+        id: 'last_month', label: 'Last Month', getInterval: () => {
+            const lastMonthStart = startOfDay(startOfMonth(subMonths(new Date(), 1)));
+            return { start: lastMonthStart, end: endOfDay(endOfMonth(lastMonthStart)) };
+        }
+    },
+    // Add 'Custom' if needed later
+];
 
-    // Performance: Memoize period options array creation
-    const periodOptions = useMemo(() => {
-        const createOption = (value: SummaryPeriod) => {
-            const { start, end } = getDateRange(value);
-            return { value, label: getPeriodLabel(value), rangeLabel: formatDateRange(start, end) };
-        };
-        return [
-            createOption('this-week'),
-            createOption('last-week'),
-            createOption('this-month'),
-            createOption('last-month'),
-        ] as const; // Use const assertion for stricter typing
-    }, [getDateRange, getPeriodLabel, formatDateRange]);
+// --- Status Definitions (Visual Only for now) ---
+const statusOptions: { id: string; label: string }[] = [
+    { id: 'all', label: 'All Status' },
+    { id: 'in_progress', label: 'In Progress' },
+    { id: 'completed', label: 'Completed' },
+    // Add more statuses if needed
+];
 
-    return { getDateRange, formatDateRange, getPeriodLabel, periodOptions };
+// --- Placeholder AI Summary Function ---
+const generateAISummary = async (tasksText: string): Promise<string> => {
+    console.log("Generating summary for tasks:\n", tasksText);
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    if (!tasksText.trim()) {
+        return "No tasks provided to generate a summary.";
+    }
+
+    // Simple placeholder logic
+    const taskLines = tasksText.split('\n').filter(line => line.trim().startsWith('-'));
+    const taskCount = taskLines.length;
+    const firstTaskTitle = taskLines[0]?.replace(/- \*\*(.*?)\*\*.*$/, '$1') || 'some tasks';
+
+    return `**AI Generated Summary:**
+
+Based on the provided ${taskCount} task(s):
+*   There appears to be a focus on "${firstTaskTitle}".
+*   Consider prioritizing tasks marked with high importance.
+*   Ensure timely completion of tasks nearing their due dates.
+
+*(This is a placeholder response. Replace with actual Gemini API call.)*`;
 };
 
 
-// --- Summary View Component ---
+// --- Main Summary View Component ---
 const SummaryView: React.FC = () => {
-    const tasks = useAtomValue(tasksAtom);
+    const allTasks = useAtomValue(tasksAtom);
+    const allUserLists = useAtomValue(userListNamesAtom);
+
+    const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('this_week');
+    const [selectedList, setSelectedList] = useState<string>('All Lists');
+    const [selectedStatus, ] = useState<string>('all'); // For display only
+
+    const [tasksContent, setTasksContent] = useState<string>('');
     const [summaryContent, setSummaryContent] = useState<string>('');
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [period, setPeriod] = useState<SummaryPeriod>('this-week'); // Default period
-    const editorRef = useRef<CodeMirrorEditorRef>(null);
+    const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
-    // Use the custom hook for date logic
-    const { getDateRange, formatDateRange, getPeriodLabel, periodOptions } = useDateCalculations();
+    const tasksEditorRef = React.useRef<CodeMirrorEditorRef>(null);
+    const summaryEditorRef = React.useRef<CodeMirrorEditorRef>(null);
 
-    // Performance: Memoize generateSummary callback
-    const generateSummary = useCallback(async () => {
-        setIsLoading(true);
-        setSummaryContent(''); // Clear previous summary immediately
+    // Filter tasks based on selections
+    const filteredTasks = useMemo(() => {
+        const period = periodOptions.find(p => p.id === selectedPeriod);
+        if (!period) return [];
 
-        // Simulate AI generation delay - Keep this for UX feedback
-        await new Promise(resolve => setTimeout(resolve, 450));
+        const { start, end } = period.getInterval();
 
-        const { start: rangeStart, end: rangeEnd } = getDateRange(period);
+        return allTasks.filter(task => {
+            // Exclude trash
+            if (task.list === 'Trash') return false;
 
-        // --- Filter and sort tasks efficiently ---
-        const completedInRange: Task[] = [];
-        const addedInRange: Task[] = [];
+            // Filter by list
+            const listMatch = selectedList === 'All Lists' || task.list === selectedList;
+            if (!listMatch) return false;
 
-        tasks.forEach(task => {
-            if (task.list !== 'Trash') {
-                // Completed check: Use completedAt if available, fallback to updatedAt
-                const completionTime = task.completedAt ?? task.updatedAt;
-                if (task.completed && completionTime && completionTime >= rangeStart.getTime() && completionTime <= rangeEnd.getTime()) {
-                    completedInRange.push(task);
-                }
-                // Added check
-                if (task.createdAt >= rangeStart.getTime() && task.createdAt <= rangeEnd.getTime()) {
-                    addedInRange.push(task);
-                }
+            // Filter by completion > 0
+            if (!task.completionPercentage || task.completionPercentage <= 0) {
+                return false;
             }
-        });
 
-        // Sort results after filtering
-        completedInRange.sort((a, b) => (b.completedAt ?? b.updatedAt ?? 0) - (a.completedAt ?? a.updatedAt ?? 0)); // Most recently completed first
-        addedInRange.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)); // Most recently added first
-        // --- End Performance Optimization ---
+            // Filter by date period
+            if (!task.dueDate) return false; // Only include tasks with due dates for period filtering
+            const dueDate = safeParseDate(task.dueDate);
+            if (!dueDate || !isValid(dueDate)) return false;
 
-        // Format the summary text
-        const periodTitle = getPeriodLabel(period);
-        const dateRangeStr = formatDateRange(rangeStart, rangeEnd);
+            return isWithinInterval(dueDate, { start, end });
+        }).sort((a, b) => (a.dueDate ?? 0) - (b.dueDate ?? 0) || (a.order ?? 0) - (b.order ?? 0)); // Sort by due date, then order
 
-        let generatedText = `# Summary for ${periodTitle}\n`;
-        generatedText += `*${dateRangeStr}*\n\n`;
+    }, [allTasks, selectedPeriod, selectedList]);
 
-        // Completed Tasks Section
-        generatedText += `## ✅ Completed Tasks (${completedInRange.length})\n`;
-        if (completedInRange.length > 0) {
-            completedInRange.forEach(task => {
-                const completedDate = safeParseDate(task.completedAt ?? task.updatedAt);
-                const dateStr = completedDate && isValid(completedDate) ? format(completedDate, 'MMM d') : 'Unknown Date';
-                generatedText += `- ${task.title || 'Untitled Task'} *(Done: ${dateStr})*\n`;
-            });
-        } else {
-            generatedText += `*No tasks completed during this period.*\n`;
-        }
-        generatedText += "\n";
-
-        // Added Tasks Section
-        generatedText += `## ➕ Added Tasks (${addedInRange.length})\n`;
-        if (addedInRange.length > 0) {
-            addedInRange.forEach(task => {
-                const createdDate = safeParseDate(task.createdAt);
-                const dateStr = createdDate && isValid(createdDate) ? format(createdDate, 'MMM d') : 'Unknown Date';
-                generatedText += `- ${task.title || 'Untitled Task'} *(Added: ${dateStr})*\n`;
-            });
-        } else {
-            generatedText += `*No new tasks added during this period.*\n`;
-        }
-
-        setSummaryContent(generatedText);
-        setIsLoading(false);
-
-        // Focus the editor after content update using requestAnimationFrame
-        requestAnimationFrame(() => {
-            editorRef.current?.focus();
-        });
-
-    }, [tasks, period, getDateRange, formatDateRange, getPeriodLabel]); // Dependencies
-
-    // Optional: Generate summary automatically when period changes or component mounts
+    // Format filtered tasks for the editor
     useEffect(() => {
-        generateSummary();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [period]); // Run only when period changes
+        const formattedContent = filteredTasks.map(task => {
+            const dueDateStr = task.dueDate ? ` (Due: ${formatRelativeDate(task.dueDate)})` : '';
+            const percentageStr = task.completionPercentage ? ` [${task.completionPercentage}%]` : '';
+            const priorityStr = task.priority ? ` (P${task.priority})` : '';
+            return `- **${task.title || 'Untitled Task'}**${percentageStr}${priorityStr}${dueDateStr}\n  ${task.content || ''}`.trim();
+        }).join('\n\n');
 
-    // Performance: Memoize editor placeholder calculation
-    const editorPlaceholder = useMemo(() => {
-        if (isLoading) return "Generating summary...";
-        return "Click 'Generate' to create a report for the selected period,\nor start typing your own notes...\n\nSupports **Markdown** formatting.";
-    }, [isLoading]);
+        setTasksContent(formattedContent || `# No tasks found for the selected criteria.\n\nCheck your filters or task completion status.\nTasks need a due date within the period and completion > 0%.`);
+        setSummaryContent(''); // Clear summary when filters change
+    }, [filteredTasks]);
+
+    // Handle Generate button click
+    const handleGenerateClick = useCallback(async () => {
+        setIsGenerating(true);
+        setSummaryContent('Generating summary...'); // Placeholder while loading
+        try {
+            const summary = await generateAISummary(tasksContent);
+            setSummaryContent(summary);
+        } catch (error) {
+            console.error("Error generating AI summary:", error);
+            setSummaryContent("# Error generating summary.\n\nPlease check the console for details and try again.");
+        } finally {
+            setIsGenerating(false);
+        }
+    }, [tasksContent]); // Depend on the current tasksContent
+
+    // Memoized list options for dropdown
+    const listOptions = useMemo(() => ['All Lists', ...allUserLists], [allUserLists]);
+
+    // Callback for editor changes (if needed, e.g., for saving edits)
+    const handleTasksContentChange = useCallback((newContent: string) => {
+        // If we want to allow editing and potentially update tasks based on it,
+        // complex parsing logic would be needed here. For now, just update local state.
+        setTasksContent(newContent);
+    }, []);
+
 
     return (
-        <div className="h-full flex flex-col bg-glass backdrop-blur-xl overflow-hidden">
+        <div className="h-full flex flex-col bg-glass-alt-100 overflow-hidden p-2 md:p-3">
             {/* Header */}
-            <div className="px-4 py-2 border-b border-black/10 flex justify-between items-center flex-shrink-0 bg-glass-100 backdrop-blur-xl z-10 h-11">
-                <h1 className="text-lg font-semibold text-gray-800">AI Summary</h1>
-                <Button
-                    variant="primary"
-                    size="sm"
-                    icon="sparkles"
-                    onClick={generateSummary} // Use memoized callback
-                    loading={isLoading}
-                    disabled={isLoading}
-                    className="!h-[30px] px-3" // Custom button styling
-                >
-                    {isLoading ? 'Generating...' : 'Generate'}
-                </Button>
-            </div>
-
-            {/* Period Selection Bar */}
-            <div className="px-4 py-1.5 border-b border-black/10 flex justify-start items-center flex-shrink-0 bg-glass-alt-100 backdrop-blur-lg space-x-1 h-9 z-[5]">
-                <span className="text-xs text-muted-foreground mr-2 font-medium">Period:</span>
-                {periodOptions.map(opt => (
-                    <Button
-                        key={opt.value}
-                        onClick={() => setPeriod(opt.value)}
-                        variant={period === opt.value ? 'primary' : 'glass'} // Highlight active period
-                        size="sm"
-                        className={twMerge(
-                            "text-xs !h-6 px-2 font-medium backdrop-blur-md", // Common styles
-                            period === opt.value && "!text-primary-foreground", // Active text color
-                            period !== opt.value && "!text-gray-600 hover:!bg-glass-alt-100 active:!bg-glass-alt-200" // Inactive styles
-                        )}
-                        title={opt.rangeLabel} // Show date range on hover
-                        aria-pressed={period === opt.value} // Accessibility
+            <div className="px-3 md:px-4 py-2 border-b border-black/10 flex justify-between items-center flex-shrink-0 bg-glass-100 backdrop-blur-lg z-10 h-12 shadow-sm">
+                <div className="w-20"> {/* Spacer */}
+                    <h1 className="text-base font-semibold text-gray-800 truncate">AI Summary</h1>
+                </div>
+                <div className="flex items-center space-x-2 flex-wrap">
+                    {/* Period Dropdown */}
+                    <Dropdown
+                        placement="bottom-start"
+                        contentClassName="py-1"
+                        trigger={
+                            <Button variant="glass" size="sm" className="!h-8 px-2 min-w-[110px] text-sm font-medium tabular-nums text-gray-700">
+                                {periodOptions.find(p => p.id === selectedPeriod)?.label ?? 'Select Period'}
+                                <Icon name="chevron-down" size={14} className="ml-1.5 opacity-60" />
+                            </Button>
+                        }
                     >
-                        {opt.label}
+                        {(props: DropdownRenderProps) => (
+                            <>
+                                {periodOptions.map(period => (
+                                    <MenuItem
+                                        key={period.id}
+                                        selected={selectedPeriod === period.id}
+                                        onClick={() => { setSelectedPeriod(period.id); props.close(); }}
+                                    >
+                                        {period.label}
+                                    </MenuItem>
+                                ))}
+                            </>
+                        )}
+                    </Dropdown>
+
+                    {/* List Dropdown */}
+                    <Dropdown
+                        placement="bottom-start"
+                        contentClassName="py-1 max-h-60 overflow-y-auto styled-scrollbar"
+                        trigger={
+                            <Button variant="glass" size="sm" className="!h-8 px-2 min-w-[110px] text-sm font-medium text-gray-700">
+                                <Icon name={selectedList === 'All Lists' ? 'archive' : (selectedList === 'Inbox' ? 'inbox' : 'list')} size={14} className="mr-1 opacity-70" />
+                                {selectedList}
+                                <Icon name="chevron-down" size={14} className="ml-auto opacity-60" />
+                            </Button>
+                        }
+                    >
+                        {(props: DropdownRenderProps) => (
+                            <>
+                                {listOptions.map(list => (
+                                    <MenuItem
+                                        key={list}
+                                        icon={list === 'All Lists' ? 'archive' : (list === 'Inbox' ? 'inbox' : 'list')}
+                                        selected={selectedList === list}
+                                        onClick={() => { setSelectedList(list); props.close(); }}
+                                    >
+                                        {list}
+                                    </MenuItem>
+                                ))}
+                            </>
+                        )}
+                    </Dropdown>
+
+                    {/* Status Dropdown (Visual Only for now) */}
+                    <Dropdown
+                        placement="bottom-start"
+                        contentClassName="py-1"
+                        trigger={
+                            <Button variant="glass" size="sm" className="!h-8 px-2 min-w-[110px] text-sm font-medium text-gray-700">
+                                {statusOptions.find(s => s.id === selectedStatus)?.label ?? 'All Status'}
+                                <Icon name="chevron-down" size={14} className="ml-1.5 opacity-60" />
+                            </Button>
+                        }
+                    >
+                        {(props: DropdownRenderProps) => (
+                            <>
+                                {statusOptions.map(status => (
+                                    <MenuItem
+                                        key={status.id}
+                                        selected={selectedStatus === status.id}
+                                        // Make disabled as it's not functional yet
+                                        onClick={() => { /*setSelectedStatus(status.id);*/ props.close(); }}
+                                        disabled={true} // Disable selection for now
+                                        className="!cursor-not-allowed !opacity-50"
+                                    >
+                                        {status.label}
+                                    </MenuItem>
+                                ))}
+                            </>
+                        )}
+                    </Dropdown>
+                </div>
+
+                {/* Generate Button */}
+                <div className="w-20 flex justify-end"> {/* Spacer + Button */}
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        icon="sparkles"
+                        onClick={handleGenerateClick}
+                        loading={isGenerating}
+                        disabled={isGenerating || !tasksContent.trim() || tasksContent.startsWith('# No tasks found')}
+                        className="!h-8 px-3"
+                    >
+                        Generate
                     </Button>
-                ))}
+                </div>
             </div>
 
-            {/* Content Area with CodeMirror Editor */}
-            <div className="flex-1 p-3 overflow-hidden relative">
-                <div className="h-full w-full relative rounded-md overflow-hidden border border-black/10 shadow-inner bg-glass-inset backdrop-blur-lg">
-                    {/* Loading Indicator Overlay */}
-                    {isLoading && (
-                        <div className="absolute inset-0 bg-glass/50 backdrop-blur-md flex items-center justify-center z-10 rounded-md pointer-events-none">
-                            <Icon name="loader" size={24} className="text-primary animate-spin" />
-                        </div>
-                    )}
+            {/* Editor Area */}
+            <div className="flex-1 min-h-0 flex flex-col md:flex-row md:space-x-3 space-y-3 md:space-y-0 p-3 md:p-4">
 
-                    {/* Performance: CodeMirrorEditor is memoized */}
-                    <CodeMirrorEditor
-                        ref={editorRef}
-                        value={summaryContent}
-                        onChange={setSummaryContent} // Allow user edits
-                        className="h-full w-full !border-0 !shadow-none focus-within:!ring-0 !bg-transparent rounded-md" // Custom styling
-                        placeholder={editorPlaceholder} // Use memoized placeholder
-                        readOnly={isLoading} // Prevent editing while loading
-                    />
+                {/* Tasks Editor */}
+                <div className="flex-1 flex flex-col min-w-0 rounded-lg shadow-lg border border-black/10 overflow-hidden bg-glass/30">
+                    <div className="px-4 py-2 border-b border-black/10 bg-glass-alt-100 backdrop-blur-sm">
+                        <h2 className="text-sm font-medium text-gray-700">Tasks for Summary ({filteredTasks.length})</h2>
+                    </div>
+                    <div className="flex-1 min-h-0 relative"> {/* Container for editor */}
+                        <CodeMirrorEditor
+                            ref={tasksEditorRef}
+                            value={tasksContent}
+                            onChange={handleTasksContentChange} // Allow editing task content display
+                            placeholder="Select filters to view tasks eligible for summary (completion > 0% and due date within period)."
+                            readOnly={false} // Make this editor editable
+                            className="!absolute !inset-0 !h-full !w-full" // Ensure editor fills container
+                        />
+                    </div>
+                </div>
+
+                {/* Summary Editor */}
+                <div className="flex-1 flex flex-col min-w-0 rounded-lg shadow-lg border border-black/10 overflow-hidden bg-glass/30">
+                    <div className="px-4 py-2 border-b border-black/10 bg-glass-alt-100 backdrop-blur-sm">
+                        <h2 className="text-sm font-medium text-gray-700">Generated Summary</h2>
+                    </div>
+                    <div className="flex-1 min-h-0 relative"> {/* Container for editor */}
+                        <CodeMirrorEditor
+                            ref={summaryEditorRef}
+                            value={summaryContent}
+                            onChange={() => {}} // No-op for read-only editor
+                            placeholder="Click 'Generate' to create an AI summary of the tasks on the left."
+                            readOnly={true} // Summary is read-only
+                            className="!absolute !inset-0 !h-full !w-full" // Ensure editor fills container
+                        />
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
-SummaryView.displayName = 'SummaryView'; // Add display name
+SummaryView.displayName = 'SummaryView';
 export default SummaryView;

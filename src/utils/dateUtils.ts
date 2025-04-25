@@ -1,31 +1,35 @@
 // src/utils/dateUtils.ts
 import {
-    format as formatFns,
-    isToday as isTodayFns,
-    isBefore,
-    isAfter,
-    startOfDay,
-    endOfDay,
     addDays,
-    subDays,
-    parseISO,
-    isValid as isValidFns, // Rename to avoid conflict
-    differenceInCalendarDays,
-    endOfWeek,
-    startOfWeek,
-    eachDayOfInterval,
-    isSameMonth,
-    isSameDay,
-    getDay,
     addMonths,
-    subMonths,
-    startOfMonth,
-    endOfMonth,
     addWeeks,
-    subWeeks,
-    getMonth, getYear, setMonth, setYear
+    differenceInCalendarDays,
+    eachDayOfInterval,
+    endOfDay,
+    endOfMonth,
+    endOfWeek,
+    format as formatFns,
+    getDay,
+    getMonth,
+    getYear,
+    isAfter,
+    isBefore,
+    isSameDay,
+    isSameMonth,
+    isToday as isTodayFns,
+    isValid as isValidFns,
+    isWithinInterval,
+    parseISO,
+    setMonth,
+    setYear,
+    startOfDay,
+    startOfMonth,
+    startOfWeek,
+    subDays,
+    subMonths,
+    subWeeks
 } from 'date-fns';
-import { enUS } from 'date-fns/locale'; // Use English locale
+import {enUS} from 'date-fns/locale'; // Use English locale
 
 // Consistent locale for formatting
 const currentLocale = enUS;
@@ -80,7 +84,7 @@ export const formatDate = (dateInput: Date | number | null | undefined, formatSt
     if (!date) return '';
 
     try {
-        return formatFns(date, formatString, { locale: currentLocale });
+        return formatFns(date, formatString, {locale: currentLocale});
     } catch (e) {
         console.error("Error formatting date:", dateInput, e);
         return "Invalid Date";
@@ -110,7 +114,7 @@ export const formatRelativeDate = (dateInput: Date | number | null | undefined):
 
     // Check if it's within the next 6 days (after tomorrow)
     if (diffDays > 1 && diffDays <= 6) {
-        return formatFns(date, 'EEEE', { locale: currentLocale }); // 'Monday', 'Tuesday', etc.
+        return formatFns(date, 'EEEE', {locale: currentLocale}); // 'Monday', 'Tuesday', etc.
     }
 
     const currentYear = today.getFullYear();
@@ -164,7 +168,7 @@ export {
     addMonths, subMonths, isSameMonth, isSameDay, getDay,
     startOfDay, endOfDay, isBefore, isAfter, addDays, subDays, addWeeks, subWeeks,
     differenceInCalendarDays,
-    getMonth, getYear, setMonth, setYear,
+    getMonth, getYear, setMonth, setYear, isWithinInterval,
     isTodayFns as isTodayFns, // Export original under different name if needed
 };
-export { enUS }; // Export locale if needed elsewhere
+export {enUS}; // Export locale if needed elsewhere
