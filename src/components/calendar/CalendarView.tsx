@@ -38,7 +38,6 @@ const DraggableCalendarTask: React.FC<DraggableTaskProps> = React.memo(({ task, 
     const parsedDueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
     const overdue = useMemo(() => parsedDueDate != null && isValid(parsedDueDate) && isBefore(startOfDay(parsedDueDate), startOfDay(new Date())) && !task.completed, [parsedDueDate, task.completed]);
 
-    // Style: No transform transition, subtle background/opacity transitions
     const style = useMemo(() => ({
         transform: CSS.Translate.toString(transform),
         transition: isOverlay ? undefined : 'background-color 150ms ease-out, border-color 150ms ease-out, opacity 150ms ease-out',
@@ -47,23 +46,19 @@ const DraggableCalendarTask: React.FC<DraggableTaskProps> = React.memo(({ task, 
         cursor: isDragging ? 'grabbing' : (task.completed ? 'default' : 'grab'),
     }), [transform, isDragging, isOverlay, task.completed]);
 
-    // Determine background, border, and text color based on state
     const stateClasses = useMemo(() => {
         if (task.completed) {
-            return 'bg-glass-alt/30 border-transparent text-gray-400 line-through italic opacity-70';
+            return 'bg-glass-alt/40 border-transparent text-gray-500 line-through italic opacity-75';
         }
         if (overdue) {
-            return 'bg-red-500/10 border-red-500/20 text-red-700 hover:bg-red-500/15 hover:border-red-500/30';
+            return 'bg-red-500/15 border-red-500/30 text-red-700 hover:bg-red-500/20 hover:border-red-500/40';
         }
-        // Subtle glass background for normal tasks
-        return 'bg-white/40 border-black/5 text-gray-800 hover:bg-white/60 hover:border-black/10';
+        return 'bg-white/50 border-black/10 text-gray-800 hover:bg-white/70 hover:border-black/15';
     }, [task.completed, overdue]);
 
-    // Priority Dot Color
     const dotColor = useMemo(() => {
-        // Don't show dot if completed or no priority/P4
         if (task.completed || (!task.priority && task.priority !== 0) || task.priority === 4) return null;
-        if (overdue) return 'bg-red-500'; // Overdue takes precedence visually
+        if (overdue) return 'bg-red-500';
         switch (task.priority) {
             case 1: return 'bg-red-500';
             case 2: return 'bg-orange-400';
@@ -72,15 +67,12 @@ const DraggableCalendarTask: React.FC<DraggableTaskProps> = React.memo(({ task, 
         }
     }, [task.priority, task.completed, overdue]);
 
-
     const baseClasses = useMemo(() => twMerge(
-        "flex items-center w-full text-left px-1.5 py-[2px] rounded-[4px] space-x-1.5 group",
-        "border backdrop-blur-sm transition-colors duration-150 ease-out", // Base structure + blur
-        stateClasses, // Apply state-specific styles
-        'text-[11px] font-medium leading-snug truncate', // Typography
-        // Overlay: More pronounced glass effect
-        isOverlay && "bg-glass-100 backdrop-blur-md shadow-lg border-black/10 !text-gray-800 !opacity-100",
-        // Placeholder: Dashed border, faded
+        "flex items-center w-full text-left px-2 py-1 rounded-md space-x-2 group", // 增加内边距
+        "border-[1.5px] backdrop-blur-sm transition-colors duration-150 ease-out", // 加粗边框
+        stateClasses,
+        'text-[12.5px] font-medium leading-snug truncate', // 增大字体
+        isOverlay && "bg-glass-100 backdrop-blur-md shadow-lg border-black/20 !text-gray-800 !opacity-100",
         isDragging && !isOverlay && "border-dashed !bg-transparent backdrop-blur-none border-gray-300/70 !text-transparent"
     ), [stateClasses, isOverlay, isDragging]);
 
@@ -97,12 +89,10 @@ const DraggableCalendarTask: React.FC<DraggableTaskProps> = React.memo(({ task, 
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
         >
-            {/* Status Dot - Only show if color is determined */}
             {dotColor && (
-                <div className={twMerge("w-1.5 h-1.5 rounded-full flex-shrink-0", dotColor)}></div>
+                <div className={twMerge("w-2 h-2 rounded-full flex-shrink-0", dotColor)}></div>
             )}
-            {/* Task Title */}
-            <span className={twMerge("flex-1 truncate", !dotColor && "ml-[9px]")}> {/* Add margin if no dot */}
+            <span className={twMerge("flex-1 truncate", !dotColor && "ml-[10px]")}>
                 {task.title || <span className="italic">Untitled</span>}
             </span>
         </div>
@@ -333,7 +323,7 @@ const CalendarView: React.FC = () => {
         const isCurrentMonthDay = isSameMonth(day, currentMonthDate);
         const isToday = isTodayFn(day);
 
-        const MAX_VISIBLE_TASKS = 3;
+        const MAX_VISIBLE_TASKS = 5;
 
         return (
             <DroppableDayCell
