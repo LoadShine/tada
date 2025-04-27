@@ -419,8 +419,8 @@ const SummaryView: React.FC = () => {
                                             data-tooltip-id="summary-ref-tooltip"
                                             data-tooltip-content="View tasks used for this summary"
                                             aria-haspopup="true"><Icon name="file-text" size={12}
-                                                                       className="mr-1 opacity-70"/> ({tasksUsedCount} tasks
-                                            used) <Icon name="chevron-down" size={12} className="ml-0.5 opacity-60"/>
+                                                                       className="mr-1 opacity-70"/> {tasksUsedCount} tasks
+                                            used <Icon name="chevron-down" size={12} className="ml-0.5 opacity-60"/>
                                         </button>}>
                                             {renderReferencedTasksDropdown()}
                                         </Dropdown>
