@@ -10,11 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { IconName } from "@/components/common/IconMap";
 
-// Performance: Memoize IconBar
 const IconBar: React.FC = memo(() => {
     const currentUser = useAtomValue(currentUserAtom);
     const [, setIsSettingsOpen] = useAtom(isSettingsOpenAtom);
-    const location = useLocation(); // Get current location
+    const location = useLocation();
 
     const navigationItems: { path: string; icon: IconName, label: string }[] = useMemo(() => [
         { path: '/all', icon: 'archive', label: 'All Tasks' },
@@ -26,20 +25,23 @@ const IconBar: React.FC = memo(() => {
         setIsSettingsOpen(true);
     }, [setIsSettingsOpen]);
 
-    // Updated NavLink class logic
+    // Updated NavLink class logic: Removed explicit ring, matching focus to hover
     const getNavLinkClass = useCallback((itemPath: string) => ({ isActive }: { isActive: boolean }): string => {
         let isEffectivelyActive = isActive;
+        // Make "All Tasks" active for any list/tag/standard filter view
         if (itemPath === '/all') {
             const isTaskListRelatedView = !location.pathname.startsWith('/calendar') && !location.pathname.startsWith('/summary');
             isEffectivelyActive = isTaskListRelatedView;
         }
 
         return cn(
-            'flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ease-in-out group relative',
+            'flex items-center justify-center', // Ensure centering
+            'w-10 h-10 rounded-lg transition-all duration-150 ease-in-out group relative', // Faster transition
             isEffectivelyActive
-                ? 'bg-primary/15 text-primary scale-105 shadow-sm' // Subtle active emphasis
+                ? 'bg-primary/20 text-primary scale-105' // Slightly stronger active bg, keep scale
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-105',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+            // Focus state now matches hover state for subtlety
+            'focus:outline-none focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:scale-105'
         );
     }, [location.pathname]);
 
@@ -59,7 +61,6 @@ const IconBar: React.FC = memo(() => {
                                 to={item.path}
                                 className={getNavLinkClass(item.path)}
                                 aria-label={item.label}
-                                // `end` prop ensures exact match for top-level routes like /calendar, /summary
                                 end={item.path !== '/all'}
                             >
                                 <Icon name={item.icon} size={20} strokeWidth={2} />
@@ -79,7 +80,8 @@ const IconBar: React.FC = memo(() => {
                         <Button
                             onClick={handleAvatarClick}
                             variant="ghost" size="icon"
-                            className="w-9 h-9 rounded-full overflow-hidden p-0 border border-border/50 shadow-inner hover:ring-2 hover:ring-primary/50"
+                            // Subtle focus matching hover state for avatar button
+                            className="w-9 h-9 rounded-full overflow-hidden p-0 border border-border/50 shadow-inner hover:ring-1 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
                             aria-label="Account Settings"
                         >
                             <Avatar className="h-full w-full">

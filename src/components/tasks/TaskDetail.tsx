@@ -14,15 +14,17 @@ import { Calendar } from '@/components/ui/calendar';
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+    Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
+} from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox'; // Use checkbox for completion state
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { IconName } from "@/components/common/IconMap";
 
-// Meta Row Component Refactored (Simplified Layout)
+// Meta Row Component (Unchanged)
 const MetaRow: React.FC<{ icon: IconName; label: string; children: React.ReactNode; disabled?: boolean }> =
     memo(({ icon, label, children, disabled = false }) => (
         <div className={cn("flex items-center group min-h-[36px] py-1", disabled && "opacity-60 pointer-events-none select-none")}>
@@ -37,11 +39,11 @@ const MetaRow: React.FC<{ icon: IconName; label: string; children: React.ReactNo
     ));
 MetaRow.displayName = 'MetaRow';
 
-// Tag Pill Component (Using shadcn Badge)
+// Tag Pill Component (Unchanged)
 interface TagPillProps { tag: string; onRemove: () => void; disabled?: boolean; }
 const TagPill: React.FC<TagPillProps> = React.memo(({ tag, onRemove, disabled }) => (
     <Badge
-        variant="secondary" // Use secondary variant for subtle look
+        variant="secondary"
         className={cn(
             "mr-1 mb-1 group/pill whitespace-nowrap cursor-default h-6 text-xs font-normal",
             disabled ? "opacity-70" : "hover:bg-accent"
@@ -68,15 +70,14 @@ TagPill.displayName = 'TagPill';
 const TaskDetail: React.FC = () => {
     // Hooks and state setup
     const [selectedTask] = useAtom(selectedTaskAtom);
+    const [currentSelectedTaskId, setSelectedTaskId] = useAtom(selectedTaskIdAtom); // Get current global selection ID
     const setTasks = useSetAtom(tasksAtom);
-    const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
     const userLists = useAtomValue(userListNamesAtom);
     const [localTitle, setLocalTitle] = useState('');
     const [localContent, setLocalContent] = useState('');
     const [localDueDate, setLocalDueDate] = useState<Date | undefined>(undefined);
     const [localTags, setLocalTags] = useState('');
     const [tagInputValue, setTagInputValue] = useState('');
-    // No separate state needed for delete confirm, handled by AlertDialog
 
     const titleInputRef = useRef<HTMLInputElement>(null);
     const tagInputElementRef = useRef<HTMLInputElement>(null);
@@ -87,23 +88,24 @@ const TaskDetail: React.FC = () => {
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasUnsavedChangesRef = useRef(false);
     const isMountedRef = useRef(true);
+    const instanceTaskId = useRef<string | null>(selectedTask?.id ?? null); // Store the ID this instance was mounted with
 
     // Mount/Unmount Effect
     useEffect(() => {
         isMountedRef.current = true;
+        instanceTaskId.current = selectedTask?.id ?? null; // Track instance ID on mount/update
         return () => {
             isMountedRef.current = false;
             if (saveTimeoutRef.current) {
                 clearTimeout(saveTimeoutRef.current);
                 saveTimeoutRef.current = null;
-                // Optionally trigger one last save on unmount if needed
-                // savePendingChanges(); // Be cautious with state updates on unmount
             }
         };
-    }, []);
+    }, [selectedTask?.id]); // Update instance ID if the selected task changes for this component instance
 
-    // Debounced Save Logic (Mostly unchanged, adapted state access)
+    // Debounced Save Logic (Unchanged)
     const savePendingChanges = useCallback(() => {
+        // ... (save logic unchanged) ...
         if (!selectedTask || !hasUnsavedChangesRef.current || !isMountedRef.current) return;
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
@@ -111,7 +113,7 @@ const TaskDetail: React.FC = () => {
         }
         const currentTitle = latestTitleRef.current;
         const currentContent = latestContentRef.current;
-        const currentDueDate = localDueDate; // Already Date | undefined
+        const currentDueDate = localDueDate;
         const currentTagsString = latestTagsRef.current;
 
         const processedTitle = currentTitle.trim();
@@ -135,19 +137,20 @@ const TaskDetail: React.FC = () => {
         hasUnsavedChangesRef.current = false;
     }, [selectedTask, setTasks, localDueDate]);
 
-    // Sync Local State from Atom (Adapted)
+    // Sync Local State from Atom (Re-introduced Auto-Focus with Delay and Checks)
     useEffect(() => {
         if (selectedTask) {
             const isTitleFocused = titleInputRef.current === document.activeElement;
             const isTagsFocused = tagInputElementRef.current === document.activeElement;
             const isContentFocused = editorRef.current?.getView()?.hasFocus ?? false;
 
+            // Update local state if not focused
             if (!isTitleFocused) setLocalTitle(selectedTask.title);
-            latestTitleRef.current = selectedTask.title; // Always update ref
+            latestTitleRef.current = selectedTask.title;
 
             const taskContent = selectedTask.content || '';
             if (!isContentFocused) setLocalContent(taskContent);
-            latestContentRef.current = taskContent; // Always update ref
+            latestContentRef.current = taskContent;
 
             const taskDueDate = safeParseDate(selectedTask.dueDate);
             const validTaskDueDate = taskDueDate && isValid(taskDueDate) ? taskDueDate : undefined;
@@ -155,24 +158,37 @@ const TaskDetail: React.FC = () => {
 
             const taskTagsString = (selectedTask.tags ?? []).join(', ');
             if (!isTagsFocused) setLocalTags(taskTagsString);
-            latestTagsRef.current = taskTagsString; // Always update ref
-            if (!isTagsFocused) setTagInputValue(''); // Clear input only if not focused
+            latestTagsRef.current = taskTagsString;
+            if (!isTagsFocused) setTagInputValue('');
 
             hasUnsavedChangesRef.current = false;
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-            // Auto-focus title if empty and not focused elsewhere
+            // --- RE-INTRODUCED AUTO-FOCUS with DELAY and CHECKS ---
             if (selectedTask.title === '' && !isTitleFocused && !isContentFocused && !isTagsFocused) {
-                const timer = setTimeout(() => {
-                    if (isMountedRef.current && titleInputRef.current) {
+                const focusTimer = setTimeout(() => {
+                    // Perform checks inside the timeout callback
+                    if (
+                        isMountedRef.current &&                      // Is component still mounted?
+                        currentSelectedTaskId === selectedTask.id && // Is this task *still* the selected one globally?
+                        titleInputRef.current &&                     // Is the input ref available?
+                        titleInputRef.current.value === ''           // Is the title *still* empty? (Check local state ref)
+                    ) {
+                        console.log("Attempting delayed focus for task:", selectedTask.id);
                         titleInputRef.current.focus();
+                        // Selecting text can sometimes be unreliable immediately after focus, but let's try
+                        // Use another small delay if selection is inconsistent
+                        // setTimeout(() => titleInputRef.current?.select(), 10);
                         titleInputRef.current.select();
+                    } else {
+                        console.log("Delayed focus aborted for task:", selectedTask.id, { mounted: isMountedRef.current, stillSelected: currentSelectedTaskId === selectedTask.id, titleEmpty: titleInputRef.current?.value === '' });
                     }
-                }, 250); // Shorter delay
-                return () => clearTimeout(timer);
+                }, 350); // Delay > MainPage transition duration (300ms)
+                return () => clearTimeout(focusTimer); // Cleanup the timer
             }
+            // --- END RE-INTRODUCTION ---
         } else {
-            // Reset state when no task is selected
+            // Reset state when no task is selected (unchanged)
             setLocalTitle(''); latestTitleRef.current = '';
             setLocalContent(''); latestContentRef.current = '';
             setLocalDueDate(undefined);
@@ -181,8 +197,9 @@ const TaskDetail: React.FC = () => {
             hasUnsavedChangesRef.current = false;
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTask?.id]); // Depend only on ID change
+        // Depend on selectedTask?.id and the global currentSelectedTaskId
+    }, [selectedTask?.id, currentSelectedTaskId]);
+
 
     // Update Refs on Local State Change (Unchanged)
     useEffect(() => { latestTitleRef.current = localTitle; }, [localTitle]);
@@ -191,6 +208,7 @@ const TaskDetail: React.FC = () => {
 
     // Debounced Save Trigger (Unchanged)
     const triggerSave = useCallback(() => {
+        // ... (trigger logic unchanged) ...
         if (!selectedTask || !isMountedRef.current) return;
         hasUnsavedChangesRef.current = true;
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -199,6 +217,7 @@ const TaskDetail: React.FC = () => {
 
     // Direct Update Function (Unchanged)
     const updateTask = useCallback((updates: Partial<Omit<Task, 'groupCategory' | 'completedAt' | 'completed'>>) => {
+        // ... (update logic unchanged) ...
         if (!selectedTask || !isMountedRef.current) return;
         if (hasUnsavedChangesRef.current) savePendingChanges();
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -206,12 +225,12 @@ const TaskDetail: React.FC = () => {
         setTasks(prevTasks => prevTasks.map(t => t.id === selectedTask.id ? { ...t, ...updates, updatedAt: Date.now() } : t));
     }, [selectedTask, setTasks, savePendingChanges]);
 
-    // Event Handlers (Adapted for shadcn components)
+    // Event Handlers (Unchanged)
     const handleClose = useCallback(() => { savePendingChanges(); setSelectedTaskId(null); }, [setSelectedTaskId, savePendingChanges]);
     const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { setLocalTitle(e.target.value); triggerSave(); }, [triggerSave]);
     const handleContentChange = useCallback((newValue: string) => { setLocalContent(newValue); triggerSave(); }, [triggerSave]);
     const handleDatePickerSelect = useCallback((date: Date | undefined) => {
-        const newDate = date ? startOfDay(date) : undefined; // Keep as Date object until save
+        const newDate = date ? startOfDay(date) : undefined;
         setLocalDueDate(newDate);
         updateTask({ dueDate: newDate ? newDate.getTime() : null });
     }, [updateTask]);
@@ -221,34 +240,29 @@ const TaskDetail: React.FC = () => {
     const handleCompletionToggle = useCallback((checked: boolean | 'indeterminate') => {
         const newPercentage = checked === true ? 100 : null;
         updateTask({ completionPercentage: newPercentage });
-        if (newPercentage === 100) {
-            // Optional: Deselect task when completed via this toggle
-            // setSelectedTaskId(null);
-        }
     }, [updateTask]);
 
-    // Delete/Restore Handling (Adapted for AlertDialog)
+    // Delete/Restore Handling (Unchanged)
     const confirmDelete = useCallback(() => {
         if (!selectedTask) return;
         updateTask({ list: 'Trash', completionPercentage: null });
-        setSelectedTaskId(null); // Close detail view after moving to trash
-        // Dialog closes itself via AlertDialogAction
+        setSelectedTaskId(null);
     }, [selectedTask, updateTask, setSelectedTaskId]);
     const handleRestore = useCallback(() => {
         if (!selectedTask || selectedTask.list !== 'Trash') return;
-        updateTask({ list: 'Inbox' }); // Move back to Inbox
+        updateTask({ list: 'Inbox' });
     }, [selectedTask, updateTask]);
 
-    // Input KeyDown Handlers (Adapted)
+    // Input KeyDown Handlers (Unchanged)
     const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            savePendingChanges(); // Save immediately on Enter
+            savePendingChanges();
             (e.target as HTMLInputElement).blur();
         } else if (e.key === 'Escape' && selectedTask) {
             e.preventDefault();
             if (localTitle !== selectedTask.title) {
-                setLocalTitle(selectedTask.title); // Revert
+                setLocalTitle(selectedTask.title);
                 latestTitleRef.current = selectedTask.title;
                 if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
                 hasUnsavedChangesRef.current = false;
@@ -257,45 +271,44 @@ const TaskDetail: React.FC = () => {
         }
     }, [selectedTask, localTitle, savePendingChanges]);
 
-    // Tag Input Logic (Adapted for Input + Badge)
+    // Tag Input Logic (Unchanged)
     const tagsArray = useMemo(() => localTags.split(',').map(t => t.trim()).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i), [localTags]);
     const isTrash = useMemo(() => selectedTask?.list === 'Trash', [selectedTask?.list]);
     const isCompleted = useMemo(() => selectedTask?.completed ?? false, [selectedTask?.completed]);
     const isTagHandlingDisabled = useMemo(() => isTrash || isCompleted, [isTrash, isCompleted]);
-    const addTag = useCallback((tagToAdd: string) => {
-        const trimmedTag = tagToAdd.trim().replace(/,/g, ''); // Also remove commas within tag
+    const addTag = useCallback((tagToAdd: string) => { /* ... */
+        const trimmedTag = tagToAdd.trim().replace(/,/g, '');
         if (!trimmedTag || isTagHandlingDisabled) return;
         const currentTags = localTags.split(',').map(t => t.trim()).filter(Boolean);
-        if (currentTags.includes(trimmedTag)) { setTagInputValue(''); return; } // Prevent duplicates
+        if (currentTags.includes(trimmedTag)) { setTagInputValue(''); return; }
         const newTagsString = [...currentTags, trimmedTag].join(', ');
         setLocalTags(newTagsString);
         setTagInputValue('');
         triggerSave();
     }, [localTags, isTagHandlingDisabled, triggerSave]);
-    const removeTag = useCallback((tagToRemove: string) => {
+    const removeTag = useCallback((tagToRemove: string) => { /* ... */
         if (isTagHandlingDisabled) return;
         const newTagsArray = tagsArray.filter(t => t !== tagToRemove);
         setLocalTags(newTagsArray.join(', '));
         triggerSave();
         tagInputElementRef.current?.focus();
     }, [tagsArray, isTagHandlingDisabled, triggerSave]);
-    const handleTagInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleTagInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => { /* ... */
         if (isTagHandlingDisabled) return;
         const value = tagInputValue.trim();
         if ((e.key === 'Enter' || e.key === ',') && value) { e.preventDefault(); addTag(value); }
         else if (e.key === 'Backspace' && tagInputValue === '' && tagsArray.length > 0) { e.preventDefault(); removeTag(tagsArray[tagsArray.length - 1]); }
         else if (e.key === 'Escape') { e.preventDefault(); setTagInputValue(''); (e.target as HTMLInputElement).blur(); }
     }, [tagInputValue, tagsArray, addTag, removeTag, isTagHandlingDisabled]);
-    const handleTagInputBlur = useCallback(() => {
+    const handleTagInputBlur = useCallback(() => { /* ... */
         const value = tagInputValue.trim();
-        if (value && !isTagHandlingDisabled) addTag(value); // Add tag on blur
-        // Ensure final state is saved if focus leaves
-        setTimeout(savePendingChanges, 50); // Slight delay to allow other updates first
+        if (value && !isTagHandlingDisabled) addTag(value);
+        setTimeout(savePendingChanges, 50);
     }, [tagInputValue, addTag, isTagHandlingDisabled, savePendingChanges]);
     const handleTagContainerClick = useCallback(() => { if (!isTagHandlingDisabled) tagInputElementRef.current?.focus(); }, [isTagHandlingDisabled]);
 
 
-    // Memos for Display Logic (Adapted)
+    // Memos for Display Logic (Unchanged)
     const priorityMap: Record<number, { label: string; iconColor: string }> = useMemo(() => ({
         1: { label: 'High', iconColor: 'text-red-500 dark:text-red-400' },
         2: { label: 'Medium', iconColor: 'text-orange-500 dark:text-orange-400' },
@@ -311,9 +324,9 @@ const TaskDetail: React.FC = () => {
     const displayUpdatedAt = useMemo(() => selectedTask ? formatDateTime(selectedTask.updatedAt) : '', [selectedTask?.updatedAt]);
     const availableLists = useMemo(() => userLists.filter(l => l !== 'Trash'), [userLists]);
     const editorClasses = cn("!min-h-[150px] h-full text-sm !bg-transparent !border-none !shadow-none", (isCompleted || isTrash) && "opacity-70", isTrash && "pointer-events-none");
-    const progressStatusText = useMemo(() => {
+    const progressStatusText = useMemo(() => { /* ... */
         const p = selectedTask?.completionPercentage;
-        if (isCompleted) return "Completed"; // Check derived state first
+        if (isCompleted) return "Completed";
         if (p === 80) return "Almost Done (80%)";
         if (p === 50) return "Halfway (50%)";
         if (p === 20) return "Started (20%)";
@@ -327,57 +340,59 @@ const TaskDetail: React.FC = () => {
         {label: 'Completed (100%)', value: '100', icon: 'circle-check' as IconName},
     ], []);
     const currentProgressValue = useMemo(() => String(selectedTask?.completionPercentage ?? 'null'), [selectedTask?.completionPercentage]);
-
-    // Calculate checkbox state from percentage
-    const checkboxState = useMemo(() => {
+    const checkboxState = useMemo(() => { /* ... */
         if (isCompleted) return true;
         if (selectedTask?.completionPercentage && selectedTask.completionPercentage > 0) return 'indeterminate';
         return false;
     }, [isCompleted, selectedTask?.completionPercentage]);
-
-    const tagInputContainerClasses = cn(
-        "flex items-center flex-wrap border border-input bg-background rounded-md min-h-[36px] px-2 py-1", // Use theme styles
+    const tagInputContainerClasses = cn( /* ... */
+        "flex items-center flex-wrap border border-input bg-background rounded-md min-h-[36px] px-2 py-1",
         "transition-colors duration-150 ease-in-out",
         isTagHandlingDisabled
             ? "opacity-60 cursor-not-allowed"
             : "hover:border-ring/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-ring cursor-text"
     );
 
+
     if (!selectedTask) return null;
+
+    const animationDuration = 0.15;
 
     return (
         <>
-            {/* Use AlertDialog for delete confirmation */}
-            <AlertDialog>
+            <Dialog>
                 <motion.div key={selectedTask.id}
                             className={cn(
-                                "border-l border-border/50 w-[400px] shrink-0 h-full flex flex-col shadow-lg z-10", // Use theme border
-                                "bg-glass-100 backdrop-blur-xl" // Glass effect
+                                "border-l border-border/50 w-[400px] shrink-0 h-full flex flex-col shadow-lg z-10",
+                                "bg-glass-100 backdrop-blur-xl"
                             )}
-                            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%', transition: { duration: 0.2, ease: 'easeOut' } }}
-                            transition={{ duration: 0.25, ease: "easeOut" }}>
+                            initial={{ x: '100%' }} animate={{ x: 0 }}
+                            exit={{ x: '100%', transition: { duration: animationDuration, ease: 'linear' } }}
+                            transition={{ duration: 0.25, ease: "easeOut" }}
+                >
 
-                    {/* Header */}
+                    {/* Header (Unchanged - including DialogTrigger fix) */}
                     <div className="px-3 py-2 border-b border-border/50 flex justify-between items-center flex-shrink-0 h-11 bg-glass-alt-100 backdrop-blur-lg">
                         <div className="w-20 flex justify-start">
                             {isTrash ? (
                                 <Button variant="ghost" size="sm" icon="arrow-left" onClick={handleRestore} className="text-green-600 hover:bg-green-500/10 hover:text-green-700 text-xs px-1.5"> Restore </Button>
                             ) : (
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" icon="trash"
-                                            className="text-destructive hover:bg-destructive/10 hover:text-destructive w-7 h-7"
-                                            aria-label="Move task to Trash"/>
-                                </AlertDialogTrigger>
+                                <DialogTrigger
+                                    className={cn(buttonVariants({ variant: 'ghost', size: 'icon'}), "text-destructive hover:bg-destructive/10 hover:text-destructive w-7 h-7")}
+                                    aria-label="Move task to Trash"
+                                >
+                                    <Icon name="trash" size={16}/>
+                                </DialogTrigger>
                             )}
                         </div>
-                        <div className="flex-1 text-center h-4"></div> {/* Spacer */}
+                        <div className="flex-1 text-center h-4"></div>
                         <div className="w-20 flex justify-end">
                             <Button variant="ghost" size="icon" icon="x" onClick={handleClose} aria-label="Close task details"
                                     className="text-muted-foreground hover:bg-accent w-7 h-7"/>
                         </div>
                     </div>
 
-                    {/* Scrollable Content */}
+                    {/* Scrollable Content (Unchanged) */}
                     <ScrollArea className="flex-1" type="auto">
                         <div className="p-4 space-y-4">
                             {/* Progress Checkbox and Title */}
@@ -387,26 +402,26 @@ const TaskDetail: React.FC = () => {
                                     checked={checkboxState}
                                     onCheckedChange={handleCompletionToggle}
                                     disabled={isTrash}
-                                    className="mt-[5px] w-5 h-5 rounded-full flex-shrink-0" // Circular style
+                                    className="mt-[5px] w-5 h-5 rounded-full flex-shrink-0"
                                     aria-label="Mark task complete/incomplete"
                                 />
                                 <Input
                                     ref={titleInputRef} type="text" value={localTitle} onChange={handleTitleChange}
-                                    onKeyDown={handleTitleKeyDown} onBlur={savePendingChanges} // Save on blur too
+                                    onKeyDown={handleTitleKeyDown} onBlur={savePendingChanges}
                                     className={cn(
                                         "w-full text-lg font-medium border-none focus-visible:ring-0 focus:ring-0 focus:outline-none bg-transparent p-0 m-0 h-auto leading-tight",
                                         "placeholder:text-muted-foreground placeholder:font-normal",
                                         (isCompleted || isTrash) && "line-through text-muted-foreground",
-                                        "task-detail-title-input" // Keep custom class if needed elsewhere
+                                        "task-detail-title-input"
                                     )}
                                     placeholder="Task title..." disabled={isTrash} aria-label="Task title"
                                     id={`task-title-input-${selectedTask.id}`}
                                 />
                             </div>
 
-                            {/* Metadata Section */}
+                            {/* Metadata Section (Unchanged) */}
                             <div className="space-y-0 text-sm border-t border-b border-border/50 py-1 my-3">
-                                {/* Progress Row */}
+                                {/* ... MetaRows ... */}
                                 <MetaRow icon="circle-gauge" label="Progress" disabled={isTrash}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -433,7 +448,6 @@ const TaskDetail: React.FC = () => {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </MetaRow>
-                                {/* Due Date Row */}
                                 <MetaRow icon="calendar" label="Due Date" disabled={isTrash}>
                                     <Popover>
                                         <PopoverTrigger asChild>
@@ -461,7 +475,6 @@ const TaskDetail: React.FC = () => {
                                         </PopoverContent>
                                     </Popover>
                                 </MetaRow>
-                                {/* List Row */}
                                 <MetaRow icon="list" label="List" disabled={isTrash}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -484,7 +497,6 @@ const TaskDetail: React.FC = () => {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </MetaRow>
-                                {/* Priority Row */}
                                 <MetaRow icon="flag" label="Priority" disabled={isTagHandlingDisabled}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -511,8 +523,6 @@ const TaskDetail: React.FC = () => {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </MetaRow>
-
-                                {/* Tags Row */}
                                 <MetaRow icon="tag" label="Tags" disabled={isTagHandlingDisabled}>
                                     <div className={tagInputContainerClasses} onClick={handleTagContainerClick}>
                                         {tagsArray.map((tag) => (
@@ -535,19 +545,19 @@ const TaskDetail: React.FC = () => {
                                 </MetaRow>
                             </div>
 
-                            {/* Content Editor */}
+                            {/* Content Editor (Unchanged) */}
                             <div className="task-detail-content-editor flex-1 min-h-[150px] flex flex-col">
                                 <Label className="text-xs font-medium text-muted-foreground mb-1.5">Notes</Label>
                                 <CodeMirrorEditor
                                     ref={editorRef} value={localContent} onChange={handleContentChange}
-                                    onBlur={savePendingChanges} // Also save on blur
+                                    onBlur={savePendingChanges}
                                     placeholder="Add notes, links, or details here... Markdown is supported."
                                     className={editorClasses} readOnly={isTrash}/>
                             </div>
                         </div>
                     </ScrollArea>
 
-                    {/* Footer */}
+                    {/* Footer (Unchanged) */}
                     <div className="px-4 py-1.5 border-t border-border/50 flex justify-end items-center flex-shrink-0 h-8 bg-glass-alt-200 backdrop-blur-lg">
                         <div className="text-[10px] text-muted-foreground space-x-3">
                             <span>Created: {displayCreatedAt}</span>
@@ -556,22 +566,26 @@ const TaskDetail: React.FC = () => {
                     </div>
                 </motion.div>
 
-                {/* Delete Confirmation Dialog Content */}
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Move Task to Trash?</AlertDialogTitle>
-                        <AlertDialogDescription>
+                {/* Delete Confirmation Dialog Content (Structure remains the same) */}
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Move Task to Trash?</DialogTitle>
+                        <DialogDescription>
                             Are you sure you want to move the task "{selectedTask.title || 'Untitled Task'}" to the Trash?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className={buttonVariants({ variant: "destructive" })}>
-                            Move to Trash
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                            <Button onClick={confirmDelete} variant="destructive">
+                                Move to Trash
+                            </Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 };

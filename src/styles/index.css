@@ -5,190 +5,162 @@
 
 @layer base {
     :root {
-        /* Define your light theme colors */
-        --background: 0 0% 100%; /* White */
-        --foreground: 222.2 84% 4.9%; /* Dark Blue/Black */
-        --canvas: 220 20% 96%; /* Light Grey page background */
-        --canvas-alt: 220 30% 98%; /* Slightly different grey */
-
-        --card: 0 0% 100%;
-        --card-foreground: 222.2 84% 4.9%;
-
+        /* Your existing color variables */
+        --background: 0 0% 100%;
+        --foreground: 224 71.4% 4.1%;
+        --muted: 220 14.3% 95.8%;
+        --muted-foreground: 220 8.9% 46.1%;
         --popover: 0 0% 100%;
-        --popover-foreground: 222.2 84% 4.9%;
+        --popover-foreground: 224 71.4% 4.1%;
+        --card: 0 0% 100%;
+        --card-foreground: 224 71.4% 4.1%;
+        --border: 220 13% 91%;
+        --input: 220 13% 91%; /* Used for input borders */
+        --primary: 262.1 83.3% 57.8%; /* Adjusted primary */
+        --primary-foreground: 210 20% 98%;
+        --secondary: 220 14.3% 95.8%;
+        --secondary-foreground: 224 71.4% 4.1%;
+        --accent: 220 14.3% 95.8%;
+        --accent-foreground: 224 71.4% 4.1%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 20% 98%;
+        --ring: 262.1 83.3% 57.8%; /* Ring defaults to primary */
+        --radius: 0.5rem;
 
-        --primary: 222.2 47.4% 11.2%; /* Vibrant Purple */
-        --primary-foreground: 210 40% 98%; /* White */
+        /* Add canvas color if needed, or use background */
+        --canvas: 230 20% 98%; /* Light grey canvas */
 
-        --secondary: 210 40% 96.1%; /* Light Gray */
-        --secondary-foreground: 222.2 47.4% 11.2%; /* Dark Blue */
+        /* Glass effect colors */
+        --glass-100-light: 230 50% 98% / 0.6; /* Lighter glass */
+        --glass-alt-100-light: 230 50% 96% / 0.75;
+        --glass-alt-200-light: 230 50% 94% / 0.85;
+        --glass-inset-100-light: 230 50% 99% / 0.4;
+        --glass-inset-200-light: 230 50% 97% / 0.5;
 
-        --muted: 210 40% 96.1%;
-        --muted-foreground: 215.4 16.3% 46.9%; /* Grey */
+        --glass-100-dark: 220 15% 18% / 0.6; /* Darker glass */
+        --glass-alt-100-dark: 220 15% 15% / 0.75;
+        --glass-alt-200-dark: 220 15% 13% / 0.85;
+        --glass-inset-100-dark: 220 15% 22% / 0.4;
+        --glass-inset-200-dark: 220 15% 20% / 0.5;
 
-        --accent: 210 40% 96.1%;
-        --accent-foreground: 222.2 47.4% 11.2%;
-
-        --destructive: 0 84.2% 60.2%; /* Red */
-        --destructive-foreground: 210 40% 98%;
-
-        --border: 214.3 31.8% 91.4%; /* Light border */
-        --input: 214.3 31.8% 91.4%; /* Input border */
-        --ring: 222.2 84% 4.9%; /* Primary color for rings */
-
-        --radius: 0.5rem; /* Slightly larger radius */
-
-        /* Glassmorphism Base Colors (HSL format without %) */
-        --glass-h: 0; --glass-s: 0; --glass-l: 100; --glass-a: 0.6; /* Whiteish glass */
-        --glass-alt-100-h: 220; --glass-alt-100-s: 15; --glass-alt-100-l: 97; --glass-alt-100-a: 0.75; /* Slightly grey glass */
-        --glass-alt-200-h: 220; --glass-alt-200-s: 10; --glass-alt-200-l: 95; --glass-alt-200-a: 0.65; /* Another grey variant */
-        --glass-inset-100-h: 220; --glass-inset-100-s: 10; --glass-inset-100-l: 95; --glass-inset-100-a: 0.4; /* Input background glass */
-        --glass-inset-200-h: 220; --glass-inset-200-s: 10; --glass-inset-200-l: 95; --glass-inset-200-a: 0.6; /* Input focused background glass */
-
-        /* Convert HSL to comma-separated for hsla() */
-        --glass: var(--glass-h), var(--glass-s), var(--glass-l), var(--glass-a);
-        --glass-alt-100: var(--glass-alt-100-h), var(--glass-alt-100-s), var(--glass-alt-100-l), var(--glass-alt-100-a);
-        --glass-alt-200: var(--glass-alt-200-h), var(--glass-alt-200-s), var(--glass-alt-200-l), var(--glass-alt-200-a);
-        --glass-inset-100: var(--glass-inset-100-h), var(--glass-inset-100-s), var(--glass-inset-100-l), var(--glass-inset-100-a);
-        --glass-inset-200: var(--glass-inset-200-h), var(--glass-inset-200-s), var(--glass-inset-200-l), var(--glass-inset-200-a);
-
-        /* Fonts - Adjust if needed */
-        --font-sans: "Inter", sans-serif;
-        --font-mono: "JetBrains Mono", monospace;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-
+        /* Shadows */
+        --shadow-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-strong: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
     }
 
     .dark {
-        /* Define your dark theme colors */
-        --background: 222.2 84% 4.9%; /* Dark Blue/Black */
-        --foreground: 210 40% 98%; /* Almost White */
-        --canvas: 224 71% 10%; /* Darker page background */
-        --canvas-alt: 224 71% 12%; /* Slightly lighter dark */
-
-        --card: 222.2 84% 4.9%;
-        --card-foreground: 210 40% 98%;
-
-        --popover: 222.2 84% 4.9%;
-        --popover-foreground: 210 40% 98%;
-
-        --primary: 210 40% 98%; /* Lighter Purple */
-        --primary-foreground: 222.2 47.4% 11.2%; /* Dark text for contrast */
-
-        --secondary: 217.2 32.6% 17.5%; /* Dark Gray */
-        --secondary-foreground: 210 40% 98%;
-
-        --muted: 217.2 32.6% 17.5%;
-        --muted-foreground: 215 20.2% 65.1%; /* Lighter Grey */
-
-        --accent: 217.2 32.6% 17.5%;
-        --accent-foreground: 210 40% 98%;
-
-        --destructive: 0 62.8% 30.6%; /* Darker Red */
-        --destructive-foreground: 210 40% 98%;
-
-        --border: 217.2 32.6% 17.5%; /* Dark border */
-        --input: 217.2 32.6% 17.5%;
-        --ring: 212.7 26.8% 83.9%; /* Primary color for rings */
-
-        /* Glassmorphism Base Colors (Dark Theme) */
-        --glass-h: 224; --glass-s: 71; --glass-l: 8; --glass-a: 0.65; /* Dark glass */
-        --glass-alt-100-h: 224; --glass-alt-100-s: 70; --glass-alt-100-l: 12; --glass-alt-100-a: 0.75; /* Alt dark glass */
-        --glass-alt-200-h: 224; --glass-alt-200-s: 70; --glass-alt-200-l: 15; --glass-alt-200-a: 0.65; /* Alt dark glass 2 */
-        --glass-inset-100-h: 224; --glass-inset-100-s: 70; --glass-inset-100-l: 15; --glass-inset-100-a: 0.4; /* Input dark glass */
-        --glass-inset-200-h: 224; --glass-inset-200-s: 70; --glass-inset-200-l: 18; --glass-inset-200-a: 0.5; /* Input focused dark glass */
-
-        /* Convert HSL to comma-separated for hsla() */
-        --glass: var(--glass-h), var(--glass-s), var(--glass-l), var(--glass-a);
-        --glass-alt-100: var(--glass-alt-100-h), var(--glass-alt-100-s), var(--glass-alt-100-l), var(--glass-alt-100-a);
-        --glass-alt-200: var(--glass-alt-200-h), var(--glass-alt-200-s), var(--glass-alt-200-l), var(--glass-alt-200-a);
-        --glass-inset-100: var(--glass-inset-100-h), var(--glass-inset-100-s), var(--glass-inset-100-l), var(--glass-inset-100-a);
-        --glass-inset-200: var(--glass-inset-200-h), var(--glass-inset-200-s), var(--glass-inset-200-l), var(--glass-inset-200-a);
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
+        --background: 220 15% 12%; /* Dark background */
+        --foreground: 210 20% 98%;
+        --muted: 215 18% 20%;
+        --muted-foreground: 215 10% 65%;
+        --popover: 220 15% 15%; /* Dark popover */
+        --popover-foreground: 210 20% 98%;
+        --card: 220 15% 15%; /* Dark card */
+        --card-foreground: 210 20% 98%;
+        --border: 215 15% 25%;
+        --input: 215 15% 25%; /* Dark input borders */
+        --primary: 262.1 83.3% 67.8%; /* Lighter primary for dark */
+        --primary-foreground: 224 71.4% 4.1%;
+        --secondary: 215 18% 20%;
+        --secondary-foreground: 210 20% 98%;
+        --accent: 215 18% 20%;
+        --accent-foreground: 210 20% 98%;
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 210 20% 98%;
+        --ring: 262.1 83.3% 67.8%; /* Lighter ring for dark */
+        --canvas: 220 15% 10%; /* Very dark canvas */
     }
-}
 
-@layer base {
-    * {
-        @apply border-border;
+    /* Apply variables to glass utilities */
+    .bg-glass-100 {
+        background-color: hsl(var(--glass-100-light));
     }
+
+    .bg-glass-alt-100 {
+        background-color: hsl(var(--glass-alt-100-light));
+    }
+
+    .bg-glass-alt-200 {
+        background-color: hsl(var(--glass-alt-200-light));
+    }
+
+    .bg-glass-inset-100 {
+        background-color: hsl(var(--glass-inset-100-light));
+    }
+
+    .bg-glass-inset-200 {
+        background-color: hsl(var(--glass-inset-200-light));
+    }
+
+    .shadow-subtle {
+        box-shadow: var(--shadow-subtle);
+    }
+
+    .shadow-strong {
+        box-shadow: var(--shadow-strong);
+    }
+
+    .dark .bg-glass-100 {
+        background-color: hsl(var(--glass-100-dark));
+    }
+
+    .dark .bg-glass-alt-100 {
+        background-color: hsl(var(--glass-alt-100-dark));
+    }
+
+    .dark .bg-glass-alt-200 {
+        background-color: hsl(var(--glass-alt-200-dark));
+    }
+
+    .dark .bg-glass-inset-100 {
+        background-color: hsl(var(--glass-inset-100-dark));
+    }
+
+    .dark .bg-glass-inset-200 {
+        background-color: hsl(var(--glass-inset-200-dark));
+    }
+
+    /* Apply base styles */
     body {
-        @apply bg-background text-foreground;
-        /* Smoother font rendering */
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-    /* Apply default sans font */
-    html, body {
-        font-family: var(--font-sans);
-    }
-}
-
-/* Custom Scrollbar Styling */
-@layer utilities {
-    /* Standard Scrollbar */
-    .styled-scrollbar::-webkit-scrollbar {
-        width: 10px; /* Wider scrollbar */
-        height: 10px;
-    }
-    .styled-scrollbar::-webkit-scrollbar-track {
-        @apply bg-transparent; /* Fully transparent track */
-    }
-    .styled-scrollbar::-webkit-scrollbar-thumb {
-        @apply bg-neutral-300/60 dark:bg-neutral-700/60 border-[3px] border-solid border-transparent rounded-full bg-clip-content;
-    }
-    .styled-scrollbar::-webkit-scrollbar-thumb:hover {
-        @apply bg-neutral-400/70 dark:bg-neutral-600/70;
-    }
-    .styled-scrollbar {
-        scrollbar-width: thin; /* Firefox */
-        scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent; /* Firefox */
+        @apply bg-canvas text-foreground;
+        /* Use canvas color */
+        font-feature-settings: "rlig" 1, "calt" 1;
     }
 
-    /* Thin Scrollbar */
-    .styled-scrollbar-thin::-webkit-scrollbar {
-        width: 6px; /* Thinner scrollbar */
-        height: 6px;
-    }
-    .styled-scrollbar-thin::-webkit-scrollbar-track {
-        @apply bg-transparent;
-    }
-    .styled-scrollbar-thin::-webkit-scrollbar-thumb {
-        @apply bg-neutral-300/50 dark:bg-neutral-700/50 border-[2px] border-solid border-transparent rounded-full bg-clip-content;
-    }
-    .styled-scrollbar-thin::-webkit-scrollbar-thumb:hover {
-        @apply bg-neutral-400/60 dark:bg-neutral-600/60;
-    }
+    /* Basic thin scrollbar styling */
     .styled-scrollbar-thin {
         scrollbar-width: thin; /* Firefox */
-        scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent; /* Firefox */
+        scrollbar-color: hsl(var(--border)) transparent; /* Firefox */
     }
 
-    /* Glass Background Utility */
-    .bg-glass {
-        @apply bg-[hsla(var(--glass))] backdrop-blur-lg;
-    }
-    .bg-glass-alt-100 {
-        @apply bg-[hsla(var(--glass-alt-100))] backdrop-blur-xl;
-    }
-    .bg-glass-alt-200 {
-        @apply bg-[hsla(var(--glass-alt-200))] backdrop-blur-xl;
-    }
-    .bg-glass-inset-100 {
-        @apply bg-[hsla(var(--glass-inset-100))] backdrop-blur-md;
-    }
-    .bg-glass-inset-200 {
-        @apply bg-[hsla(var(--glass-inset-200))] backdrop-blur-md;
+    /* Webkit (Chrome, Safari, Edge) */
+    .styled-scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
     }
 
+    .styled-scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 3px;
+    }
+
+    .styled-scrollbar-thin::-webkit-scrollbar-thumb {
+        background-color: hsl(var(--border) / 0.6);
+        border-radius: 3px;
+        border: 1px solid transparent;
+        background-clip: content-box;
+    }
+
+    .styled-scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background-color: hsl(var(--border));
+    }
+
+    .styled-scrollbar-thin::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+}
+
+@layer components {
     /* --- FIX: Hide browser's default clear button for search inputs --- */
     input[type="search"]::-webkit-search-decoration,
     input[type="search"]::-webkit-search-cancel-button,
@@ -210,10 +182,11 @@
         width: 0;
         height: 0;
     }
+}
 
-    /* Specific overrides if needed */
-    .react-tooltip {
-        @apply !z-[9999] !px-2 !py-1 !text-xs !rounded-md !bg-neutral-800 !text-neutral-100 dark:!bg-neutral-200 dark:!text-neutral-900 shadow-md;
-        transition-delay: 200ms !important;
+@layer utilities {
+    /* Custom utility classes */
+    .ease-apple {
+        transition-timing-function: cubic-bezier(.25, .1, .25, 1);
     }
 }

@@ -10,16 +10,15 @@ import { AnimatePresence } from 'framer-motion';
 
 interface MainPageProps {
     title: string; // Page title (e.g., "Today", "Inbox")
-    filter: TaskFilter; // Filter context (used by RouteChangeHandler)
+    filter: TaskFilter; // Filter context (used by RouteChangeHandler) - kept for potential future use
 }
 
 const MainPage: React.FC<MainPageProps> = ({ title }) => {
     const selectedTaskId = useAtomValue(selectedTaskIdAtom);
 
-    // Use cn for class merging, keep transition on flex-basis
     const taskListContainerClass = useMemo(() => cn(
-        "flex-1 h-full min-w-0 transition-[flex-basis] duration-300 ease-out", // Use ease-out for smoother end
-        selectedTaskId ? "border-r border-border/50" : "" // Use theme border
+        "flex-1 h-full min-w-0 transition-[flex-basis] duration-300 ease-out",
+        selectedTaskId ? "border-r border-border/50" : ""
     ), [selectedTaskId]);
 
     return (
@@ -29,8 +28,8 @@ const MainPage: React.FC<MainPageProps> = ({ title }) => {
                 <TaskList title={title} />
             </div>
 
-            {/* TaskDetail - Animated presence */}
-            <AnimatePresence initial={false}>
+            {/* TaskDetail - Animated presence with mode="wait" */}
+            <AnimatePresence initial={false} mode="wait"> {/* Added mode="wait" */}
                 {selectedTaskId && <TaskDetail key={`taskDetail-${selectedTaskId}`} />}
             </AnimatePresence>
         </div>

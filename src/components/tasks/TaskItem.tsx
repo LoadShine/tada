@@ -8,10 +8,10 @@ import Icon from '../common/Icon';
 import { cn } from '@/lib/utils';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {Button, buttonVariants} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import Highlighter from "react-highlight-words";
 import { IconName } from "@/components/common/IconMap";
-import { Checkbox } from '@/components/ui/checkbox'; // Use Checkbox for progress
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -29,10 +29,11 @@ import {
     DropdownMenuSubTrigger,
     DropdownMenuPortal
 } from "@/components/ui/dropdown-menu";
+// --- CHANGE: Use Dialog instead of AlertDialog for delete ---
 import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+    Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
+} from "@/components/ui/dialog";
+// --- END CHANGE ---
 
 interface TaskItemProps {
     task: Task;
@@ -41,11 +42,7 @@ interface TaskItemProps {
     style?: React.CSSProperties; // For dnd-kit overlay
 }
 
-// Custom Progress Indicator Component (Simplified - using Checkbox now)
-// Keeping this structure in case a custom SVG is preferred later.
-// For now, we'll use the Checkbox component.
-
-// Helper function to generate content snippet (keep as is)
+// Helper function to generate content snippet (Unchanged)
 function generateContentSnippet(content: string, term: string, length: number = 35): string {
     if (!content || !term) return '';
     const lowerContent = content.toLowerCase();
@@ -67,7 +64,7 @@ function generateContentSnippet(content: string, term: string, length: number = 
     return snippet;
 }
 
-// Priority Map (unchanged)
+// Priority Map (Unchanged)
 const priorityMap: Record<number, { label: string; iconColor: string }> = {
     1: { label: 'High', iconColor: 'text-red-500 dark:text-red-400' },
     2: { label: 'Medium', iconColor: 'text-orange-500 dark:text-orange-400' },
@@ -75,7 +72,7 @@ const priorityMap: Record<number, { label: string; iconColor: string }> = {
     4: { label: 'Lowest', iconColor: 'text-gray-500 dark:text-gray-400' },
 };
 
-// TaskItem Component (Refactored with shadcn/ui)
+// TaskItem Component (Using Dialog for Delete)
 const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay = false, style: overlayStyle }) => {
     const [selectedTaskId, setSelectedTaskId] = useAtom(selectedTaskIdAtom);
     const setTasks = useSetAtom(tasksAtom);
@@ -84,14 +81,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
 
     const isSelected = useMemo(() => selectedTaskId === task.id, [selectedTaskId, task.id]);
     const isTrashItem = useMemo(() => task.list === 'Trash', [task.list]);
-    const isCompleted = useMemo(() => task.completed, [task.completed]); // Use derived completed status
+    const isCompleted = useMemo(() => task.completed, [task.completed]);
     const isSortable = useMemo(() => !isCompleted && !isTrashItem && !isOverlay, [isCompleted, isTrashItem, isOverlay]);
 
-    // State for Popovers/Dialogs within this item
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    // No separate state needed for DropdownMenu, managed internally by shadcn
 
-    // DnD Setup (Unchanged logic, updated styling)
+    // DnD Setup (Unchanged)
     const { attributes, listeners, setNodeRef, transform, transition: dndTransition, isDragging } = useSortable({
         id: task.id,
         disabled: !isSortable,
@@ -99,6 +94,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
     });
 
     const style = useMemo<React.CSSProperties>(() => {
+        // ... (style logic unchanged) ...
         const baseTransform = CSS.Transform.toString(transform);
         const calculatedTransition = dndTransition;
         if (isDragging && !isOverlay) {
@@ -153,53 +149,39 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
         [updateTask, isSelected, setSelectedTaskId]
     );
 
-
-    // Task Interaction Handlers
+    // Task Interaction Handlers (Unchanged)
     const handleTaskClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        // Prevent selection if clicking on interactive elements within the item
         const target = e.target as HTMLElement;
-        if (target.closest('button, input, a, [role="menu"], [role="dialog"], [role="alertdialog"], [data-radix-popper-content-wrapper]') || isDragging) {
+        if (target.closest('button, input, a, [role="menu"], [role="dialog"], [data-radix-popper-content-wrapper]') || isDragging) { // Updated selector for dialog
             return;
         }
         setSelectedTaskId(id => (id === task.id ? null : task.id));
     }, [setSelectedTaskId, task.id, isDragging]);
 
-    // --- Handlers for Interactions ---
+    // --- Handlers for Interactions --- (Unchanged, except delete)
     const handleProgressChange = useCallback((checked: boolean | 'indeterminate') => {
-        // Map checkbox state to completion percentage
-        const newPercentage = checked === true ? 100 : null; // Simple toggle for now
+        const newPercentage = checked === true ? 100 : null;
         updateTask({ completionPercentage: newPercentage });
         if (newPercentage === 100 && isSelected) {
-            setSelectedTaskId(null); // Deselect if completed via checkbox
+            setSelectedTaskId(null);
         }
     }, [updateTask, isSelected, setSelectedTaskId]);
-
     const handleDateSelect = useCallback((date: Date | undefined) => {
         const newDueDate = date ? startOfDay(date).getTime() : null;
         updateTask({ dueDate: newDueDate });
-        setIsDatePickerOpen(false); // Close popover after selection
+        setIsDatePickerOpen(false);
     }, [updateTask]);
-
-    const handlePriorityChange = useCallback((newPriority: number | null) => {
-        updateTask({ priority: newPriority });
-        // Dropdown closes automatically
-    }, [updateTask]);
-
-    const handleListChange = useCallback((newList: string) => {
-        updateTask({ list: newList });
-        // Dropdown closes automatically
-    }, [updateTask]);
-
-    const handleDuplicateTask = useCallback(() => {
+    const handlePriorityChange = useCallback((newPriority: number | null) => { updateTask({ priority: newPriority }); }, [updateTask]);
+    const handleListChange = useCallback((newList: string) => { updateTask({ list: newList }); }, [updateTask]);
+    const handleDuplicateTask = useCallback(() => { /* ... (unchanged) ... */
         const now = Date.now();
         const newTaskData: Partial<Task> = {
             ...task, id: `task-${now}-${Math.random().toString(16).slice(2)}`,
             title: `${task.title} (Copy)`, order: task.order + 0.01,
             createdAt: now, updatedAt: now, completed: false, completedAt: null,
-            // Explicitly copy percentage, let atom handle derived state
             completionPercentage: task.completionPercentage
         };
-        delete newTaskData.groupCategory; // Atom will derive this
+        delete newTaskData.groupCategory;
 
         setTasks(prev => {
             const index = prev.findIndex(t => t.id === task.id);
@@ -209,18 +191,20 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
             return newTasks;
         });
         setSelectedTaskId(newTaskData.id!);
-        // Dropdown closes automatically
     }, [task, setTasks, setSelectedTaskId]);
 
+    // --- CHANGE: Use Dialog logic for delete ---
     const confirmDeleteTask = useCallback(() => {
-        updateTask({ list: 'Trash', completionPercentage: null }); // Move to trash, reset progress
+        updateTask({ list: 'Trash', completionPercentage: null });
         if (isSelected) {
             setSelectedTaskId(null);
         }
-        // Dialog closes automatically via AlertDialogAction/AlertDialogCancel
+        // Dialog closes via DialogClose
     }, [updateTask, isSelected, setSelectedTaskId]);
+    // --- END CHANGE ---
 
-    // --- Memoized Display Values ---
+
+    // --- Memoized Display Values --- (Unchanged)
     const dueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
     const isValidDueDate = useMemo(() => dueDate && isValid(dueDate), [dueDate]);
     const overdue = useMemo(() => isValidDueDate && !isCompleted && !isTrashItem && isOverdue(dueDate!), [isValidDueDate, isCompleted, isTrashItem, dueDate]);
@@ -236,43 +220,36 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
         const lt = task.title.toLowerCase();
         return searchWords.some(w => lc.includes(w)) && !searchWords.every(w => lt.includes(w));
     }, [searchWords, task.content, task.title]);
-
     const baseClasses = cn(
-        'task-item flex items-start px-2.5 py-2 border-b border-border/50 group relative min-h-[54px]', // Use theme border
+        'task-item flex items-start px-2.5 py-2 border-b border-border/50 group relative min-h-[54px]',
         'transition-colors duration-150 ease-out',
-        isOverlay // Special styling ONLY for the DragOverlay instance
-            ? 'bg-card/90 backdrop-blur-md border rounded-lg shadow-strong' // Use card bg for overlay
+        isOverlay
+            ? 'bg-card/90 backdrop-blur-md border rounded-lg shadow-strong'
             : isSelected && !isDragging
-                ? 'bg-primary/10 border-b-primary/20' // Selected state
+                ? 'bg-primary/10 border-b-primary/20'
                 : isTrashItem
-                    ? 'bg-secondary/30 opacity-60 hover:bg-secondary/40' // Trashed
+                    ? 'bg-secondary/30 opacity-60 hover:bg-secondary/40'
                     : isCompleted
-                        ? 'bg-secondary/30 opacity-70 hover:bg-secondary/40' // Completed
-                        : 'bg-transparent hover:bg-accent/50', // Default hover
-        isDragging && !isOverlay ? 'opacity-40' : '', // Style original item when dragging
+                        ? 'bg-secondary/30 opacity-70 hover:bg-secondary/40'
+                        : 'bg-transparent hover:bg-accent/50',
+        isDragging && !isOverlay ? 'opacity-40' : '',
         isSortable ? 'cursor-grab' : 'cursor-pointer',
         isDragging ? 'cursor-grabbing' : '',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/70 focus-visible:z-10 focus-visible:rounded-sm'
     );
-
     const titleClasses = cn(
         "text-sm text-foreground leading-snug block",
         (isCompleted || isTrashItem) && "line-through text-muted-foreground"
     );
-
     const listIcon: IconName = useMemo(() => task.list === 'Inbox' ? 'inbox' : (task.list === 'Trash' ? 'trash' : 'list'), [task.list]);
     const availableLists = useMemo(() => userLists.filter(l => l !== 'Trash'), [userLists]);
-
-    // Calculate checkbox state from percentage
     const checkboxState = useMemo(() => {
-        if (task.completed) return true; // completed === true means 100%
-        // Indeterminate for 20, 50, 80%
+        if (task.completed) return true;
         if (task.completionPercentage && task.completionPercentage > 0 && task.completionPercentage < 100) {
             return 'indeterminate';
         }
-        return false; // Not started (null or 0)
+        return false;
     }, [task.completed, task.completionPercentage]);
-
-    // Progress Percentage Label (Subtle display next to title)
     const progressLabel = useMemo(() => {
         const p = task.completionPercentage;
         if (p && p > 0 && p < 100 && !isTrashItem && !isCompleted) {
@@ -280,9 +257,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
         }
         return null;
     }, [task.completionPercentage, isTrashItem, isCompleted]);
-
-
-    // Menu items for setting progress
     const progressMenuItems = useMemo(() => [
         {label: 'Not Started', value: null, icon: 'circle' as IconName},
         {label: 'Started (20%)', value: 20, icon: 'circle-dot-dashed' as IconName},
@@ -292,8 +266,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
     ], []);
 
     return (
-        // AlertDialog provides context for the Trigger/Content
-        <AlertDialog>
+        // --- CHANGE: Use Dialog instead of AlertDialog ---
+        <Dialog>
             <div
                 ref={setNodeRef} style={style} className={baseClasses}
                 {...(isSortable ? attributes : {})} {...(isSortable ? listeners : {})}
@@ -301,14 +275,14 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                 onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        // Don't trigger selection if focus is inside menu/popover/dialog
-                        if (!(e.target instanceof HTMLElement && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"], [data-radix-popper-content-wrapper]'))) {
+                        if (!(e.target instanceof HTMLElement && e.target.closest('[role="menu"], [role="dialog"], [data-radix-popper-content-wrapper]'))) { // Updated selector
                             handleTaskClick(e as unknown as React.MouseEvent<HTMLDivElement>);
                         }
                     }
                 }}
                 aria-selected={isSelected} aria-labelledby={`task-title-${task.id}`}
             >
+                {/* Checkbox, Task Info, Metadata... (all unchanged) */}
                 {/* Progress Checkbox */}
                 <div className="flex-shrink-0 mr-2.5 pt-[3px] pl-[1px]">
                     <Checkbox
@@ -316,8 +290,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                         checked={checkboxState}
                         onCheckedChange={handleProgressChange}
                         disabled={isTrashItem}
-                        aria-labelledby={`task-title-${task.id}`} // Link to title for context
-                        className="w-4.5 h-4.5 rounded-full" // Circular checkbox
+                        aria-labelledby={`task-title-${task.id}`}
+                        className="w-4.5 h-4.5 rounded-full"
                     />
                 </div>
 
@@ -355,7 +329,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                                             "text-muted-foreground hover:text-foreground hover:bg-transparent",
                                             overdue && 'text-red-600 dark:text-red-500 font-medium',
                                             (isCompleted || isTrashItem) && 'line-through opacity-70 !text-muted-foreground',
-                                            isTrashItem && '!cursor-not-allowed'
+                                            isTrashItem && '!cursor-not-allowed',
+                                            "focus-visible:underline focus-visible:outline-none focus-visible:text-foreground"
                                         )}
                                         title={formatDate(dueDate!)}
                                         disabled={isTrashItem || isCompleted}
@@ -406,6 +381,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                     </div>
                 </div>
 
+
                 {/* More Actions Dropdown */}
                 {!isOverlay && !isTrashItem && (
                     <div className="task-item-actions absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 ease-in-out">
@@ -416,11 +392,11 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                                     className="h-6 w-6 text-muted-foreground hover:bg-accent"
                                     aria-label={`More actions for ${task.title || 'task'}`}
                                     disabled={isTrashItem}
-                                    onClick={(e) => e.stopPropagation()} // Prevent task selection
+                                    onClick={(e) => e.stopPropagation()}
                                 />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
-                                {/* Progress Setting */}
+                                {/* ... Dropdown items unchanged ... */}
                                 <DropdownMenuLabel className="text-xs px-2 py-1 text-muted-foreground">
                                     Set Progress
                                 </DropdownMenuLabel>
@@ -442,7 +418,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                                 </DropdownMenuRadioGroup>
                                 <DropdownMenuSeparator />
 
-                                {/* Date Setting via Popover */}
                                 <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                                     <PopoverTrigger asChild>
                                         <DropdownMenuItem disabled={isCompleted} onSelect={(e) => e.preventDefault()} className="text-xs">
@@ -457,7 +432,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
 
                                 <DropdownMenuSeparator />
 
-                                {/* Priority Submenu */}
                                 <DropdownMenuSub>
                                     <DropdownMenuSubTrigger disabled={isCompleted} className="text-xs">
                                         <Icon name="flag" size={13} className="mr-2 opacity-70"/> Priority
@@ -481,7 +455,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                                     </DropdownMenuPortal>
                                 </DropdownMenuSub>
 
-                                {/* Move to List Submenu */}
                                 <DropdownMenuSub>
                                     <DropdownMenuSubTrigger disabled={isCompleted} className="text-xs">
                                         <Icon name="folder" size={13} className="mr-2 opacity-70"/> Move to List
@@ -508,15 +481,16 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                                     <Icon name="copy-plus" size={13} className="mr-2 opacity-70"/> Duplicate Task
                                 </DropdownMenuItem>
 
-                                {/* Delete Trigger */}
-                                <AlertDialogTrigger asChild>
+                                {/* --- CHANGE: Use DialogTrigger --- */}
+                                <DialogTrigger asChild>
                                     <DropdownMenuItem
                                         className="!text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive text-xs"
-                                        onSelect={(e) => e.preventDefault()} // Prevent closing menu immediately
+                                        onSelect={(e) => e.preventDefault()} // Keep this to prevent menu closing too early
                                     >
                                         <Icon name="trash" size={13} className="mr-2 opacity-70"/> Move to Trash
                                     </DropdownMenuItem>
-                                </AlertDialogTrigger>
+                                </DialogTrigger>
+                                {/* --- END CHANGE --- */}
 
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -524,22 +498,28 @@ const TaskItem: React.FC<TaskItemProps> = memo(({ task, groupCategory, isOverlay
                 )}
             </div>
 
-            {/* Delete Confirmation Dialog Content */}
-            <AlertDialogContent onClick={(e)=> e.stopPropagation()}>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Move Task to Trash?</AlertDialogTitle>
-                    <AlertDialogDescription>
+            {/* --- CHANGE: Use DialogContent --- */}
+            <DialogContent onClick={(e)=> e.stopPropagation()}>
+                <DialogHeader>
+                    <DialogTitle>Move Task to Trash?</DialogTitle>
+                    <DialogDescription>
                         Are you sure you want to move "{task.title || 'Untitled Task'}" to the Trash? It can be restored later.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={confirmDeleteTask} className={buttonVariants({ variant: "destructive" })}>
-                        Move to Trash
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                        <Button onClick={confirmDeleteTask} variant="destructive">
+                            Move to Trash
+                        </Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+            {/* --- END CHANGE --- */}
+        </Dialog>
+        // --- END CHANGE ---
     );
 });
 TaskItem.displayName = 'TaskItem';

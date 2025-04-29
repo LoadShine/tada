@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.tsx (Corrected Accordion Trigger)
+// src/components/layout/Sidebar.tsx
 import React, {memo, useCallback, useMemo, useRef} from 'react';
 import {NavLink, useNavigate} from 'react-router-dom';
 import Icon from '../common/Icon';
@@ -27,7 +27,7 @@ import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/c
 import {Badge} from '@/components/ui/badge'; // Use Badge for counts
 import useDebounce from '@/hooks/useDebounce';
 
-// Sidebar Navigation Item Component (Keep as previously corrected)
+// Sidebar Navigation Item Component (Adjusted Focus)
 const SidebarItem: React.FC<{
     to: string; filter: TaskFilter; icon: IconName; label: string; count?: number; isUserList?: boolean;
 }> = memo(({to, filter, icon, label, count}) => {
@@ -36,7 +36,12 @@ const SidebarItem: React.FC<{
     const linkClassName = ({isActive: navIsActive}: {
         isActive: boolean,
         isPending: boolean
-    }): string => cn('flex items-center justify-between px-2 py-1 h-7 rounded-md text-sm group transition-colors duration-150 ease-in-out cursor-pointer w-full', (isActive || navIsActive) ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground', 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background');
+    }): string => cn(
+        'flex items-center justify-between px-2 py-1 h-7 rounded-md text-sm group transition-colors duration-150 ease-in-out cursor-pointer w-full',
+        (isActive || navIsActive) ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+        // Adjusted focus ring
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/80'
+    );
     const countClassName = cn("text-[10px] font-mono px-1.5 py-[1px] rounded-full ml-1 tabular-nums flex-shrink-0 transition-colors duration-150 ease-in-out", isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground group-hover:bg-accent');
     return (<NavLink to={to} className={linkClassName} aria-current={isActive ? 'page' : undefined}>
         <div className="flex items-center overflow-hidden whitespace-nowrap text-ellipsis flex-1 min-w-0 mr-1"><Icon
@@ -48,7 +53,7 @@ const SidebarItem: React.FC<{
 });
 SidebarItem.displayName = 'SidebarItem';
 
-// Main Sidebar Component (Corrected Accordion Trigger Structure)
+// Main Sidebar Component (Adjusted Focus for Search, Accordion Trigger)
 const Sidebar: React.FC = () => {
     const counts = useAtomValue(taskCountsAtom);
     const userLists = useAtomValue(userListNamesAtom);
@@ -103,7 +108,8 @@ const Sidebar: React.FC = () => {
         autoEscape: true,
     }), [debouncedSearchTerm]);
 
-    const searchResultButtonClassName = "flex items-start w-full px-2 py-1.5 text-left rounded-md hover:bg-accent text-sm group transition-colors duration-100 ease-apple focus:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+    // Adjusted focus for search result button
+    const searchResultButtonClassName = "flex items-start w-full px-2 py-1.5 text-left rounded-md hover:bg-accent text-sm group transition-colors duration-100 ease-apple focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/80 focus-visible:bg-accent";
 
     const generateContentSnippet = (content: string, term: string, length: number = 35): string => {
         if (!content || !term) return '';
@@ -138,7 +144,8 @@ const Sidebar: React.FC = () => {
                               className="absolute left-2.5 text-muted-foreground pointer-events-none z-10"/>
                         <Input ref={searchInputRef} id="sidebar-search" type="search" placeholder="Search tasks..."
                                value={searchTerm} onChange={handleSearchChange}
-                               className="h-8 pl-8 pr-7 text-sm bg-glass-inset-100 border-border/30 focus:bg-glass-inset-200 focus:border-primary/50"
+                            // Use Input component which now has adjusted focus
+                               className="h-8 pl-8 pr-7 text-sm bg-glass-inset-100 border-border/30 focus:bg-glass-inset-200 focus-visible:border-primary/50"
                                aria-label="Search tasks"/>
                         <AnimatePresence> {searchTerm && (
                             <motion.div key="clear-search-btn" initial={{scale: 0.7, opacity: 0}}
@@ -152,7 +159,7 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 {/* Scrollable Filters/Search Results Area */}
-                <ScrollArea className="flex-1 px-1.5">
+                <ScrollArea className="flex-1 px-1.5 styled-scrollbar-thin"> {/* Added scrollbar class */}
                     <AnimatePresence mode="wait">
                         {isSearching ? (
                             // Search Results View
@@ -197,24 +204,21 @@ const Sidebar: React.FC = () => {
                                 {/* Use Accordion for Lists and Tags */}
                                 <Accordion type="multiple" defaultValue={['my-lists']} className="w-full">
                                     <AccordionItem value="my-lists" className="border-b-0">
-                                        {/* *** Corrected Structure: div wraps Trigger and Button *** */}
                                         <div className="flex items-center justify-between pr-2 group">
                                             <AccordionTrigger
+                                                // AccordionTrigger already has adjusted focus from ui/accordion.tsx
                                                 className="py-1.5 text-xs text-muted-foreground hover:text-foreground hover:no-underline flex-1 justify-start px-2 [&>svg]:ml-auto">
-                                                {/* Content of the trigger button itself */}
                                                 <div className="flex items-center flex-1">
                                                     <Icon name="folder" size={14} className="mr-1.5 opacity-70"/>
                                                     <span className="flex-1 text-left">My Lists</span>
                                                 </div>
-                                                {/* Chevron is automatically added by AccordionTrigger */}
                                             </AccordionTrigger>
-                                            {/* Action Button is now a SIBLING of the trigger */}
                                             <Button variant="ghost" size="icon" icon="folder-plus"
                                                     className="w-6 h-6 text-muted-foreground hover:text-primary hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
                                                     onClick={handleAddNewListClick} aria-label="Add New List"/>
                                         </div>
                                         <AccordionContent
-                                            className="pt-1 pb-0 pl-2"> {/* Add padding-left to content */}
+                                            className="pt-1 pb-0 pl-2">
                                             <div className="space-y-0.5">
                                                 {myListsToDisplay.length === 0
                                                     ? (<p className="text-xs text-muted-foreground px-2 py-1 italic">No
@@ -233,7 +237,6 @@ const Sidebar: React.FC = () => {
 
                                     {tagsToDisplay.length > 0 && (
                                         <AccordionItem value="tags" className="border-b-0">
-                                            {/* Keep simple trigger for tags */}
                                             <AccordionTrigger
                                                 className="py-1.5 text-xs text-muted-foreground hover:text-foreground hover:no-underline justify-start px-2">
                                                 <Icon name="tag" size={14} className="mr-1.5 opacity-70"/>
@@ -253,7 +256,6 @@ const Sidebar: React.FC = () => {
                                     )}
 
                                     <AccordionItem value="system" className="border-b-0">
-                                        {/* Keep simple trigger for system */}
                                         <AccordionTrigger
                                             className="py-1.5 text-xs text-muted-foreground hover:text-foreground hover:no-underline justify-start px-2">
                                             <Icon name="settings" size={14} className="mr-1.5 opacity-70"/>

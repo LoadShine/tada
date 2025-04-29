@@ -6,7 +6,7 @@ import { SettingsTab } from '@/types';
 import Icon from '../common/Icon';
 import { Button } from '@/components/ui/button';
 import {
-    Dialog, DialogContent
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription // Import Header, Title, Description
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,7 +30,7 @@ const settingsSections: SettingsItem[] = [
     { id: 'about', label: 'About', icon: 'info' },
 ];
 
-// Reusable Settings Row (Refactored for Simplicity)
+// Reusable Settings Row (Unchanged)
 const SettingsRow: React.FC<{label: string, children: React.ReactNode, description?: string, className?: string}> =
     memo(({label, children, description, className}) => (
         <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-border last:border-b-0 min-h-[50px]", className)}>
@@ -45,7 +45,7 @@ const SettingsRow: React.FC<{label: string, children: React.ReactNode, descripti
     ));
 SettingsRow.displayName = 'SettingsRow';
 
-// Account Settings Panel (Refactored)
+// Account Settings Panel (Unchanged)
 const AccountSettings: React.FC = memo(() => {
     const [currentUser] = useAtom(currentUserAtom);
     const handleEdit = useCallback(() => console.log("Edit action triggered"), []);
@@ -134,7 +134,7 @@ const AccountSettings: React.FC = memo(() => {
 });
 AccountSettings.displayName = 'AccountSettings';
 
-// Placeholder Settings Panel (Refactored)
+// Placeholder Settings Panel (Unchanged)
 const PlaceholderSettings: React.FC<{ title: string, icon?: IconName }> = memo(({ title, icon = 'settings' }) => (
     <div className="p-6 text-center text-muted-foreground h-full flex flex-col items-center justify-center min-h-[300px]">
         <Icon name={icon} size={48} className="mb-4 text-muted-foreground/50" />
@@ -144,7 +144,7 @@ const PlaceholderSettings: React.FC<{ title: string, icon?: IconName }> = memo((
 ));
 PlaceholderSettings.displayName = 'PlaceholderSettings';
 
-// Main Settings Dialog Component (Refactored)
+// Main Settings Dialog Component (Accessibility and Styling Fixes)
 const SettingsDialog: React.FC = () => {
     const [isOpen, setIsSettingsOpen] = useAtom(isSettingsOpenAtom);
     const [selectedTab, setSelectedTab] = useAtom(settingsSelectedTabAtom);
@@ -170,10 +170,18 @@ const SettingsDialog: React.FC = () => {
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogContent className="max-w-3xl h-[75vh] max-h-[650px] p-0 gap-0 grid grid-cols-[210px_1fr] overflow-hidden bg-glass-100 backdrop-blur-xl border-border/50">
+            {/* DialogContent now uses bg-popover instead of glass, Title/Desc added */}
+            <DialogContent className="max-w-3xl h-[75vh] max-h-[650px] p-0 gap-0 grid grid-cols-[210px_1fr] overflow-hidden bg-popover border-border/50">
+                {/* Add Header, Title, and Description for Accessibility */}
+                <DialogHeader className="sr-only"> {/* Use sr-only to hide visually */}
+                    <DialogTitle>Application Settings</DialogTitle>
+                    <DialogDescription>
+                        Configure your account, appearance, and other application settings.
+                    </DialogDescription>
+                </DialogHeader>
 
                 {/* Settings Sidebar */}
-                <div className="bg-glass-alt-100 backdrop-blur-xl border-r border-border/50 p-3 flex flex-col h-full">
+                <div className="bg-muted/30 backdrop-blur-xl border-r border-border/50 p-3 flex flex-col h-full"> {/* Subtle sidebar bg */}
                     <ScrollArea className="flex-1 mt-2">
                         <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as SettingsTab)} orientation="vertical" className="w-full">
                             <TabsList className="flex-col h-auto items-start bg-transparent p-0 w-full space-y-0.5">
@@ -183,7 +191,9 @@ const SettingsDialog: React.FC = () => {
                                         value={item.id}
                                         className={cn(
                                             "w-full justify-start px-2 py-1 h-7 text-sm font-normal data-[state=active]:font-medium data-[state=active]:shadow-none",
-                                            "data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                            "data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                            // Ensure focus style is applied correctly here too
+                                            "focus-visible:ring-1 focus-visible:ring-ring/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                                         )}
                                     >
                                         <Icon name={item.icon} size={15} className="mr-2 opacity-70" aria-hidden="true"/>
@@ -196,7 +206,7 @@ const SettingsDialog: React.FC = () => {
                 </div>
 
                 {/* Settings Content Area */}
-                <div className="flex-1 flex flex-col overflow-hidden bg-glass/50 backdrop-blur-lg relative">
+                <div className="flex-1 flex flex-col overflow-hidden bg-background/50 relative"> {/* Slightly different background for content */}
                     <ScrollArea className="flex-1">
                         <div className="p-5">
                             {renderContent}

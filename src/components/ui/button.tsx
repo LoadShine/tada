@@ -8,21 +8,21 @@ import Icon from "../common/Icon" // Use our Icon component
 import { IconName } from "../common/IconMap"
 
 const buttonVariants = cva(
-    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
     {
         variants: {
             variant: {
-                default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm", // Primary is default
+                default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm focus-visible:ring-1 focus-visible:ring-ring/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                 destructive:
-                    "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
+                    "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm focus-visible:ring-1 focus-visible:ring-destructive/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                 outline:
-                    "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm",
+                    "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm focus-visible:ring-1 focus-visible:ring-ring/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                 secondary:
-                    "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm",
-                ghost: "hover:bg-accent hover:text-accent-foreground",
-                link: "text-primary underline-offset-4 hover:underline",
+                    "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm focus-visible:ring-1 focus-visible:ring-ring/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+                ghost: "hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
+                link: "text-primary underline-offset-4 hover:underline focus-visible:underline focus-visible:text-primary/80",
                 // Custom glass variant
-                glass: "border border-border/30 bg-glass-alt-100 backdrop-blur-lg text-foreground hover:bg-glass-alt-200 shadow-subtle"
+                glass: "border border-border/30 bg-glass-alt-100 backdrop-blur-lg text-foreground hover:bg-glass-alt-200 shadow-subtle focus-visible:ring-1 focus-visible:ring-ring/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             },
             size: {
                 default: "h-9 px-4 py-2", // md size
