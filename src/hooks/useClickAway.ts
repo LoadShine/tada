@@ -7,7 +7,7 @@ import { useEffect, RefObject } from 'react';
  * @param handler Callback function to execute when a click outside occurs.
  */
 function useClickAway(
-    refs: RefObject<HTMLElement> | RefObject<HTMLElement>[],
+    refs: RefObject<HTMLElement | null> | RefObject<HTMLElement | null>[],
     handler: (event: MouseEvent | TouchEvent) => void
 ) {
     useEffect(() => {
@@ -17,7 +17,7 @@ function useClickAway(
 
             // Check if the click is inside any of the provided refs or an element marked to be ignored
             const isInside = refsArray.some(ref => {
-                const el = ref.current;
+                const el = ref?.current;
                 // Do nothing if clicking ref's element or descendent elements
                 return el && (el.contains(target) || (target instanceof Element && target.closest('.ignore-click-away')));
             });

@@ -10,28 +10,100 @@ import { bracketMatching, indentOnInput, foldKeymap } from '@codemirror/language
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap } from '@codemirror/lint';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '@/lib/utils';
 
-// Consistent Editor Theme definition (remains the same)
+// Consistent Editor Theme definition using CSS Variables for better theming
 const editorTheme = EditorView.theme({
-    '&': { height: '100%', fontSize: '13.5px', backgroundColor: 'transparent', borderRadius: 'inherit', },
-    '.cm-scroller': { fontFamily: `var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace)`, lineHeight: '1.65', overflow: 'auto', position: 'relative', backgroundColor: 'transparent !important', height: '100%', outline: 'none', },
-    '.cm-content': { padding: '14px 16px', caretColor: 'hsl(var(--primary-h), var(--primary-s), var(--primary-l))', backgroundColor: 'transparent !important', outline: 'none', },
-    '.cm-gutters': { backgroundColor: 'hsla(220, 40%, 98%, 0.65)', borderRight: '1px solid hsla(210, 20%, 85%, 0.4)', color: 'hsl(210, 9%, 55%)', paddingLeft: '8px', paddingRight: '4px', fontSize: '11px', userSelect: 'none', WebkitUserSelect: 'none', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', },
-    '.cm-lineNumbers .cm-gutterElement': { minWidth: '24px', textAlign: 'right' },
-    '.cm-line': { padding: '0 4px' },
-    '.cm-activeLine': { backgroundColor: 'hsla(var(--primary-h), var(--primary-s), 50%, 0.10)' },
-    '.cm-activeLineGutter': { backgroundColor: 'hsla(var(--primary-h), var(--primary-s), 50%, 0.15)' },
-    '.cm-placeholder': { color: 'hsl(210, 9%, 60%)', fontStyle: 'italic', pointerEvents: 'none', padding: '14px 16px', position: 'absolute', top: 0, left: 0, },
-    '.cm-foldGutter .cm-gutterElement': { padding: '0 4px 0 8px', cursor: 'pointer', textAlign: 'center', },
-    '.cm-foldMarker': { display: 'inline-block', color: 'hsl(210, 10%, 70%)', '&:hover': { color: 'hsl(210, 10%, 50%)' }, },
-    '.cm-searchMatch': { backgroundColor: 'hsla(50, 100%, 50%, 0.35)', outline: '1px solid hsla(50, 100%, 50%, 0.5)', borderRadius: '2px', },
-    '.cm-searchMatch-selected': { backgroundColor: 'hsla(50, 100%, 50%, 0.55)', outline: '1px solid hsla(50, 100%, 40%, 0.8)' },
-    '.cm-selectionBackground, ::selection': { backgroundColor: 'hsla(var(--primary-h), var(--primary-s), 50%, 0.25) !important', },
+    '&': {
+        height: '100%',
+        fontSize: '13.5px', // Slightly smaller font size
+        backgroundColor: 'transparent',
+        borderRadius: 'inherit',
+        fontFamily: 'var(--font-sans)', // Use theme font
+    },
+    '.cm-scroller': {
+        fontFamily: 'var(--font-mono)', // Use theme mono font for code-like feel
+        lineHeight: '1.65',
+        overflow: 'auto',
+        position: 'relative',
+        backgroundColor: 'transparent !important',
+        height: '100%',
+        outline: 'none',
+    },
+    '.cm-content': {
+        padding: '14px 16px',
+        caretColor: 'hsl(var(--primary))', // Use theme primary
+        backgroundColor: 'transparent !important',
+        outline: 'none',
+        color: 'hsl(var(--foreground))', // Use theme foreground
+        '& ::selection': { // Improve selection visibility
+            backgroundColor: 'hsl(var(--primary) / 0.25) !important',
+        },
+    },
+    // Gutters are optional, can be removed if line numbers aren't needed
+    // '.cm-gutters': {
+    //     backgroundColor: 'hsl(var(--muted) / 0.3)', // Muted bg
+    //     borderRight: '1px solid hsl(var(--border) / 0.5)', // Theme border
+    //     color: 'hsl(var(--muted-foreground))',
+    //     backdropFilter: 'blur(4px)',
+    //     userSelect: 'none',
+    // },
+    // '.cm-lineNumbers .cm-gutterElement': { minWidth: '24px', textAlign: 'right' },
+    '.cm-line': { padding: '0 4px' }, // Keep line padding minimal
+    '.cm-activeLine': { backgroundColor: 'hsl(var(--primary) / 0.08)' }, // Subtle active line
+    // '.cm-activeLineGutter': { backgroundColor: 'hsl(var(--primary) / 0.12)' },
+    '.cm-placeholder': {
+        color: 'hsl(var(--muted-foreground))', // Theme placeholder
+        fontStyle: 'italic',
+        pointerEvents: 'none',
+        padding: '14px 16px', // Match content padding
+        position: 'absolute',
+        top: 0,
+        left: 0,
+    },
+    '.cm-searchMatch': {
+        backgroundColor: 'hsl(var(--primary) / 0.2)',
+        outline: '1px solid hsl(var(--primary) / 0.3)',
+        borderRadius: '2px',
+    },
+    '.cm-searchMatch-selected': {
+        backgroundColor: 'hsl(var(--primary) / 0.3)',
+        outline: '1px solid hsl(var(--primary) / 0.5)'
+    },
+    '.cm-selectionBackground': {
+        backgroundColor: 'hsl(var(--primary) / 0.25) !important', // Ensure override if needed
+    },
     '.cm-focused': { outline: 'none !important' },
+    // Markdown specific styles (enhance defaults)
+    ".cm-content .cm-header": { color: "hsl(var(--primary))", fontWeight: "600" },
+    ".cm-content .cm-strong": { fontWeight: "600" },
+    ".cm-content .cm-emphasis": { fontStyle: "italic" },
+    ".cm-content .cm-link": { color: "hsl(var(--primary) / 0.9)", textDecoration: "underline", cursor: "pointer" },
+    ".cm-content .cm-quote": { borderLeft: "3px solid hsl(var(--border))", paddingLeft: "8px", color: "hsl(var(--muted-foreground))", fontStyle: "italic" },
+    ".cm-content .cm-comment": { color: "hsl(var(--muted-foreground))" },
+    ".cm-content .cm-list-marker": { color: "hsl(var(--primary))" }, // Style list markers
+    ".cm-content .cm-hr": { borderTop: "1px solid hsl(var(--border))", margin: "1em 0" }, // Horizontal rule
+    // Inline code
+    ".cm-content .cm-inline-code": {
+        backgroundColor: "hsl(var(--muted) / 0.5)",
+        color: "hsl(var(--foreground) / 0.8)",
+        padding: "0.1em 0.3em",
+        borderRadius: "3px",
+        fontFamily: "var(--font-mono)",
+        fontSize: "90%",
+    },
+    // Code blocks (if using ```)
+    ".cm-content .cm-code-block": {
+        backgroundColor: "hsl(var(--muted) / 0.4)",
+        fontFamily: "var(--font-mono)",
+        padding: "1em",
+        borderRadius: "4px",
+        overflowX: "auto",
+        fontSize: "90%",
+        lineHeight: "1.5",
+    },
 });
 
-// Define an Annotation type for external changes
 const externalChangeEvent = Annotation.define<boolean>();
 
 interface CodeMirrorEditorProps {
@@ -48,44 +120,26 @@ export interface CodeMirrorEditorRef {
     getView: () => EditorView | null;
 }
 
-// Use forwardRef to allow parent components to get a ref to the editor instance
 const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
-    ({
-         value,
-         onChange,
-         className,
-         placeholder,
-         readOnly = false,
-         onBlur,
-     }, ref) => {
+    ({ value, onChange, className, placeholder, readOnly = false, onBlur }, ref) => {
         const editorRef = useRef<HTMLDivElement>(null);
         const viewRef = useRef<EditorView | null>(null);
-        const onChangeRef = useRef(onChange); // Use refs for callbacks to avoid re-triggering effects
+        const onChangeRef = useRef(onChange);
         const onBlurRef = useRef(onBlur);
-
-        // Refs to store previous prop values for comparison to optimize reconfigurations
         const prevReadOnlyRef = useRef(readOnly);
         const prevPlaceholderRef = useRef(placeholder);
 
-        // Update callback refs if they change
-        useEffect(() => {
-            onChangeRef.current = onChange;
-        }, [onChange]);
-        useEffect(() => {
-            onBlurRef.current = onBlur;
-        }, [onBlur]);
+        useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+        useEffect(() => { onBlurRef.current = onBlur; }, [onBlur]);
 
-        // Expose focus and getView methods via the ref
         useImperativeHandle(ref, () => ({
             focus: () => { viewRef.current?.focus(); },
             getView: () => viewRef.current,
         }), []);
 
-        // Effect for Editor Setup and Teardown - Runs ONCE on mount
         useEffect(() => {
             if (!editorRef.current) return;
 
-            // Function to create extensions, including dynamic ones based on initial props
             const createExtensions = (currentPlaceholder?: string, currentReadOnly?: boolean) => [
                 history(), drawSelection(), dropCursor(), EditorState.allowMultipleSelections.of(true), indentOnInput(),
                 bracketMatching(), closeBrackets(), autocompletion(), rectangularSelection(), highlightSelectionMatches(),
@@ -93,98 +147,73 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
                 EditorView.lineWrapping, EditorView.contentAttributes.of({ 'aria-label': 'Markdown editor content' }),
                 EditorView.updateListener.of((update) => {
-                    // Distinguish between user edits and external value changes
                     const isExternal = update.transactions.some(tr => tr.annotation(externalChangeEvent));
                     if (update.docChanged && !isExternal) {
-                        // Call onChange only for user edits
                         onChangeRef.current(update.state.doc.toString());
                     }
                     if (update.focusChanged && !update.view.hasFocus) {
-                        // Call onBlur when focus is lost
                         onBlurRef.current?.();
                     }
                 }),
-                EditorState.readOnly.of(currentReadOnly ?? false), // Apply initial readOnly state
-                ...(currentPlaceholder ? [viewPlaceholder(currentPlaceholder)] : []), // Apply initial placeholder
+                EditorState.readOnly.of(currentReadOnly ?? false),
+                ...(currentPlaceholder ? [viewPlaceholder(currentPlaceholder)] : []),
                 editorTheme, // Apply custom theme
             ];
 
-            // Create the initial editor state
             const startState = EditorState.create({
-                doc: value, // Use initial value prop
-                extensions: createExtensions(placeholder, readOnly) // Use initial placeholder/readOnly props
+                doc: value,
+                extensions: createExtensions(placeholder, readOnly)
             });
 
-            // Create the editor view
-            const view = new EditorView({
-                state: startState,
-                parent: editorRef.current,
-            });
+            const view = new EditorView({ state: startState, parent: editorRef.current });
             viewRef.current = view;
-
-            // Store initial props in refs *after* setup for comparison in later effects
             prevReadOnlyRef.current = readOnly;
             prevPlaceholderRef.current = placeholder;
 
-            // Cleanup function: Destroy the editor view when the component unmounts
             return () => {
                 view.destroy();
                 viewRef.current = null;
             };
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, []); // Empty dependency array ensures this runs only once on mount
+        }, []); // Mount only
 
-        // Effect to handle EXTERNAL value changes from props
         useEffect(() => {
             const view = viewRef.current;
-            // Only update if the view exists and the prop value is different from the editor's current state
             if (view && value !== view.state.doc.toString()) {
-                // Use a transaction to replace the entire document content
                 view.dispatch({
                     changes: { from: 0, to: view.state.doc.length, insert: value || '' },
-                    // Annotate the transaction to mark it as an external change
                     annotations: externalChangeEvent.of(true)
                 });
             }
-        }, [value]); // Dependency: Run only when the 'value' prop changes
+        }, [value]);
 
-        // Effect to handle dynamic readOnly and placeholder prop changes AFTER mount
         useEffect(() => {
             const view = viewRef.current;
             if (!view) return;
-
-            const effects: StateEffect<unknown>[] = []; // Use unknown for StateEffect type
-
-            // Compare current readOnly prop with previous value
+            const effects: StateEffect<unknown>[] = [];
             if (readOnly !== prevReadOnlyRef.current) {
-                // Reconfigure the readOnly state extension
                 effects.push(StateEffect.reconfigure.of(EditorState.readOnly.of(readOnly)));
-                prevReadOnlyRef.current = readOnly; // Update previous value ref
+                prevReadOnlyRef.current = readOnly;
             }
-
-            // Compare current placeholder prop with previous value
             if (placeholder !== prevPlaceholderRef.current) {
-                // Reconfigure the placeholder view extension
                 effects.push(StateEffect.reconfigure.of(placeholder ? [viewPlaceholder(placeholder)] : []));
-                prevPlaceholderRef.current = placeholder; // Update previous value ref
+                prevPlaceholderRef.current = placeholder;
             }
-
-            // Dispatch effects only if there were actual changes
             if (effects.length > 0) {
                 view.dispatch({ effects });
             }
-
-        }, [readOnly, placeholder]); // Dependencies: Run when readOnly or placeholder props change
-
+        }, [readOnly, placeholder]);
 
         return (
             <div
                 ref={editorRef}
-                className={twMerge(
+                className={cn(
                     'cm-editor-container relative h-full w-full overflow-hidden rounded-md',
-                    'bg-glass-inset-100 backdrop-blur-lg border border-black/10 shadow-inner', // Base appearance
-                    'focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/80', // Focus styling
-                    className // Allow external class overrides
+                    // Use theme variables for background/border
+                    'bg-background/50 border border-border/50',
+                    // Refined focus state
+                    'focus-within:ring-1 focus-within:ring-ring focus-within:border-primary/80',
+                    className
                 )}
             />
         );
@@ -192,5 +221,4 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
 );
 
 CodeMirrorEditor.displayName = 'CodeMirrorEditor';
-// Performance: Export the memoized component directly
 export default memo(CodeMirrorEditor);

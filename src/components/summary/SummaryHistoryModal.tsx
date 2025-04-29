@@ -2,17 +2,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { twMerge } from 'tailwind-merge';
-import { StoredSummary } from '@/store/atoms'; // Assuming StoredSummary is exported from atoms
-import Button from '../common/Button';
+import { cn } from '@/lib/utils'; // Use cn utility
+import { StoredSummary } from '@/store/atoms';
+import { Button } from '../ui/button'; // Use Button from ui
 import Icon from '../common/Icon';
 import useClickAway from '@/hooks/useClickAway';
 import { format, formatDistanceToNowStrict, isSameDay, isValid, parseISO, startOfDay, subDays } from 'date-fns';
 import CodeMirrorEditor from '../common/CodeMirrorEditor';
 import { Task } from '@/types';
-import useDebounce from '@/hooks/useDebounce'; // Ensure this hook exists and is imported correctly
+import useDebounce from '@/hooks/useDebounce';
 import Highlighter from 'react-highlight-words';
-import { IconName } from "@/components/common/IconMap"; // Ensure IconName is exported correctly
+import { IconName } from "@/components/common/IconMap";
 
 // --- Helper: Get Filter Labels (Refined Formatting - unchanged from previous) ---
 const getFilterLabels = (periodKey: string, listKey: string): { periodLabel: string, listLabel: string } => {
@@ -80,13 +80,13 @@ const ReferencedTaskItem: React.FC<ReferencedTaskItemProps> = React.memo(({ task
             <Icon
                 name={iconName}
                 size={13}
-                className={twMerge("mr-2 flex-shrink-0 transition-colors", iconColor)}
+                className={cn("mr-2 flex-shrink-0 transition-colors", iconColor)}
                 strokeWidth={task.completed ? 2.5 : 1.75}
             />
             {/* Flex container for title and percentage */}
             <div className="flex items-baseline flex-1 overflow-hidden">
                 <span
-                    className={twMerge(
+                    className={cn(
                         "text-xs truncate", // Keep text size small
                         textColor,
                         task.completed && "line-through"
@@ -250,7 +250,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({
                     {/* Modal Container */}
                     <motion.div
                         ref={modalRef}
-                        className={twMerge(
+                        className={cn(
                             "bg-neutral-50 dark:bg-neutral-800/90 backdrop-blur-3xl",
                             "w-full max-w-5xl",
                             "rounded-xl shadow-2xl overflow-hidden border border-neutral-300/50 dark:border-neutral-700/50",
@@ -293,7 +293,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({
                                             placeholder="Search history..."
                                             value={searchTerm}
                                             onChange={handleSearchChange}
-                                            className={twMerge(
+                                            className={cn(
                                                 "w-full h-8 pl-8 pr-7 text-sm rounded-md focus:outline-none",
                                                 "bg-neutral-200/60 dark:bg-neutral-700/60",
                                                 "border border-transparent focus:border-primary/40 dark:focus:border-primary/60",
@@ -337,7 +337,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({
                                                         return (
                                                             <li key={summary.id}>
                                                                 <button
-                                                                    className={twMerge(
+                                                                    className={cn(
                                                                         "w-full text-left p-2.5 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors duration-100 ease-out rounded-lg mb-0.5",
                                                                         "focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-100 dark:focus-visible:ring-offset-neutral-800",
                                                                         isSelected && "bg-primary/10 hover:bg-primary/15 dark:bg-primary/20 dark:hover:bg-primary/25"
@@ -360,7 +360,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({
                                                                             </span>
                                                                         </div>
                                                                     </div>
-                                                                    <p className={twMerge("text-xs text-neutral-600 dark:text-neutral-400 leading-snug", isSelected && "text-neutral-800 dark:text-neutral-200")}>
+                                                                    <p className={cn("text-xs text-neutral-600 dark:text-neutral-400 leading-snug", isSelected && "text-neutral-800 dark:text-neutral-200")}>
                                                                         <Highlighter
                                                                             {...highlighterProps}
                                                                             textToHighlight={summarySnippet}
@@ -402,7 +402,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({
                                         </div>
 
                                         {/* Summary Content Editor - unchanged */}
-                                        <div className={twMerge(
+                                        <div className={cn(
                                             "flex-1 min-h-0 mb-3 rounded-lg overflow-hidden relative",
                                             "bg-neutral-100/50 dark:bg-neutral-800/40",
                                             "border border-neutral-200/80 dark:border-neutral-700/50"

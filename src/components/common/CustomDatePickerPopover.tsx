@@ -7,7 +7,7 @@ import {
     addDays, addMonths, eachDayOfInterval, endOfMonth, endOfWeek,
     format, isSameDay, isSameMonth, isToday, startOfDay, startOfMonth,
     startOfWeek, subMonths, isValid
-} from '@/utils/dateUtils';
+} from '@/lib/utils/dateUtils';
 import Button from './Button';
 import Icon from './Icon';
 import { motion, AnimatePresence } from 'framer-motion';

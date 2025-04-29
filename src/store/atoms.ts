@@ -20,23 +20,18 @@ import {
     subDays,
     subMonths,
     subWeeks
-} from '@/utils/dateUtils';
+} from '@/lib/utils/dateUtils'; // Assuming dateUtils is moved
 
 // --- Base Atoms ---
 export const currentUserAtom = atom<User | null>({
-    id: '1',
-    name: 'Liu Yunpeng',
-    email: 'yp.leao@gmail.com',
-    avatar: '/vite.svg',
+    id: '1', name: 'Liu Yunpeng', email: 'yp.leao@gmail.com',
+    avatar: 'https://github.com/shadcn.png', // Example shadcn avatar
     isPremium: true,
 });
 
-// Helper function to determine task group category (relies on `completed` status)
+// Helper function to determine task group category
 export const getTaskGroupCategory = (task: Omit<Task, 'groupCategory'> | Task): TaskGroupCategory => {
-    // Use the `completed` field, which should be kept in sync with completionPercentage by the atom setter
-    if (task.completed || task.list === 'Trash') {
-        return 'nodate';
-    }
+    if (task.completed || task.list === 'Trash') return 'nodate';
     if (task.dueDate != null) {
         const dueDateObj = safeParseDate(task.dueDate);
         if (!dueDateObj || !isValid(dueDateObj)) return 'nodate';
@@ -46,17 +41,13 @@ export const getTaskGroupCategory = (task: Omit<Task, 'groupCategory'> | Task): 
         if (isSameDay(taskDay, today)) return 'today';
         const tomorrow = startOfDay(addDays(today, 1));
         const sevenDaysFromTodayEnd = endOfDay(addDays(today, 6));
-        if (!isBefore(taskDay, tomorrow) && !isAfter(taskDay, sevenDaysFromTodayEnd)) {
-            return 'next7days';
-        }
-        if (isAfter(taskDay, sevenDaysFromTodayEnd)) {
-            return 'later';
-        }
+        if (!isBefore(taskDay, tomorrow) && !isAfter(taskDay, sevenDaysFromTodayEnd)) return 'next7days';
+        if (isAfter(taskDay, sevenDaysFromTodayEnd)) return 'later';
     }
     return 'nodate';
 };
 
-// Sample Data with completionPercentage
+// Sample Data
 const initialTasksDataRaw = [
     {
         id: '11',
@@ -72,7 +63,7 @@ const initialTasksDataRaw = [
     },
     {
         id: '1',
-        title: '施工组织设计评审表 (Copy)',
+        title: '施工组织设计评审表',
         completionPercentage: 50,
         dueDate: startOfDay(new Date()),
         list: 'Work',
@@ -85,7 +76,7 @@ const initialTasksDataRaw = [
     },
     {
         id: '8',
-        title: '准备明天会议材料 (Copy)',
+        title: '准备明天会议材料',
         completionPercentage: 100,
         dueDate: startOfDay(new Date()),
         list: 'Work',
@@ -133,7 +124,7 @@ const initialTasksDataRaw = [
     },
     {
         id: '4',
-        title: '欢迎加入Tada (Copy)',
+        title: '欢迎加入Tada',
         completionPercentage: 100,
         dueDate: null,
         list: 'Inbox',
@@ -192,11 +183,11 @@ const initialTasksDataRaw = [
     },
     {
         id: '12',
-        title: '体检预约',
-        completionPercentage: 50,
-        dueDate: subDays(startOfDay(new Date()), 1),
+        title: 'Confirm Dentist Appointment',
+        completionPercentage: 0,
+        dueDate: addDays(startOfDay(new Date()), 2),
         list: 'Personal',
-        content: 'Confirm appointment time.',
+        content: 'Call Dr. Smith office.',
         order: 11,
         createdAt: subDays(new Date(), 2).getTime(),
         updatedAt: subDays(new Date(), 1).getTime(),
@@ -204,14 +195,14 @@ const initialTasksDataRaw = [
     },
     {
         id: '13',
-        title: '欢迎加入Tada',
-        completionPercentage: 20,
+        title: 'Buy Groceries',
+        completionPercentage: 80,
         dueDate: null,
         list: 'Inbox',
-        content: 'Try creating your first task!',
+        content: 'Milk, Eggs, Bread. Almost done.',
         order: 12,
         createdAt: subDays(new Date(), 1).getTime(),
-        updatedAt: subDays(new Date(), 1).getTime()
+        updatedAt: new Date().getTime()
     },
 ];
 
@@ -219,19 +210,20 @@ const initialTasksDataRaw = [
 const initialTasks: Task[] = initialTasksDataRaw
     .map(taskRaw => {
         const now = Date.now();
-        const percentage = taskRaw.completionPercentage ?? 0; // Treat null as 0
+        const percentage = taskRaw.completionPercentage ?? 0;
         const isCompleted = percentage === 100;
-        const dueDateTimestamp = taskRaw.dueDate instanceof Date && isValid(taskRaw.dueDate) ? taskRaw.dueDate.getTime() : (taskRaw.dueDate === null ? null : undefined);
+        const dueDateTimestamp = taskRaw.dueDate instanceof Date && isValid(taskRaw.dueDate)
+            ? taskRaw.dueDate.getTime()
+            : (taskRaw.dueDate === null ? null : undefined);
         if (dueDateTimestamp === undefined && taskRaw.dueDate !== null) {
             console.warn(`Invalid dueDate encountered for task "${taskRaw.title}". Setting to null.`);
         }
-
         const taskPartial: Omit<Task, 'groupCategory'> = {
             ...taskRaw,
-            completed: isCompleted, // Derived from percentage
-            completionPercentage: taskRaw.completionPercentage, // Keep original null/number
+            completed: isCompleted,
+            completionPercentage: taskRaw.completionPercentage,
             dueDate: dueDateTimestamp === undefined ? null : dueDateTimestamp,
-            completedAt: isCompleted ? (taskRaw.completedAt ?? taskRaw.updatedAt ?? now) : null, // Set based on derived completed status
+            completedAt: isCompleted ? (taskRaw.completedAt ?? taskRaw.updatedAt ?? now) : null,
             updatedAt: taskRaw.updatedAt ?? now,
             tags: taskRaw.tags ?? [],
             priority: taskRaw.priority ?? null,
@@ -239,13 +231,13 @@ const initialTasks: Task[] = initialTasksDataRaw
         };
         return {
             ...taskPartial,
-            groupCategory: getTaskGroupCategory(taskPartial), // Use the derived completed status for grouping
+            groupCategory: getTaskGroupCategory(taskPartial),
         };
     })
     .sort((a, b) => (a.order - b.order) || (a.createdAt - b.createdAt));
 
 // Atom for storing the raw task list with persistence
-const baseTasksAtom = atomWithStorage<Task[]>('tasks_v6_percentage', initialTasks, undefined, {getOnInit: true});
+const baseTasksAtom = atomWithStorage<Task[]>('tasks_v7_shadcn', initialTasks, undefined, {getOnInit: true});
 
 // Main tasks atom with refined setter logic
 export const tasksAtom = atom(
@@ -261,48 +253,35 @@ export const tasksAtom = atom(
 
         const nextTasksProcessed = nextTasksRaw.map(task => {
             const previousTaskState = previousTasks.find(p => p.id === task.id);
+            let currentPercentage = task.completionPercentage ?? null;
+            let isCompleted = task.completed;
 
-            let currentPercentage = task.completionPercentage ?? null; // Start with provided value or null
-            let isCompleted = task.completed; // Start with provided value
-
-            // Derive state based on changes or rules
             if (task.list === 'Trash') {
-                currentPercentage = null; // Trash items are not "in progress"
+                currentPercentage = null;
                 isCompleted = false;
             } else if (previousTaskState && task.completed !== undefined && task.completed !== previousTaskState.completed) {
-                // If 'completed' status was explicitly changed by the user/action
-                currentPercentage = task.completed ? 100 : (previousTaskState.completionPercentage === 100 ? null : previousTaskState.completionPercentage); // Go to 100 or back to previous (or null if was 100)
-                isCompleted = task.completed; // Trust the explicit change
+                currentPercentage = task.completed ? 100 : (previousTaskState.completionPercentage === 100 ? null : previousTaskState.completionPercentage);
+                isCompleted = task.completed;
             } else if (task.completionPercentage !== undefined && (!previousTaskState || task.completionPercentage !== previousTaskState.completionPercentage)) {
-                // If percentage changed explicitly
                 isCompleted = task.completionPercentage === 100;
-                currentPercentage = task.completionPercentage === 0 ? null : task.completionPercentage; // Treat 0 as null
+                currentPercentage = task.completionPercentage === 0 ? null : task.completionPercentage;
             } else {
-                // Fallback/Initial state derivation if neither completed nor percentage was the primary trigger
                 isCompleted = currentPercentage === 100;
             }
 
-
             const newCompletedAt = isCompleted ? (task.completedAt ?? previousTaskState?.completedAt ?? task.updatedAt ?? now) : null;
-
             const validatedTask = {
                 ...task,
-                content: task.content ?? '',
-                tags: task.tags ?? [],
-                priority: task.priority ?? null,
-                completionPercentage: currentPercentage, // Keep null for 0% or trashed
-                completed: isCompleted, // Ensure 'completed' reflects the percentage/state
-                completedAt: newCompletedAt,
-                // Don't update 'updatedAt' yet, decide based on functional changes
+                content: task.content ?? '', tags: task.tags ?? [], priority: task.priority ?? null,
+                completionPercentage: currentPercentage, completed: isCompleted, completedAt: newCompletedAt,
                 updatedAt: task.updatedAt
             };
-            const newCategory = getTaskGroupCategory(validatedTask); // Recalculate category based on potentially updated state
+            const newCategory = getTaskGroupCategory(validatedTask);
 
             let changed = false;
             if (!previousTaskState) {
                 changed = true;
             } else {
-                // Compare relevant functional fields
                 if (validatedTask.title !== previousTaskState.title ||
                     validatedTask.completionPercentage !== previousTaskState.completionPercentage ||
                     validatedTask.completed !== previousTaskState.completed ||
@@ -319,24 +298,23 @@ export const tasksAtom = atom(
             }
 
             if (changed) {
-                // Functional change occurred, update timestamp
                 return {...validatedTask, groupCategory: newCategory, updatedAt: now};
             } else {
-                // If nothing functionally changed, return the previous state object
-                // This prevents unnecessary updates and keeps the original updatedAt timestamp
-                return previousTaskState!; // We know previousTaskState exists if changed is false
+                // Optimization: return previous state object reference if no functional change
+                // Check if groupCategory needs explicit update even if other fields didn't change
+                if (newCategory !== previousTaskState!.groupCategory) {
+                    return {...previousTaskState!, groupCategory: newCategory, updatedAt: now};
+                }
+                return previousTaskState!;
             }
         });
 
-
-        // Only update base atom if the processed list is actually different from the previous one
-        // This comparison helps prevent infinite loops if the setter logic is flawed
         if (JSON.stringify(nextTasksProcessed) !== JSON.stringify(previousTasks)) {
-            // console.log("Updating baseTasksAtom due to changes.");
             set(baseTasksAtom, nextTasksProcessed);
         }
     }
 );
+
 
 // --- UI State Atoms ---
 export const selectedTaskIdAtom = atom<string | null>(null);
@@ -364,7 +342,7 @@ export const summaryListFilterAtom = atom<string>('all');
 export const summarySelectedTaskIdsAtom = atom<Set<string>>(new Set<string>());
 const summaryStorage = createJSONStorage<StoredSummary[]>(() => localStorage);
 export const storedSummariesAtom = atomWithStorage<StoredSummary[]>(
-    'tada_summaries_v1', [], summaryStorage, {getOnInit: true}
+    'tada_summaries_v1_shadcn', [], summaryStorage, {getOnInit: true}
 );
 export const currentSummaryIndexAtom = atom<number>(0);
 export const isGeneratingSummaryAtom = atom<boolean>(false);
@@ -376,8 +354,10 @@ export const selectedTaskAtom = atom((get) => {
     if (!selectedId) return null;
     return tasks.find(task => task.id === selectedId) ?? null;
 });
+
 const initialUserLists = ['Work', 'Planning', 'Dev', 'Personal'];
-export const userDefinedListsAtom = atomWithStorage<string[]>('userDefinedLists_v1', initialUserLists, undefined, {getOnInit: true});
+export const userDefinedListsAtom = atomWithStorage<string[]>('userDefinedLists_v1_shadcn', initialUserLists, undefined, {getOnInit: true});
+
 export const userListNamesAtom = atom((get) => {
     const tasks = get(tasksAtom);
     const userLists = get(userDefinedListsAtom);
@@ -393,6 +373,7 @@ export const userListNamesAtom = atom((get) => {
         return a.localeCompare(b);
     });
 });
+
 export const userTagNamesAtom = atom((get) => {
     const tasks = get(tasksAtom);
     const tags = new Set<string>();
@@ -401,14 +382,14 @@ export const userTagNamesAtom = atom((get) => {
     });
     return Array.from(tags).sort((a, b) => a.localeCompare(b));
 });
+
 export const taskCountsAtom = atom((get) => {
     const tasks = get(tasksAtom);
     const allUserListNames = get(userListNamesAtom);
     const allUserTagNames = get(userTagNamesAtom);
     const activeTasks = tasks.filter(task => task.list !== 'Trash');
     const counts = {
-        all: 0, today: 0, next7days: 0,
-        completed: 0,
+        all: 0, today: 0, next7days: 0, completed: 0,
         trash: tasks.filter(task => task.list === 'Trash').length,
         lists: Object.fromEntries(allUserListNames.map(name => [name, 0])),
         tags: Object.fromEntries(allUserTagNames.map(name => [name, 0])),
@@ -425,38 +406,42 @@ export const taskCountsAtom = atom((get) => {
                     if (!isOverdueCheck(date) && isWithinNext7Days(date)) counts.next7days++;
                 }
             }
-            if (task.list && Object.prototype.hasOwnProperty.call(counts.lists, task.list)) {
-                counts.lists[task.list]++;
-            }
+            if (task.list && Object.prototype.hasOwnProperty.call(counts.lists, task.list)) counts.lists[task.list]++;
             task.tags?.forEach(tag => {
-                if (Object.prototype.hasOwnProperty.call(counts.tags, tag)) {
-                    counts.tags[tag]++;
-                }
+                if (Object.prototype.hasOwnProperty.call(counts.tags, tag)) counts.tags[tag]++;
             });
         }
     });
     return counts;
 });
+
 export const groupedAllTasksAtom = atom((get): Record<TaskGroupCategory, Task[]> => {
     const tasksToGroup = get(tasksAtom).filter(task => task.list !== 'Trash' && !task.completed).sort((a, b) => (a.order - b.order) || (a.createdAt - b.createdAt));
     const groups: Record<TaskGroupCategory, Task[]> = {overdue: [], today: [], next7days: [], later: [], nodate: []};
     tasksToGroup.forEach(task => {
         const category = task.groupCategory;
-        if (Object.prototype.hasOwnProperty.call(groups, category)) {
-            groups[category].push(task);
-        } else {
+        if (Object.prototype.hasOwnProperty.call(groups, category)) groups[category].push(task);
+        else {
             console.warn(`Task ${task.id} in groupedAllTasksAtom has unexpected category: ${category}. Placing in 'nodate'.`);
             groups.nodate.push(task);
         }
     });
     return groups;
 });
+
 export const rawSearchResultsAtom = atom<Task[]>((get) => {
     const search = get(searchTermAtom).trim().toLowerCase();
     if (!search) return [];
     const allTasks = get(tasksAtom);
     const searchWords = search.split(' ').filter(Boolean);
-    return allTasks.filter(task => searchWords.every(word => task.title.toLowerCase().includes(word) || (task.content && task.content.toLowerCase().includes(word)) || (task.tags && task.tags.some(tag => tag.toLowerCase().includes(word))) || (task.list.toLowerCase().includes(word)))).sort((a, b) => {
+    return allTasks.filter(task =>
+        searchWords.every(word =>
+            task.title.toLowerCase().includes(word) ||
+            (task.content && task.content.toLowerCase().includes(word)) ||
+            (task.tags && task.tags.some(tag => tag.toLowerCase().includes(word))) ||
+            (task.list.toLowerCase().includes(word))
+        )
+    ).sort((a, b) => {
         const aIsActive = a.list !== 'Trash' && !a.completed;
         const bIsActive = b.list !== 'Trash' && !b.completed;
         if (aIsActive !== bIsActive) return aIsActive ? -1 : 1;
@@ -469,23 +454,19 @@ export const currentSummaryFilterKeyAtom = atom<string>((get) => {
     const period = get(summaryPeriodFilterAtom);
     const list = get(summaryListFilterAtom);
     let periodStr: string;
-    if (typeof period === 'string') {
-        periodStr = period;
-    } else {
-        periodStr = `custom_${startOfDay(period.start).getTime()}_${endOfDay(period.end).getTime()}`;
-    }
+    if (typeof period === 'string') periodStr = period;
+    else periodStr = `custom_${startOfDay(period.start).getTime()}_${endOfDay(period.end).getTime()}`;
     const listStr = list === 'all' ? 'all' : `list-${list}`;
     return `${periodStr}__${listStr}`;
 });
+
 export const filteredTasksForSummaryAtom = atom<Task[]>((get) => {
     const allTasks = get(tasksAtom);
     const period = get(summaryPeriodFilterAtom);
     const listFilter = get(summaryListFilterAtom);
     const now = new Date();
-    const todayStart = startOfDay(now);
-    const todayEnd = endOfDay(now);
-    let startDate: Date | null = null;
-    let endDate: Date | null = null;
+    const todayStart = startOfDay(now), todayEnd = endOfDay(now);
+    let startDate: Date | null = null, endDate: Date | null = null;
     switch (period) {
         case 'today':
             startDate = todayStart;
@@ -520,16 +501,10 @@ export const filteredTasksForSummaryAtom = atom<Task[]>((get) => {
             }
             break;
     }
-    if ((startDate && !isValid(startDate)) || (endDate && !isValid(endDate))) {
-        console.error("Invalid date range for summary filter", {period, startDate, endDate});
-        return [];
-    }
+    if ((startDate && !isValid(startDate)) || (endDate && !isValid(endDate))) return [];
     return allTasks.filter(task => {
-        // Filter by Completion Percentage > 0
         if (task.completionPercentage === null || task.completionPercentage === 0) return false;
-        // Filter by List
         if (listFilter !== 'all' && task.list !== listFilter) return false;
-        // Filter by Date Range (only if range is active and task has a valid due date)
         if (startDate && endDate) {
             if (!task.dueDate) return false;
             const dueDate = safeParseDate(task.dueDate);
@@ -537,28 +512,28 @@ export const filteredTasksForSummaryAtom = atom<Task[]>((get) => {
             const dueDateStart = startOfDay(dueDate);
             if (isBefore(dueDateStart, startDate) || isAfter(dueDateStart, endDate)) return false;
         }
-        // Exclude Trashed
         if (task.list === 'Trash') return false;
-        return true; // Passed all filters
+        return true;
     }).sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity) || a.order - b.order || a.createdAt - b.createdAt);
 });
+
 export const relevantStoredSummariesAtom = atom<StoredSummary[]>((get) => {
     const allSummaries = get(storedSummariesAtom);
     const filterKey = get(currentSummaryFilterKeyAtom);
-    return allSummaries.filter(s => s.periodKey === filterKey.split('__')[0] && s.listKey === filterKey.split('__')[1]).sort((a, b) => b.createdAt - a.createdAt);
+    const [periodKey, listKey] = filterKey.split('__');
+    return allSummaries.filter(s => s.periodKey === periodKey && s.listKey === listKey).sort((a, b) => b.createdAt - a.createdAt);
 });
+
 export const currentDisplayedSummaryAtom = atom<StoredSummary | null>((get) => {
     const relevantSummaries = get(relevantStoredSummariesAtom);
     const index = get(currentSummaryIndexAtom);
     return relevantSummaries[index] ?? null;
 });
+
 export const referencedTasksForSummaryAtom = atom<Task[]>((get) => {
     const currentSummary = get(currentDisplayedSummaryAtom);
     if (!currentSummary) return [];
     const allTasks = get(tasksAtom);
     const referencedIds = new Set(currentSummary.taskIds);
-    // Return tasks preserving their original order/data as much as possible
-    // return currentSummary.taskIds.map(id => allTasks.find(task => task.id === id)).filter((task): task is Task => !!task);
-    // Alternative: filter and sort based on original task data if order is needed
     return allTasks.filter(task => referencedIds.has(task.id)).sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity) || a.order - b.order);
 });

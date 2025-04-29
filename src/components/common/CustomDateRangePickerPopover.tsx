@@ -17,7 +17,7 @@ import {
     startOfMonth,
     startOfWeek,
     subMonths
-} from '@/utils/dateUtils';
+} from '@/lib/utils/dateUtils';
 import Button from './Button';
 // import Icon from './Icon';
 import {AnimatePresence, motion} from 'framer-motion';

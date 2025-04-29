@@ -1,7 +1,6 @@
 // src/components/summary/SummaryView.tsx
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useAtom, useAtomValue, useSetAtom} from 'jotai';
-import ReactDOM from 'react-dom';
 import {usePopper} from 'react-popper';
 import {
     currentDisplayedSummaryAtom,
@@ -14,35 +13,35 @@ import {
     storedSummariesAtom,
     StoredSummary,
     summaryListFilterAtom,
-    summaryPeriodFilterAtom,
+    summaryPeriodFilterAtom, SummaryPeriodKey,
     SummaryPeriodOption,
     summarySelectedTaskIdsAtom,
     tasksAtom,
     userListNamesAtom
 } from '@/store/atoms';
-import Button from '../common/Button';
-import Dropdown, {DropdownRenderProps} from '../common/Dropdown';
-import Icon from '../common/Icon';
-import CodeMirrorEditor, {CodeMirrorEditorRef} from '../common/CodeMirrorEditor';
-import {Task} from '@/types';
+import { Button } from '@/components/ui/button'; // Use Button from ui
 import {
-    format,
-    formatDateTime,
-    formatRelativeDate,
-    isBefore,
-    isSameDay,
-    isValid,
-    safeParseDate,
-    startOfDay
-} from '@/utils/dateUtils';
-import {twMerge} from 'tailwind-merge';
-// import { AnimatePresence, motion } from 'framer-motion';
-import SelectionCheckbox from '../common/SelectionCheckbox';
-// import TaskItemMini from './TaskItemMini';
-import {Tooltip} from 'react-tooltip';
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'; // Use DropdownMenu
+import Icon from '../common/Icon';
+import CodeMirrorEditor, { CodeMirrorEditorRef } from '../common/CodeMirrorEditor';
+import { Task } from '@/types';
+import { format, formatDateTime, formatRelativeDate, isBefore, isSameDay, isValid, safeParseDate, startOfDay } from '@/lib/utils/dateUtils';
+import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox'; // Use Checkbox
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'; // Use Tooltip
 import useDebounce from '@/hooks/useDebounce';
-import CustomDateRangePickerPopover from '../common/CustomDateRangePickerPopover';
-import SummaryHistoryModal from './SummaryHistoryModal'; // Import the History Modal
+import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover'; // Use Popover\
+import SummaryHistoryModal from './SummaryHistoryModal';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Use ScrollArea
+import { Badge } from '@/components/ui/badge';
+import CustomDateRangePickerPopover from "@/components/common/CustomDateRangePickerPopover.tsx"; // Use Badge
 
 // --- Placeholder AI Function ---
 async function generateAiSummary(tasks: Task[]): Promise<string> {
@@ -89,12 +88,12 @@ const SummaryView: React.FC = () => {
     const hasUnsavedChangesRef = useRef(false);
     const isInternalEditorUpdate = useRef(false);
     const [isRangePickerOpen, setIsRangePickerOpen] = useState(false);
-    const [rangePickerTriggerElement, setRangePickerTriggerElement] = useState<HTMLButtonElement | null>(null);
-    const [rangePopperElement, setRangePopperElement] = useState<HTMLDivElement | null>(null);
+    const [rangePickerTriggerElement, setRangePickerTriggerElement] = useState<HTMLDivElement | HTMLButtonElement | null>(null);
+    const [rangePopperElement] = useState<HTMLDivElement | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
     // Popper for Date Range Picker
-    const {styles: rangePopperStyles, attributes: rangePopperAttributes, update: updateRangePopper} = usePopper(
+    const {update: updateRangePopper} = usePopper(
         rangePickerTriggerElement, rangePopperElement, {
             placement: 'bottom-start', strategy: 'fixed',
             modifiers: [{name: 'offset', options: {offset: [0, 8]}}, {
@@ -142,27 +141,38 @@ const SummaryView: React.FC = () => {
     }, [isRangePickerOpen, updateRangePopper]);
 
     // --- Callbacks ---
-    const handlePeriodChange = useCallback((newPeriodValue: SummaryPeriodOption | 'custom', closeDropdown?: () => void, event?: React.MouseEvent<HTMLButtonElement>) => {
-        if (newPeriodValue === 'custom') {
-            // Ensure the trigger element is correctly captured *before* opening
-            if (event?.currentTarget) setRangePickerTriggerElement(event.currentTarget);
-            else console.warn("Could not get trigger element for range picker"); // Fallback or error handling
-            setIsRangePickerOpen(true);
-            closeDropdown?.();
+    const handlePeriodChange = useCallback((value: string) => { // Value is string from DropdownMenuRadioItem
+        if (value === 'custom') {
+            // This case needs reconsideration. Maybe keep custom trigger separate?
+            // Or use a Popover directly instead of DropdownMenu for period.
+            // For now, let's assume a Popover approach is better for custom range.
+            console.warn("Custom range trigger needs adjustment with DropdownMenu");
         } else {
-            setPeriod(newPeriodValue as SummaryPeriodOption);
-            setIsRangePickerOpen(false);
-            closeDropdown?.();
+            setPeriod(value as SummaryPeriodOption); // Cast might be needed
         }
+        // Dropdown closes automatically
     }, [setPeriod]);
-    const handleListChange = useCallback((newList: string, close?: () => void) => {
-        setListFilter(newList);
-        close?.();
+
+    const handleOpenCustomRangePicker = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        // The event target for DropdownMenuItem's onClick is an HTMLDivElement
+        setRangePickerTriggerElement(event.currentTarget);
+        setIsRangePickerOpen(true);
+        // Note: The DropdownMenu might close automatically depending on Radix behavior.
+        // If it doesn't, you might need to manually close it here or adjust DropdownMenuItem props.
+    }, []);
+
+
+    const handleListChange = useCallback((value: string) => { // Value is string from DropdownMenuRadioItem
+        setListFilter(value);
+        // Dropdown closes automatically
     }, [setListFilter]);
-    const handleTaskSelectionChange = useCallback((taskId: string, isSelected: boolean) => {
+
+    const handleTaskSelectionChange = useCallback((taskId: string, checked: boolean | 'indeterminate') => {
         setSelectedTaskIds(prev => {
             const newSet = new Set(prev);
-            if (isSelected) newSet.add(taskId); else newSet.delete(taskId);
+            // Treat indeterminate as unchecked for this logic
+            if (checked === true) newSet.add(taskId);
+            else newSet.delete(taskId);
             return newSet;
         });
     }, [setSelectedTaskIds]);
@@ -233,34 +243,33 @@ const SummaryView: React.FC = () => {
     const closeHistoryModal = useCallback(() => setIsHistoryModalOpen(false), []);
 
     // --- Memoized Values ---
-    const periodOptions = useMemo((): { label: string, value: SummaryPeriodOption | 'custom' }[] => [{
-        label: 'Today',
-        value: 'today'
-    }, {label: 'Yesterday', value: 'yesterday'}, {label: 'This Week', value: 'thisWeek'}, {
-        label: 'Last Week',
-        value: 'lastWeek'
-    }, {label: 'This Month', value: 'thisMonth'}, {label: 'Last Month', value: 'lastMonth'}, {
-        label: 'Custom Range...',
-        value: 'custom'
-    },], []);
-    const listOptions = useMemo(() => [{
-        label: 'All Lists',
-        value: 'all'
-    }, ...availableLists.map(listName => ({label: listName, value: listName}))], [availableLists]);
+    const periodOptions = useMemo((): { label: string, value: SummaryPeriodKey }[] => [
+        { label: 'Today', value: 'today' }, { label: 'Yesterday', value: 'yesterday' },
+        { label: 'This Week', value: 'thisWeek' }, { label: 'Last Week', value: 'lastWeek' },
+        { label: 'This Month', value: 'thisMonth' }, { label: 'Last Month', value: 'lastMonth' },
+    ], []);
+
+    // Label for the Custom Range button / selected state
     const selectedPeriodLabel = useMemo(() => {
-        const option = periodOptions.find(p => typeof period === 'string' && p.value === period);
+        const option = periodOptions.find(p => p.value === period);
         if (option) return option.label;
         if (typeof period === 'object') {
             const startStr = format(period.start, 'MMM d');
             const endStr = format(period.end, 'MMM d');
             const startYear = format(period.start, 'yyyy');
-            const endYear = format(period.end, 'yyyy');
-            if (isSameDay(period.start, period.end)) return startYear !== format(new Date(), 'yyyy') ? format(period.start, 'MMM d, yyyy') : startStr;
             const currentYear = format(new Date(), 'yyyy');
-            if (startYear !== endYear) return `${format(period.start, 'MMM d, yyyy')} - ${format(period.end, 'MMM d, yyyy')}`; else if (startYear !== currentYear) return `${startStr} - ${endStr}, ${startYear}`; else return `${startStr} - ${endStr}`;
+            if (isSameDay(period.start, period.end)) return startYear !== currentYear ? format(period.start, 'MMM d, yyyy') : startStr;
+            const endYear = format(period.end, 'yyyy');
+            if (startYear !== endYear) return `${format(period.start, 'MMM d, yyyy')} - ${format(period.end, 'MMM d, yyyy')}`;
+            else if (startYear !== currentYear) return `${startStr} - ${endStr}, ${startYear}`;
+            else return `${startStr} - ${endStr}`;
         }
-        return 'Select Period';
+        return 'Select Period'; // Fallback
     }, [period, periodOptions]);
+    const listOptions = useMemo(() => [{
+        label: 'All Lists',
+        value: 'all'
+    }, ...availableLists.map(listName => ({label: listName, value: listName}))], [availableLists]);
     const selectedListLabel = useMemo(() => {
         const option = listOptions.find(l => l.value === listFilter);
         return option ? option.label : 'Unknown List';
@@ -271,262 +280,353 @@ const SummaryView: React.FC = () => {
     const allTasksSelected = useMemo(() => filteredTasks.length > 0 && filteredTasks.every(task => selectedTaskIds.has(task.id)), [filteredTasks, selectedTaskIds]);
     const someTasksSelected = useMemo(() => selectedTaskIds.size > 0 && !allTasksSelected, [selectedTaskIds, allTasksSelected]);
     const totalRelevantSummaries = useMemo(() => relevantSummaries.length, [relevantSummaries]);
-    const displayedIndex = useMemo(() => totalRelevantSummaries - currentIndex, [totalRelevantSummaries, currentIndex]);
+    const displayedIndex = useMemo(() => totalRelevantSummaries > 0 ? totalRelevantSummaries - currentIndex : 0, [totalRelevantSummaries, currentIndex]);
 
     // --- Render Functions ---
     const renderReferencedTasksDropdown = () => (
-        <div
-            className="bg-glass-100/95 backdrop-blur-xl rounded-lg shadow-xl border border-black/10 max-h-72 w-80 styled-scrollbar overflow-y-auto">
-            <div
-                className="px-3 py-1.5 text-xs font-semibold text-muted-foreground border-b border-black/10 sticky top-0 bg-glass-100/80 backdrop-blur-md z-10"> Referenced
-                Tasks ({referencedTasks.length})
+        <div className="w-80 max-h-72 styled-scrollbar overflow-y-auto"> {/* Added max-h and scrollbar */}
+            <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground border-b border-border sticky top-0 bg-popover/95 backdrop-blur-sm z-10">
+                Referenced Tasks ({referencedTasks.length})
             </div>
             {referencedTasks.length > 0 ? (
-                <ul className="p-1.5 space-y-0.5"> {referencedTasks.map(task => (
-                    <li key={task.id}
-                        className="flex items-start p-1.5 rounded hover:bg-black/5 transition-colors duration-100 ease-apple"
-                        title={task.title}>
-                        <div
-                            className={twMerge("flex-shrink-0 w-4 h-4 rounded-full border mt-[1px] mr-2.5 flex items-center justify-center", task.completed ? "bg-primary/90 border-primary/90" : task.completionPercentage && task.completionPercentage > 0 ? "border-primary/70" : "bg-white/40 border-gray-400/80")}>
-                            {task.completed && <Icon name="check" size={9} className="text-white" strokeWidth={3}/>}
-                            {task.completionPercentage && task.completionPercentage > 0 && !task.completed && (
-                                <div className="w-1.5 h-1.5 bg-primary/80 rounded-full"></div>)}
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <p className={twMerge("text-[12.5px] font-medium text-gray-800 leading-snug truncate", task.completed && "line-through text-muted-foreground")}> {task.title || "Untitled"} </p>
-                            <div className="flex items-center space-x-2 mt-0.5 text-[10.5px] text-muted-foreground">
-                                {task.completionPercentage && !task.completed && (<span
-                                    className="font-medium text-primary/90">[{task.completionPercentage}%]</span>)}
-                                {task.dueDate && isValid(safeParseDate(task.dueDate)) && (
-                                    <span className="flex items-center whitespace-nowrap"> <Icon name="calendar"
-                                                                                                 size={10}
-                                                                                                 className="mr-0.5 opacity-60"/> {formatRelativeDate(task.dueDate)} </span>)}
-                                {task.list && task.list !== 'Inbox' && (<span
-                                    className="flex items-center bg-black/10 px-1 py-0 rounded-[3px] max-w-[70px] truncate"
-                                    title={task.list}> <Icon name="list" size={9}
-                                                             className="mr-0.5 opacity-60 flex-shrink-0"/> <span
-                                    className="truncate">{task.list}</span> </span>)}
+                <ul className="p-1.5 space-y-0.5">
+                    {referencedTasks.map(task => (
+                        <li key={task.id}
+                            className="flex items-start p-1.5 rounded hover:bg-accent transition-colors"
+                            title={task.title}>
+                            {/* Use Checkbox for visual consistency */}
+                            <Checkbox
+                                id={`ref-task-${task.id}`} // Unique ID needed for label linking? Or just visual
+                                checked={task.completed ? true : (task.completionPercentage && task.completionPercentage > 0 ? 'indeterminate' : false)}
+                                disabled // Non-interactive in this context
+                                className="w-4 h-4 rounded-full mt-0.5 mr-2.5 flex-shrink-0"
+                                aria-hidden="true" // Decorative in this view
+                            />
+                            <div className="flex-1 overflow-hidden">
+                                <p className={cn(
+                                    "text-xs font-medium text-foreground leading-snug truncate",
+                                    task.completed && "line-through text-muted-foreground"
+                                )}>
+                                    {task.title || "Untitled"}
+                                </p>
+                                <div className="flex items-center space-x-2 mt-0.5 text-[10px] text-muted-foreground flex-wrap gap-y-0.5">
+                                    {task.completionPercentage && !task.completed && (
+                                        <span className="font-medium text-primary/90">[{task.completionPercentage}%]</span>
+                                    )}
+                                    {task.dueDate && isValid(safeParseDate(task.dueDate)) && (
+                                        <span className="flex items-center whitespace-nowrap">
+                                            <Icon name="calendar" size={10} className="mr-0.5 opacity-60"/>
+                                            {formatRelativeDate(task.dueDate)}
+                                        </span>
+                                    )}
+                                    {task.list && task.list !== 'Inbox' && (
+                                        <Badge variant="secondary" className="font-normal px-1 py-0 text-[9px]">
+                                            <Icon name="list" size={9} className="mr-0.5 opacity-60 flex-shrink-0"/>
+                                            <span className="truncate max-w-[70px]">{task.list}</span>
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </li>))}
+                        </li>
+                    ))}
                 </ul>
-            ) : (<p className="text-xs text-muted-foreground italic p-4 text-center">No referenced tasks found.</p>)}
+            ) : (
+                <p className="text-xs text-muted-foreground italic p-4 text-center">No referenced tasks found.</p>
+            )}
         </div>
     );
 
+
     return (
-        <div className="h-full flex flex-col bg-glass-alt-100 overflow-hidden">
+        <div className="h-full flex flex-col bg-canvas overflow-hidden">
             {/* Page Header */}
             <div
-                className="px-3 md:px-4 py-2 border-b border-black/10 flex justify-between items-center flex-shrink-0 bg-glass-100 backdrop-blur-lg z-10 h-12 shadow-sm">
-                <div className="w-1/3 flex items-center space-x-2">
-                    <h1 className="text-base font-semibold text-gray-800 truncate">AI Summary</h1>
-                    <Button variant="ghost" size="icon" icon="history" onClick={openHistoryModal}
-                            className="w-7 h-7 text-muted-foreground hover:bg-black/15"
-                            aria-label="View Summary History" data-tooltip-id="summary-history-tooltip"
-                            data-tooltip-content="View All Generated Summaries"/>
-                    <Tooltip id="summary-history-tooltip" place="bottom" className="!z-[60]"/>
+                className="px-3 md:px-4 py-2 border-b border-border/50 flex justify-between items-center flex-shrink-0 bg-glass-alt-100 backdrop-blur-lg z-10 h-12 shadow-sm">
+                {/* Left Side: Title & History Button */}
+                <div className="flex items-center space-x-2">
+                    <h1 className="text-lg font-semibold text-foreground truncate flex items-center">
+                        <Icon name="sparkles" className="mr-2 text-primary opacity-80" size={18}/>
+                        AI Summary
+                    </h1>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" icon="history" onClick={openHistoryModal}
+                                    className="w-7 h-7 text-muted-foreground hover:bg-accent"
+                                    aria-label="View Summary History"/>
+                        </TooltipTrigger>
+                        <TooltipContent>View All Generated Summaries</TooltipContent>
+                    </Tooltip>
                 </div>
-                <div className="flex-1 flex justify-center items-center space-x-2">
-                    {/* Period Dropdown - Wrap trigger in div for Popper ref */}
-                    <div> {/* This div doesn't need the ref, the button inside does */}
-                        <Dropdown placement="bottom" contentClassName="py-1 w-40" trigger={
-                            <Button
-                                ref={setRangePickerTriggerElement} // Set ref on the Button itself
-                                variant="ghost" size="sm"
-                                className="text-sm h-8 px-2 text-gray-700 font-medium hover:bg-black/15 min-w-[120px]"
-                            >
-                                <Icon name="calendar-days" size={14} className="mr-1.5 opacity-70"/>
-                                {selectedPeriodLabel}
+
+                {/* Center: Filters */}
+                <div className="flex-1 flex justify-center items-center space-x-1">
+                    {/* Period Dropdown */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            {/* This button's ref is captured ONLY when the "Custom Range..." item is clicked */}
+                            <Button variant="outline" size="sm" className="min-w-[130px] justify-between">
+                                <span className="flex items-center"><Icon name="calendar-days" size={14} className="mr-1.5 opacity-70"/>{selectedPeriodLabel}</span>
                                 <Icon name="chevron-down" size={14} className="ml-auto opacity-60 pl-1"/>
                             </Button>
-                        }>
-                            {({close}: DropdownRenderProps) => (<> {periodOptions.map(p => (
-                                <button key={typeof p.value === 'string' ? p.value : 'custom'}
-                                        onClick={(e) => handlePeriodChange(p.value, close, e)}
-                                        className={twMerge("block w-full text-left px-2.5 py-1 text-sm hover:bg-black/15 focus:outline-none focus-visible:bg-black/10 rounded-[3px]", period === p.value && "bg-primary/20 text-primary font-medium")}
-                                        role="menuitemradio"
-                                        aria-checked={period === p.value}> {p.label} </button>))} </>)}
-                        </Dropdown>
-                    </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuRadioGroup value={typeof period === 'string' ? period : 'custom-selected'} onValueChange={handlePeriodChange}>
+                                {periodOptions.map(p => (<DropdownMenuRadioItem key={p.value} value={p.value}>{p.label}</DropdownMenuRadioItem>))}
+                                {typeof period === 'object' && (<DropdownMenuRadioItem key="custom-selected" value="custom-selected">{selectedPeriodLabel}</DropdownMenuRadioItem>)}
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuSeparator />
+                            {/* *** CORRECTED: Use onClick here *** */}
+                            <DropdownMenuItem onClick={handleOpenCustomRangePicker} onSelect={(e) => e.preventDefault()} >
+                                <Icon name="settings" size={14} className="mr-1.5 opacity-70"/> Set Custom Range...
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Popover for Custom Date Range Picker */}
+                    <Popover open={isRangePickerOpen} onOpenChange={setIsRangePickerOpen}>
+                        <PopoverTrigger asChild>
+                            {/* The trigger is now conceptually linked to the DropdownMenuItem click */}
+                            {/* We need an anchor element for Popper, even if invisible */}
+                            <div ref={setRangePickerTriggerElement as React.Ref<HTMLDivElement>} style={{ position: 'absolute' }} />
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <CustomDateRangePickerPopover
+                                initialStartDate={typeof period === 'object' ? new Date(period.start) : undefined}
+                                initialEndDate={typeof period === 'object' ? new Date(period.end) : undefined}
+                                onApplyRange={handleRangeApply}
+                                close={handleCloseRangePicker}
+                                triggerElement={rangePickerTriggerElement}
+                            />
+                        </PopoverContent>
+                    </Popover>
+
                     {/* List Dropdown */}
-                    <Dropdown placement="bottom" contentClassName="py-1 max-h-60 overflow-y-auto styled-scrollbar w-40"
-                              trigger={<Button variant="ghost" size="sm"
-                                               className="text-sm h-8 px-2 text-gray-700 font-medium hover:bg-black/15 min-w-[110px]">
-                                  <Icon name="list" size={14} className="mr-1.5 opacity-70"/> {selectedListLabel} <Icon
-                                  name="chevron-down" size={14} className="ml-auto opacity-60 pl-1"/> </Button>}>
-                        {({close}: DropdownRenderProps) => (<> {listOptions.map(l => (
-                            <button key={l.value} onClick={() => handleListChange(l.value, close)}
-                                    className={twMerge("block w-full text-left px-2.5 py-1 text-sm hover:bg-black/15 focus:outline-none focus-visible:bg-black/10 rounded-[3px]", listFilter === l.value && "bg-primary/20 text-primary font-medium")}
-                                    role="menuitemradio"
-                                    aria-checked={listFilter === l.value}> {l.label} </button>))} </>)}
-                    </Dropdown>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="min-w-[120px] justify-between">
+                                  <span className="flex items-center">
+                                     <Icon name="list" size={14} className="mr-1.5 opacity-70"/>
+                                      {selectedListLabel}
+                                 </span>
+                                <Icon name="chevron-down" size={14} className="ml-auto opacity-60 pl-1"/>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48 max-h-60 overflow-y-auto styled-scrollbar-thin">
+                            <DropdownMenuRadioGroup value={listFilter} onValueChange={handleListChange}>
+                                {listOptions.map(l => (
+                                    <DropdownMenuRadioItem key={l.value} value={l.value}>
+                                        {l.label}
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-                <div className="w-1/3 flex justify-end"><Button variant="primary" size="sm"
-                                                                icon={isGenerating ? undefined : "sparkles"}
-                                                                loading={isGenerating} onClick={handleGenerateClick}
-                                                                disabled={isGenerateDisabled}
-                                                                className="px-3 !h-8"> {isGenerating ? 'Generating...' : 'Generate'} </Button>
+
+                {/* Right Side: Generate Button */}
+                <div className="flex justify-end">
+                    <Button
+                        variant="default" size="sm"
+                        icon={isGenerating ? undefined : "sparkles"}
+                        loading={isGenerating} onClick={handleGenerateClick}
+                        disabled={isGenerateDisabled}
+                        className="px-3"
+                    >
+                        {isGenerating ? 'Generating...' : 'Generate'}
+                    </Button>
                 </div>
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-2 md:p-3 gap-2 md:gap-3 min-h-0">
                 {/* Left Pane: Task List */}
-                <div
-                    className="w-full md:w-[320px] h-1/2 md:h-full flex flex-col bg-glass-alt-100 backdrop-blur-xl rounded-lg shadow-lg border border-black/10 overflow-hidden flex-shrink-0">
-                    <div
-                        className="px-3 py-2 border-b border-black/10 flex justify-between items-center flex-shrink-0 h-11">
-                        <h2 className="text-base font-semibold text-gray-800 truncate">Tasks
-                            ({filteredTasks.length})</h2> <SelectionCheckbox id="select-all-summary-tasks"
-                                                                             checked={allTasksSelected}
-                                                                             indeterminate={someTasksSelected}
-                                                                             onChange={() => {
-                                                                                 if (allTasksSelected || someTasksSelected) {
-                                                                                     handleDeselectAllTasks();
-                                                                                 } else {
-                                                                                     handleSelectAllTasks();
-                                                                                 }
-                                                                             }}
-                                                                             aria-label={allTasksSelected ? "Deselect all tasks" : (someTasksSelected ? "Deselect all tasks" : "Select all tasks")}
-                                                                             className="mr-1" size={18}/></div>
-                    <div
-                        className="flex-1 overflow-y-auto styled-scrollbar p-2 space-y-1"> {filteredTasks.length === 0 ? (
-                        <div
-                            className="flex flex-col items-center justify-center h-full text-gray-400 px-4 text-center pt-10">
-                            <Icon name="archive" size={36} className="mb-3 text-gray-300 opacity-80"/> <p
-                            className="text-sm font-medium text-gray-500">No tasks match criteria</p> <p
-                            className="text-xs mt-1 text-muted">Adjust filters or check task completion status
-                            (&gt; 0%).</p></div>) : (filteredTasks.map(task => (
-                        <TaskItemMini key={task.id} task={task} isSelected={selectedTaskIds.has(task.id)}
-                                      onSelectionChange={handleTaskSelectionChange}/>)))} </div>
+                <div className="w-full md:w-[340px] h-1/2 md:h-full flex flex-col bg-glass-alt-100 backdrop-blur-xl rounded-lg shadow-md border border-border/30 overflow-hidden flex-shrink-0">
+                    <div className="px-3 py-2 border-b border-border/50 flex justify-between items-center flex-shrink-0 h-11">
+                        <h2 className="text-base font-medium text-foreground truncate">Tasks ({filteredTasks.length})</h2>
+                        <Checkbox
+                            id="select-all-summary-tasks"
+                            checked={allTasksSelected ? true : (someTasksSelected ? 'indeterminate' : false)}
+                            onCheckedChange={(checked) => {
+                                if (checked === true) handleSelectAllTasks();
+                                else handleDeselectAllTasks(); // Handles false and indeterminate
+                            }}
+                            aria-label={allTasksSelected ? "Deselect all tasks" : (someTasksSelected ? "Deselect some tasks" : "Select all tasks")}
+                            className="mr-1 data-[state=checked]:bg-primary data-[state=indeterminate]:bg-primary/70"
+                        />
+                    </div>
+                    <ScrollArea className="flex-1" type="auto">
+                        <div className="p-2 space-y-1">
+                            {filteredTasks.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-[calc(80vh-8rem)] text-muted-foreground px-4 text-center pt-10">
+                                    <Icon name="archive" size={36} className="mb-3 opacity-40"/>
+                                    <p className="text-sm font-medium text-foreground/80">No tasks match criteria</p>
+                                    <p className="text-xs mt-1">Ensure tasks have &gt; 0% progress and fit the date/list filters.</p>
+                                </div>
+                            ) : (
+                                filteredTasks.map(task => (
+                                    <TaskItemMini key={task.id} task={task} isSelected={selectedTaskIds.has(task.id)} onSelectionChange={handleTaskSelectionChange}/>
+                                ))
+                            )}
+                        </div>
+                    </ScrollArea>
                 </div>
 
                 {/* Right Pane: Summary */}
-                <div
-                    className="flex-1 h-1/2 md:h-full flex flex-col bg-glass-100 backdrop-blur-xl rounded-lg shadow-lg border border-black/10 overflow-hidden">
-                    <div className="flex-1 flex flex-col overflow-hidden p-3">
+                <div className="flex-1 h-1/2 md:h-full flex flex-col bg-card rounded-lg shadow-md border border-border/30 overflow-hidden">
+                    <div className="flex-1 flex flex-col overflow-hidden p-3 md:p-4">
                         {totalRelevantSummaries > 0 || isGenerating ? (
                             <>
-                                <div className="flex justify-between items-center mb-2 flex-shrink-0 h-6">
-                                    <span
-                                        className="text-xs text-muted-foreground"> {isGenerating ? 'Generating summary...' : (summaryTimestamp ? `Generated: ${summaryTimestamp}` : 'Unsaved Summary')} </span>
-                                    <div className="flex items-center space-x-2">
-                                        <Dropdown placement="bottom-end" usePortal={false}
-                                                  contentClassName="p-0 w-auto overflow-hidden z-10" trigger={<button
-                                            className={twMerge("flex items-center text-xs h-6 px-1.5 rounded transition-colors duration-150 ease-apple focus:outline-none", !currentSummary || isGenerating ? "text-muted-foreground/50 cursor-not-allowed" : "text-blue-600 hover:bg-blue-500/10 focus-visible:ring-1 focus-visible:ring-blue-400 focus-visible:bg-blue-500/10")}
-                                            disabled={!currentSummary || isGenerating}
-                                            data-tooltip-id="summary-ref-tooltip"
-                                            data-tooltip-content="View tasks used for this summary"
-                                            aria-haspopup="true"><Icon name="file-text" size={12}
-                                                                       className="mr-1 opacity-70"/> {tasksUsedCount} tasks
-                                            used <Icon name="chevron-down" size={12} className="ml-0.5 opacity-60"/>
-                                        </button>}>
-                                            {renderReferencedTasksDropdown()}
-                                        </Dropdown>
-                                        <Tooltip id="summary-ref-tooltip" place="top" className="!z-[60]"/>
-                                        {totalRelevantSummaries > 1 && !isGenerating && (<> <Button variant="ghost"
-                                                                                                    size="icon"
-                                                                                                    icon="chevron-left"
-                                                                                                    onClick={handlePrevSummary}
-                                                                                                    disabled={currentIndex >= totalRelevantSummaries - 1}
-                                                                                                    className="w-6 h-6 text-muted-foreground"
-                                                                                                    aria-label="Older summary"/>
-                                            <span
-                                                className="text-xs font-medium text-muted-foreground tabular-nums"> {displayedIndex} / {totalRelevantSummaries} </span>
-                                            <Button variant="ghost" size="icon" icon="chevron-right"
-                                                    onClick={handleNextSummary} disabled={currentIndex <= 0}
-                                                    className="w-6 h-6 text-muted-foreground"
-                                                    aria-label="Newer summary"/> </>)}
+                                <div className="flex justify-between items-center mb-2 flex-shrink-0 h-7">
+                                    <span className="text-xs text-muted-foreground">
+                                        {isGenerating ? 'Generating summary...' : (summaryTimestamp ? `Generated: ${summaryTimestamp}` : 'Unsaved Summary')}
+                                    </span>
+                                    <div className="flex items-center space-x-1">
+                                        {/* Referenced Tasks Dropdown */}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost" size="sm"
+                                                    className={cn(
+                                                        "flex items-center text-xs h-6 px-1.5 rounded",
+                                                        !currentSummary || isGenerating ? "text-muted-foreground/50 cursor-not-allowed" : "text-blue-600 hover:bg-blue-500/10 focus-visible:ring-1 focus-visible:ring-blue-400 focus-visible:bg-blue-500/10"
+                                                    )}
+                                                    disabled={!currentSummary || isGenerating}
+                                                    aria-haspopup="true"
+                                                >
+                                                    <Icon name="file-text" size={12} className="mr-1 opacity-70"/>
+                                                    {tasksUsedCount} tasks used
+                                                    <Icon name="chevron-down" size={12} className="ml-0.5 opacity-60"/>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="p-0">
+                                                {/* Content rendered by function */}
+                                                {renderReferencedTasksDropdown()}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+
+                                        {/* History Navigation */}
+                                        {totalRelevantSummaries > 1 && !isGenerating && (
+                                            <div className="flex items-center border border-border rounded-md ml-2">
+                                                <Button variant="ghost" size="icon" icon="chevron-left" onClick={handlePrevSummary} disabled={currentIndex >= totalRelevantSummaries - 1} className="w-6 h-6 text-muted-foreground rounded-r-none border-r border-border" aria-label="Older summary"/>
+                                                <span className="text-xs font-medium text-muted-foreground tabular-nums px-1.5">
+                                                    {displayedIndex}/{totalRelevantSummaries}
+                                                </span>
+                                                <Button variant="ghost" size="icon" icon="chevron-right" onClick={handleNextSummary} disabled={currentIndex <= 0} className="w-6 h-6 text-muted-foreground rounded-l-none border-l border-border" aria-label="Newer summary"/>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div
-                                    className="flex-1 min-h-0 border border-black/10 rounded-md overflow-hidden bg-glass-inset-100 shadow-inner relative">
-                                    <CodeMirrorEditor ref={editorRef} value={summaryEditorContent}
-                                                      onChange={handleEditorChange}
-                                                      placeholder={isGenerating ? "Generating..." : "AI generated summary will appear here..."}
-                                                      className="!h-full" readOnly={isGenerating}/>
-                                    {hasUnsavedChangesRef.current && (<span
-                                        className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/70 italic animate-pulse">saving...</span>)}
+                                <div className="flex-1 min-h-0 bg-background rounded-md overflow-hidden relative border border-border/50 shadow-inner">
+                                    <CodeMirrorEditor
+                                        ref={editorRef} value={summaryEditorContent}
+                                        onChange={handleEditorChange}
+                                        placeholder={isGenerating ? "Generating..." : "AI generated summary will appear here..."}
+                                        className="!h-full !rounded-md"
+                                        readOnly={isGenerating}
+                                        onBlur={forceSaveCurrentSummary} // Save on blur
+                                    />
+                                    {hasUnsavedChangesRef.current && (
+                                        <span className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/70 italic animate-pulse">saving...</span>
+                                    )}
                                 </div>
                             </>
                         ) : (
-                            <div
-                                className="flex flex-col items-center justify-center h-full text-gray-400 px-6 text-center">
-                                <Icon name="sparkles" size={40} className="mb-3 text-gray-300 opacity-80"/> <p
-                                className="text-sm font-medium text-gray-500">Generate Your First Summary</p> <p
-                                className="text-xs mt-1 text-muted">Select tasks from the list and click 'Generate'.</p>
+                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-6 text-center">
+                                <Icon name="sparkles" size={40} className="mb-3 opacity-50"/>
+                                <p className="text-sm font-medium text-foreground/80">Generate Your First Summary</p>
+                                <p className="text-xs mt-1">Select tasks from the list and click 'Generate'.</p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Custom Date Range Picker Portal */}
-            {isRangePickerOpen && rangePickerTriggerElement && ReactDOM.createPortal(
-                <div ref={setRangePopperElement} style={rangePopperStyles.popper} {...rangePopperAttributes.popper}
-                     className="z-[60]">
-                    <CustomDateRangePickerPopover
-                        initialStartDate={typeof period === 'object' ? new Date(period.start) : undefined}
-                        initialEndDate={typeof period === 'object' ? new Date(period.end) : undefined}
-                        onApplyRange={handleRangeApply}
-                        close={handleCloseRangePicker}
-                        triggerElement={rangePickerTriggerElement} // Pass trigger for click-away
-                    />
-                </div>,
-                document.body
-            )}
-
             {/* Summary History Modal */}
             <SummaryHistoryModal
                 isOpen={isHistoryModalOpen}
                 onClose={closeHistoryModal}
                 summaries={allStoredSummaries}
-                allTasks={allTasks} // Pass all tasks for detail lookup
+                allTasks={allTasks}
             />
         </div>
     );
 };
 SummaryView.displayName = 'SummaryView';
 
-// --- Child Component: TaskItemMini ---
+// --- Child Component: TaskItemMini (Refactored) ---
 const TaskItemMini: React.FC<{
     task: Task;
     isSelected: boolean;
-    onSelectionChange: (id: string, selected: boolean) => void;
-}> = React.memo(({task, isSelected, onSelectionChange}) => {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onSelectionChange(task.id, e.target.checked);
+    onSelectionChange: (id: string, selected: boolean | 'indeterminate') => void;
+}> = React.memo(({ task, isSelected, onSelectionChange }) => {
+    const handleChange = (checked: boolean | 'indeterminate') => {
+        onSelectionChange(task.id, checked);
     };
     const parsedDueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
     const overdue = useMemo(() => parsedDueDate != null && isValid(parsedDueDate) && isBefore(startOfDay(parsedDueDate), startOfDay(new Date())) && !task.completed, [parsedDueDate, task.completed]);
     const uniqueId = `summary-task-${task.id}`;
-    return (<label htmlFor={uniqueId}
-                   className={twMerge("flex items-center p-1.5 rounded-md cursor-pointer transition-colors duration-150 ease-apple", isSelected ? "bg-primary/15" : "hover:bg-black/10", task.list === 'Trash' ? "opacity-60" : "")}>
-        <SelectionCheckbox id={uniqueId} checked={isSelected} onChange={handleChange}
-                           aria-label={`Select task: ${task.title || 'Untitled'}`} className="mr-2.5 flex-shrink-0"
-                           size={16}/>
-        <div className="flex-1 overflow-hidden"><span
-            className={twMerge("text-sm text-gray-800 block truncate", task.completed && "line-through text-muted-foreground")}> {task.title ||
-            <span className="italic">Untitled Task</span>} </span>
-            <div
-                className="text-xs text-muted-foreground flex items-center space-x-2 mt-0.5 flex-wrap gap-y-0.5"> {task.completionPercentage && task.completionPercentage < 100 && (
-                <span
-                    className="text-primary/90 font-medium">[{task.completionPercentage}%]</span>)} {parsedDueDate && isValid(parsedDueDate) && (
-                <span
-                    className={twMerge("flex items-center whitespace-nowrap", overdue && !task.completed && "text-red-600 font-medium", task.completed && "line-through")}> <Icon
-                    name="calendar" size={11}
-                    className="mr-0.5 opacity-70"/> {formatRelativeDate(parsedDueDate)} </span>)} {task.list && task.list !== 'Inbox' && (
-                <span className="flex items-center bg-black/10 px-1 rounded text-[10px] max-w-[70px] truncate"
-                      title={task.list}> <Icon name={task.list === 'Trash' ? 'trash' : 'list'} size={10}
-                                               className="mr-0.5 opacity-70"/> <span
-                    className="truncate">{task.list}</span> </span>)} {task.tags && task.tags.length > 0 && (
-                <span className="flex items-center space-x-1"> {task.tags.slice(0, 1).map(tag => (<span key={tag}
-                                                                                                        className="bg-black/10 px-1 rounded text-[10px] max-w-[60px] truncate">#{tag}</span>))} {task.tags.length > 1 &&
-                    <span
-                        className="text-[10px] text-muted-foreground/80">+{task.tags.length - 1}</span>} </span>)} </div>
+
+    // Determine checkbox state based on selection
+    const checkboxState = isSelected; // True or false for mini item selection
+
+    return (
+        <div
+            className={cn(
+                "flex items-center p-1.5 rounded-md transition-colors duration-150 ease-apple",
+                isSelected ? "bg-primary/15" : "hover:bg-accent",
+                task.list === 'Trash' ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+            )}
+            onClick={() => { if (task.list !== 'Trash') handleChange(!isSelected) }} // Toggle on row click if not trash
+        >
+            <Checkbox
+                id={uniqueId}
+                checked={checkboxState}
+                onCheckedChange={handleChange}
+                aria-label={`Select task: ${task.title || 'Untitled'}`}
+                className="mr-2.5 flex-shrink-0 w-4 h-4 data-[state=checked]:bg-primary data-[state=indeterminate]:bg-primary/70"
+                disabled={task.list === 'Trash'}
+                onClick={(e) => e.stopPropagation()} // Prevent label click handler
+            />
+            <div className="flex-1 overflow-hidden">
+                <span className={cn(
+                    "text-sm text-foreground block truncate",
+                    task.completed && "line-through text-muted-foreground"
+                )}>
+                    {task.title || <span className="italic">Untitled Task</span>}
+                </span>
+                <div className="text-xs text-muted-foreground flex items-center space-x-1.5 mt-0.5 flex-wrap gap-y-0.5">
+                    {task.completionPercentage && task.completionPercentage < 100 && !task.completed && (
+                        <span className="text-primary/90 font-medium text-[11px]">[{task.completionPercentage}%]</span>
+                    )}
+                    {parsedDueDate && isValid(parsedDueDate) && (
+                        <span className={cn(
+                            "flex items-center whitespace-nowrap text-[11px]",
+                            overdue && !task.completed && "text-destructive font-medium",
+                            task.completed && "line-through"
+                        )}>
+                            <Icon name="calendar" size={11} className="mr-0.5 opacity-70"/> {formatRelativeDate(parsedDueDate)}
+                        </span>
+                    )}
+                    {task.list && task.list !== 'Inbox' && (
+                        <Badge variant="secondary" className="font-normal px-1 py-0 text-[10px]">
+                            <Icon name={task.list === 'Trash' ? 'trash' : 'list'} size={10} className="mr-0.5 opacity-70"/>
+                            <span className="truncate max-w-[70px]">{task.list}</span>
+                        </Badge>
+                    )}
+                    {task.tags && task.tags.length > 0 && (
+                        <span className="flex items-center space-x-1">
+                             {task.tags.slice(0, 1).map(tag => (
+                                 <Badge key={tag} variant="outline" className="font-normal px-1 py-0 text-[10px]">#{tag}</Badge>
+                             ))}
+                            {task.tags.length > 1 &&
+                                <span className="text-[10px] text-muted-foreground/80">+{task.tags.length - 1}</span>
+                            }
+                         </span>
+                    )}
+                </div>
+            </div>
         </div>
-    </label>);
+    );
 });
 TaskItemMini.displayName = 'TaskItemMini';
 

@@ -1,4 +1,4 @@
-// src/utils/dateUtils.ts
+// src/lib/utils/dateUtils.ts
 import {
     addDays,
     addMonths,
@@ -27,7 +27,9 @@ import {
     startOfWeek,
     subDays,
     subMonths,
-    subWeeks
+    subWeeks,
+    addYears,
+    subYears
 } from 'date-fns';
 import {enUS} from 'date-fns/locale'; // Use English locale
 
@@ -44,45 +46,31 @@ export const safeParseDate = (dateInput: Date | number | string | null | undefin
 
     let date: Date;
     if (dateInput instanceof Date) {
-        // Avoid mutation if it's already a Date object
         date = new Date(dateInput.getTime());
     } else if (typeof dateInput === 'number') {
-        // Check for valid timestamp range (simple check)
         if (dateInput < -8640000000000000 || dateInput > 8640000000000000) return null;
         date = new Date(dateInput);
     } else if (typeof dateInput === 'string') {
-        // Prioritize ISO parsing, fallback to Date constructor (which can be unreliable)
         date = parseISO(dateInput);
         if (!isValidFns(date)) {
             date = new Date(dateInput);
         }
     } else {
-        return null; // Unsupported type
+        return null;
     }
-
-    // Final check for validity
     return isValidFns(date) ? date : null;
 };
 
-/**
- * Checks if a given date object (or parsed input) is valid.
- * Performance: Very cheap.
- */
+/** Checks if a given date object (or parsed input) is valid. */
 export const isValid = (dateInput: Date | number | null | undefined): boolean => {
     const date = safeParseDate(dateInput);
     return date !== null && isValidFns(date);
 };
 
-
-/**
- * Formats a date using a specified format string (defaults to 'MMM d, yyyy').
- * Returns an empty string or 'Invalid Date' if the input is invalid.
- * Performance: Formatting can be noticeable if done excessively in loops. Memoize where possible in UI.
- */
+/** Formats a date using a specified format string (defaults to 'MMM d, yyyy'). */
 export const formatDate = (dateInput: Date | number | null | undefined, formatString: string = 'MMM d, yyyy'): string => {
     const date = safeParseDate(dateInput);
     if (!date) return '';
-
     try {
         return formatFns(date, formatString, {locale: currentLocale});
     } catch (e) {
@@ -96,79 +84,60 @@ export const formatDateTime = (dateInput: Date | number | null | undefined): str
     return formatDate(dateInput, 'MMM d, yyyy, h:mm a');
 };
 
-/**
- * Formats a date relative to today (e.g., 'Today', 'Tomorrow', 'Yesterday', 'Jul 20', 'Jul 20, 2023').
- * Performance: Involves date comparisons, slightly more expensive than simple format. Memoize in UI.
- */
+/** Formats a date relative to today (e.g., 'Today', 'Tomorrow', 'Yesterday', 'Jul 20', 'Jul 20, 2023'). */
 export const formatRelativeDate = (dateInput: Date | number | null | undefined): string => {
     const date = safeParseDate(dateInput);
     if (!date) return '';
-
     const today = startOfDay(new Date());
     const inputDay = startOfDay(date);
     const diffDays = differenceInCalendarDays(inputDay, today);
-
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';
     if (diffDays === -1) return 'Yesterday';
-
-    // Check if it's within the next 6 days (after tomorrow)
     if (diffDays > 1 && diffDays <= 6) {
-        return formatFns(date, 'EEEE', {locale: currentLocale}); // 'Monday', 'Tuesday', etc.
+        return formatFns(date, 'EEEE', {locale: currentLocale});
     }
-
     const currentYear = today.getFullYear();
     const inputYear = inputDay.getFullYear();
     if (inputYear !== currentYear) {
-        return formatDate(date, 'MMM d, yyyy'); // Show year if different
+        return formatDate(date, 'MMM d, yyyy');
     }
-    return formatDate(date, 'MMM d'); // Otherwise, just month and day
+    return formatDate(date, 'MMM d');
 };
 
-/** Checks if a date is today. Performance: Cheap. */
+/** Checks if a date is today. */
 export const isToday = (dateInput: Date | number | null | undefined): boolean => {
     const date = safeParseDate(dateInput);
     return date ? isTodayFns(date) : false;
 };
 
-/**
- * Checks if a date is within the next 7 days (inclusive of today, up to 6 days from now).
- * Performance: Cheap date comparisons.
- */
+/** Checks if a date is within the next 7 days (inclusive of today). */
 export const isWithinNext7Days = (dateInput: Date | number | null | undefined): boolean => {
     const date = safeParseDate(dateInput);
     if (!date) return false;
-
     const today = startOfDay(new Date());
     const dateOnly = startOfDay(date);
-    // Calculate the end of the 7th day *from today* (which is 6 days ahead)
     const sevenDaysFromTodayEnd = endOfDay(addDays(today, 6));
-
-    // Date must be on or after today AND on or before the end of the 7-day window.
     return !isBefore(dateOnly, today) && !isAfter(dateOnly, sevenDaysFromTodayEnd);
 };
 
-/**
- * Checks if a date is before today (overdue). Compares based on the start of the day.
- * Performance: Cheap date comparison.
- */
+/** Checks if a date is before today (overdue). */
 export const isOverdue = (dateInput: Date | number | null | undefined): boolean => {
     const date = safeParseDate(dateInput);
     if (!date) return false;
-
     const today = startOfDay(new Date());
     const dateStart = startOfDay(date);
     return isBefore(dateStart, today);
 };
 
-// Re-export necessary date-fns functions for use in components
+// Re-export necessary date-fns functions
 export {
-    formatFns as format, // Re-export under original name
+    formatFns as format,
     startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
     addMonths, subMonths, isSameMonth, isSameDay, getDay,
     startOfDay, endOfDay, isBefore, isAfter, addDays, subDays, addWeeks, subWeeks,
     differenceInCalendarDays,
     getMonth, getYear, setMonth, setYear, isWithinInterval,
-    isTodayFns as isTodayFns, // Export original under different name if needed
+    isTodayFns as isTodayFns, addYears, subYears
 };
-export {enUS}; // Export locale if needed elsewhere
+export {enUS};
