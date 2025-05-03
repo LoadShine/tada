@@ -15,47 +15,35 @@ const AddListModal: React.FC<AddListModalProps> = ({onAdd}) => {
     const [allListNames] = useAtom(userListNamesAtom);
     const [listName, setListName] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const inputRef = useRef<HTMLInputElement>(null); // Keep ref for potential Radix internal use or future needs
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Use Radix's onOpenChange for closing logic
     const handleOpenChange = useCallback((open: boolean) => {
         setIsOpen(open);
         if (!open) {
-            // Reset state when closing
             setListName('');
             setError(null);
         }
     }, [setIsOpen]);
-
-    // REMOVED: useEffect for focusing input. Let Radix handle this.
-    // useEffect(() => {
-    //     if (isOpen) {
-    //         // Focus input after animation completes
-    //         const timer = setTimeout(() => {
-    //             inputRef.current?.focus();
-    //         }, 100); // Match animation duration approximately
-    //         return () => clearTimeout(timer);
-    //     }
-    // }, [isOpen]);
 
     const handleSubmit = useCallback((e: React.FormEvent) => {
         e.preventDefault();
         const trimmedName = listName.trim();
         if (!trimmedName) {
             setError("List name cannot be empty.");
-            inputRef.current?.focus(); // Still useful to focus on error
+            inputRef.current?.focus();
             return;
         }
         const lowerTrimmedName = trimmedName.toLowerCase();
         if (allListNames.some(name => name.toLowerCase() === lowerTrimmedName)) {
             setError(`List "${trimmedName}" already exists.`);
-            inputRef.current?.select(); // Still useful to select on error
+            inputRef.current?.select();
             return;
         }
         const reservedNames = ['inbox', 'trash', 'archive', 'all', 'today', 'next 7 days', 'completed', 'later', 'nodate', 'overdue'];
         if (reservedNames.includes(lowerTrimmedName)) {
             setError(`"${trimmedName}" is a reserved system name.`);
-            inputRef.current?.select(); // Still useful to select on error
+            inputRef.current?.select();
             return;
         }
         setError(null);
@@ -80,7 +68,6 @@ const AddListModal: React.FC<AddListModalProps> = ({onAdd}) => {
                         "flex flex-col",
                         "data-[state=open]:animate-contentShow", "data-[state=closed]:animate-contentHide"
                     )}
-                    // REMOVED: onOpenAutoFocus={(e) => e.preventDefault()} - Let Radix handle focus
                     onEscapeKeyDown={() => handleOpenChange(false)}
                     aria-describedby={undefined}
                 >

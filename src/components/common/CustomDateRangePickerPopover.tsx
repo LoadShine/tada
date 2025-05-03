@@ -19,14 +19,11 @@ import {
     subMonths
 } from '@/utils/dateUtils';
 import Button from './Button';
-// REMOVED: Popover import is not needed here for the content component itself.
 
-// --- Internal Content Component - EXPORTED ---
 interface CustomDateRangePickerContentProps {
     initialStartDate: Date | undefined;
     initialEndDate: Date | undefined;
     onApplyRange: (startDate: Date, endDate: Date) => void;
-    // Function to close the parent popover
     closePopover: () => void;
 }
 
@@ -77,7 +74,6 @@ export const CustomDateRangePickerContent: React.FC<CustomDateRangePickerContent
         setStartDate(undefined);
         setEndDate(undefined);
         setHoveredDate(undefined);
-        // Clear doesn't automatically apply, user must click Apply or Cancel
     }, []);
 
     // Apply button now calls onApplyRange AND closePopover
@@ -85,7 +81,6 @@ export const CustomDateRangePickerContent: React.FC<CustomDateRangePickerContent
         let applyStart = startDate;
         let applyEnd = endDate;
 
-        // If only start date is selected, treat it as a single day range
         if (startDate && !endDate) {
             applyStart = startDate;
             applyEnd = startDate;
@@ -108,7 +103,6 @@ export const CustomDateRangePickerContent: React.FC<CustomDateRangePickerContent
     }
 
     const weekDays = useMemo(() => ['S', 'M', 'T', 'W', 'T', 'F', 'S'], []);
-    // Can apply if start+end selected, OR just start selected (which implies single day)
     const isApplyDisabled = !startDate;
 
     useEffect(() => {
@@ -217,6 +211,3 @@ export const CustomDateRangePickerContent: React.FC<CustomDateRangePickerContent
     );
 });
 CustomDateRangePickerContent.displayName = 'CustomDateRangePickerContent';
-
-// REMOVE default export of the wrapper component if it exists
-// export default CustomDateRangePickerPopover;

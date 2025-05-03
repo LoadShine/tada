@@ -21,13 +21,10 @@ import {
 import Button from './Button';
 import Icon from './Icon';
 
-// --- REMOVED: Popover imports from here, parent will handle Popover structure ---
-
-// --- Internal Content Component - Renamed to CustomDatePickerContent ---
+// --- Internal Content Component ---
 interface CustomDatePickerContentProps {
     initialDate: Date | undefined;
     onSelect: (date: Date | undefined) => void;
-    // Function to close the parent popover
     closePopover: () => void;
 }
 
@@ -65,7 +62,7 @@ const CustomDatePickerContent: React.FC<CustomDatePickerContentProps> = React.me
         const date = startOfDay(dateFn());
         setSelectedDate(date);
         onSelect(date);
-        closePopover(); // Close the popover after selection
+        closePopover();
     }, [onSelect, closePopover]);
 
     const selectToday = useMemo(() => createQuickSelectHandler(() => new Date()), [createQuickSelectHandler]);
@@ -79,17 +76,14 @@ const CustomDatePickerContent: React.FC<CustomDatePickerContentProps> = React.me
         const isCurrentlySelected = selectedDate && isSameDay(dateStart, selectedDate);
         const newDate = isCurrentlySelected ? undefined : dateStart;
         setSelectedDate(newDate);
-        // DO NOT close here, wait for OK/Clear/QuickSelect
     }, [selectedDate]);
 
-    // Clear button calls onSelect(undefined) and closes
     const handleClearDate = useCallback(() => {
         setSelectedDate(undefined);
         onSelect(undefined);
         closePopover(); // Close after clearing
     }, [onSelect, closePopover]);
 
-    // Confirm button calls onSelect with staged date and closes
     const handleConfirm = useCallback(() => {
         onSelect(selectedDate);
         closePopover(); // Close after confirming
@@ -97,7 +91,6 @@ const CustomDatePickerContent: React.FC<CustomDatePickerContentProps> = React.me
 
     const weekDays = useMemo(() => ['S', 'M', 'T', 'W', 'T', 'F', 'S'], []);
 
-    // Effect to reset internal state if initialDate prop changes
     useEffect(() => {
         const validInitial = initialDate && isValid(initialDate) ? startOfDay(initialDate) : undefined;
         setSelectedDate(validInitial);
@@ -105,16 +98,14 @@ const CustomDatePickerContent: React.FC<CustomDatePickerContentProps> = React.me
     }, [initialDate, today]);
 
     return (
-        // Render the UI, no Popover wrappers here
         <div
             ref={contentRef}
             className="date-picker-content bg-glass-100 backdrop-blur-xl rounded-lg shadow-strong border border-black/10 p-4 w-[320px]"
-            // Stop propagation to prevent parent popovers/dropdowns from closing unintentionally
             onClick={e => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
         >
-            {/* Quick Date Selection Icons with Radix Tooltips */}
+            {/* Quick Date Selection */}
             <div className="flex justify-between mb-4 px-4">
                 <Tooltip.Root>
                     <Tooltip.Trigger asChild>
@@ -263,14 +254,5 @@ const CustomDatePickerContent: React.FC<CustomDatePickerContentProps> = React.me
 });
 CustomDatePickerContent.displayName = 'CustomDatePickerContent';
 
-// Export the content component for use by parents
 export {CustomDatePickerContent};
-
-// --- REMOVED: Original Popover Wrapper ---
-// The parent components (TaskList, TaskItem, TaskDetail) will now
-// handle the Popover.Root, Popover.Trigger, Popover.Portal, Popover.Content setup
-// and render CustomDatePickerContent inside Popover.Content.
-
-// Add a default export to satisfy module structure if needed, though it won't be used directly
-// in the fixed implementation.
-export default CustomDatePickerContent; // Or null if preferred
+export default CustomDatePickerContent;

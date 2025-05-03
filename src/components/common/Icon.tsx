@@ -4,21 +4,18 @@ import * as LucideIcons from 'lucide-react';
 import {twMerge} from 'tailwind-merge';
 import {iconMap, IconName} from "@/components/common/IconMap";
 
-// Extend LucideProps, but omit 'ref' as it's handled by forwardRef
 interface IconProps extends Omit<LucideIcons.LucideProps, 'ref'> {
     name: IconName;
-    size?: number | string; // Allow string for flexibility, e.g., "1.5em"
+    size?: number | string;
     className?: string;
 }
 
-// Performance: Use React.memo as Icons are pure components based on props
 const IconComponent = React.memo(React.forwardRef<SVGSVGElement, IconProps>(
     ({name, size = 16, className, strokeWidth = 1.75, ...props}, ref) => {
         const LucideIcon = iconMap[name];
 
-        // Fallback for missing icons
         if (!LucideIcon) {
-            if (process.env.NODE_ENV === 'development') { // Only warn in development
+            if (process.env.NODE_ENV === 'development') {
                 console.warn(`Icon "${name}" not found in iconMap. Rendering fallback (HelpCircle).`);
             }
             const FallbackIcon = LucideIcons.HelpCircle;
@@ -31,7 +28,6 @@ const IconComponent = React.memo(React.forwardRef<SVGSVGElement, IconProps>(
             );
         }
 
-        // Render the requested icon
         return (
             <LucideIcon
                 ref={ref} size={size} strokeWidth={strokeWidth}

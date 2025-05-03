@@ -3,7 +3,6 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {useAtom, useSetAtom} from 'jotai';
 import {selectedTaskIdAtom, tasksAtom} from '@/store/atoms';
 import Button from '../common/Button';
-// Use Radix DropdownMenu for month/year selector
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {Task} from '@/types';
 import {
@@ -44,7 +43,7 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 import Icon from "@/components/common/Icon";
 
-// --- Draggable Task Item (No Radix changes needed, style fix retained) ---
+// --- Draggable Task Item ---
 interface DraggableTaskProps {
     task: Task;
     onClick: () => void;
@@ -118,12 +117,10 @@ const DraggableCalendarTask: React.FC<DraggableTaskProps> = React.memo(({task, o
 DraggableCalendarTask.displayName = 'DraggableCalendarTask';
 
 
-// --- Year/Month Selector Component (Using Radix Dropdown Logic) ---
-// This component is now the *content* of the Radix DropdownMenu
+// --- Year/Month Selector Component ---
 interface MonthYearSelectorProps {
     currentDate: Date;
     onChange: (newDate: Date) => void;
-    // No close prop needed, Radix handles closing on select
 }
 
 const MonthYearSelectorContent: React.FC<MonthYearSelectorProps> = React.memo(({currentDate, onChange}) => {
@@ -138,7 +135,6 @@ const MonthYearSelectorContent: React.FC<MonthYearSelectorProps> = React.memo(({
             newDate = setYear(newDate, displayYear);
         }
         onChange(newDate);
-        // No need to call close() here, Radix handles it
     }, [currentDate, displayYear, onChange]);
 
     const changeDisplayYear = (direction: -1 | 1) => setDisplayYear(y => y + direction);
@@ -162,7 +158,6 @@ const MonthYearSelectorContent: React.FC<MonthYearSelectorProps> = React.memo(({
                 {months.map((month, index) => (
                     <DropdownMenu.Item
                         key={month}
-                        // Use 'onSelect' which prevents default and stops propagation
                         onSelect={() => handleMonthChange(index)}
                         className={twMerge(
                             "text-xs !h-7 justify-center flex items-center cursor-pointer select-none rounded outline-none transition-colors data-[disabled]:pointer-events-none",
@@ -184,7 +179,7 @@ const MonthYearSelectorContent: React.FC<MonthYearSelectorProps> = React.memo(({
 MonthYearSelectorContent.displayName = 'MonthYearSelectorContent';
 
 
-// --- Droppable Day Cell Content (No changes needed) ---
+// --- Droppable Day Cell Content ---
 interface DroppableDayCellContentProps {
     children: React.ReactNode;
     className?: string;
@@ -197,7 +192,7 @@ const DroppableDayCellContent: React.FC<DroppableDayCellContentProps> = React.me
 });
 DroppableDayCellContent.displayName = 'DroppableDayCellContent';
 
-// --- Droppable Day Cell (No changes needed) ---
+// --- Droppable Day Cell ---
 const DroppableDayCell: React.FC<{ day: Date; children: React.ReactNode; className?: string }> = React.memo(({
                                                                                                                  day,
                                                                                                                  children,
@@ -215,15 +210,15 @@ DroppableDayCell.displayName = 'DroppableDayCell';
 
 // --- Main Calendar View Component ---
 const CalendarView: React.FC = () => {
-    // State and atoms (unchanged)
+    // State and atoms
     const [tasks, setTasks] = useAtom(tasksAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
     const [currentMonthDate, setCurrentMonthDate] = useState(startOfDay(new Date()));
     const [draggingTaskId, setDraggingTaskId] = useState<UniqueIdentifier | null>(null);
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
-    // Memoized values (unchanged)
-    const draggingTask = useMemo(() => { /* ... */
+    // Memoized values
+    const draggingTask = useMemo(() => { 
         if (!draggingTaskId) return null;
         const id = draggingTaskId.toString().replace('caltask-', '');
         return tasks.find(t => t.id === id) ?? null;
@@ -234,7 +229,7 @@ const CalendarView: React.FC = () => {
     const endDate = useMemo(() => endOfWeek(lastDayCurrentMonth, {locale: enUS}), [lastDayCurrentMonth]);
     const daysInGrid = useMemo(() => eachDayOfInterval({start: startDate, end: endDate}), [startDate, endDate]);
     const numberOfRows = useMemo(() => daysInGrid.length / 7, [daysInGrid]);
-    const tasksByDueDate = useMemo(() => { /* ... */
+    const tasksByDueDate = useMemo(() => { 
         const grouped: Record<string, Task[]> = {};
         tasks.forEach(task => {
             if (task.dueDate && task.list !== 'Trash') {
@@ -259,7 +254,7 @@ const CalendarView: React.FC = () => {
         return grouped;
     }, [tasks]);
 
-    // Callbacks (unchanged logic)
+    // Callbacks
     const handleTaskClick = useCallback((taskId: string) => setSelectedTaskId(taskId), [setSelectedTaskId]);
     const changeMonth = useCallback((direction: -1 | 1) => {
         setCurrentMonthDate(current => direction === 1 ? addMonths(current, 1) : subMonths(current, 1));
@@ -272,17 +267,17 @@ const CalendarView: React.FC = () => {
     const handleDateChange = useCallback((newDate: Date) => {
         setCurrentMonthDate(startOfDay(newDate));
         setExpandedDays(new Set());
-    }, []); // Used by Month/Year selector content
+    }, []);
 
-    // Drag Handlers (unchanged logic)
-    const handleDragStart = useCallback((event: DragStartEvent) => { /* ... */
+    // Drag Handlers
+    const handleDragStart = useCallback((event: DragStartEvent) => { 
         const {active} = event;
         if (active.data.current?.type === 'calendar-task') {
             setDraggingTaskId(active.id);
             setSelectedTaskId(active.data.current.task.id);
         }
     }, [setSelectedTaskId]);
-    const handleDragEnd = useCallback((event: DragEndEvent) => { /* ... */
+    const handleDragEnd = useCallback((event: DragEndEvent) => { 
         setDraggingTaskId(null);
         const {active, over} = event;
         if (over?.data.current?.type === 'calendar-day' && active.data.current?.type === 'calendar-task') {
@@ -301,16 +296,16 @@ const CalendarView: React.FC = () => {
                 }
             }
         }
-    }, [setTasks]); // updatedAt handled by atom
+    }, [setTasks]);
 
-    // Show More callback (unchanged)
+    // Show More callback
     const toggleExpandDay = useCallback((dateKey: string) => setExpandedDays(prev => {
         const newSet = new Set(prev);
         if (newSet.has(dateKey)) newSet.delete(dateKey); else newSet.add(dateKey);
         return newSet;
     }), []);
 
-    // Render function for calendar days (unchanged logic)
+    // Render function for calendar days
     const renderCalendarDay = useCallback((day: Date, index: number) => {
         const dateKey = format(day, 'yyyy-MM-dd');
         const dayTasks = tasksByDueDate[dateKey] || [];
@@ -368,8 +363,7 @@ const CalendarView: React.FC = () => {
                                 <DropdownMenu.Portal>
                                     <DropdownMenu.Content
                                         className={twMerge(
-                                            "z-[55] bg-glass-100 backdrop-blur-xl rounded-lg shadow-strong border border-black/10 p-0", // Base styling
-                                            // Animation
+                                            "z-[55] bg-glass-100 backdrop-blur-xl rounded-lg shadow-strong border border-black/10 p-0",
                                             "data-[state=open]:animate-slideUpAndFade",
                                             "data-[state=closed]:animate-slideDownAndFade"
                                         )}
@@ -406,7 +400,7 @@ const CalendarView: React.FC = () => {
                     </div>
                 </div>
             </div>
-            {/* Drag Overlay (unchanged) */}
+            {/* Drag Overlay */}
             <DragOverlay dropAnimation={null}> {draggingTask ? (
                 <DraggableCalendarTask task={draggingTask} onClick={() => {
                 }} isOverlay={true}/>) : null} </DragOverlay>

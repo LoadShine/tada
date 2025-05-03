@@ -155,7 +155,7 @@ const Sidebar: React.FC = () => {
     const handleAddNewListClick = useCallback(() => {
         setIsAddListModalOpen(true);
     }, [setIsAddListModalOpen]);
-    const handleListAdded = useCallback((newListName: string) => { /* ... */
+    const handleListAdded = useCallback((newListName: string) => { 
         const trimmedName = newListName.trim();
         if (!trimmedName) return;
         setUserDefinedLists((prevLists = []) => {

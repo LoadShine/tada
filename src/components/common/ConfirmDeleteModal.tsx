@@ -4,8 +4,6 @@ import Button from './Button';
 import {twMerge} from 'tailwind-merge';
 import * as Dialog from '@radix-ui/react-dialog';
 
-// Ensure VisuallyHidden is imported if you need it elsewhere, but not used here directly for visible text.
-
 interface ConfirmDeleteModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -42,9 +40,8 @@ const ConfirmDeleteModalRadix: React.FC<ConfirmDeleteModalProps> = ({
                         "data-[state=open]:animate-contentShow", "data-[state=closed]:animate-contentHide"
                     )}
                     onEscapeKeyDown={onClose}
-                    // REMOVED aria-labelledby and aria-describedby - Rely on automatic linking
                 >
-                    {/* Title and Description FIRST */}
+                    {/* Title and Description */}
                     <Dialog.Title
                         className="text-lg font-semibold text-gray-800 dark:text-neutral-100 mb-1 text-center">
                         Move to Trash?

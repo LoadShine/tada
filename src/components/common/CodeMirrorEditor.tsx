@@ -1,5 +1,4 @@
 // src/components/common/CodeMirrorEditor.tsx
-// @ts-expect-error - Explicit React import sometimes needed
 import React, {forwardRef, memo, useEffect, useImperativeHandle, useRef} from 'react';
 import {Annotation, EditorState, StateEffect} from '@codemirror/state';
 import {
@@ -19,29 +18,25 @@ import {highlightSelectionMatches, searchKeymap} from '@codemirror/search';
 import {lintKeymap} from '@codemirror/lint';
 import {twMerge} from 'tailwind-merge';
 
-// Consistent Editor Theme definition
-// Added overflow: auto !important to cm-scroller
 const editorTheme = EditorView.theme({
     '&': {height: '100%', fontSize: '13.5px', backgroundColor: 'transparent', borderRadius: 'inherit',},
-    // --- FIX: Ensure cm-scroller handles overflow ---
     '.cm-scroller': {
         fontFamily: `var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace)`,
         lineHeight: '1.65',
-        overflow: 'auto !important', // Explicitly set overflow
+        overflow: 'auto !important',
         position: 'relative',
         backgroundColor: 'transparent !important',
         height: '100%',
         outline: 'none',
-        boxSizing: 'border-box', // Include padding in height calculation
+        boxSizing: 'border-box',
     },
     '.cm-content': {
-        padding: '14px 16px', // Padding inside the content area
+        padding: '14px 16px',
         caretColor: 'hsl(var(--primary-h), var(--primary-s), var(--primary-l))',
         backgroundColor: 'transparent !important',
         outline: 'none',
-        // whiteSpace: 'pre-wrap', // Ensure wrapping works correctly
-        wordBreak: 'break-word', // Break long words
-        boxSizing: 'border-box', // Ensure padding doesn't cause overflow issues with width
+        wordBreak: 'break-word',
+        boxSizing: 'border-box',
     },
     '.cm-gutters': {
         backgroundColor: 'hsla(220, 40%, 98%, 0.65)',
@@ -88,7 +83,6 @@ const editorTheme = EditorView.theme({
 });
 
 
-// Define an Annotation type for external changes (No changes needed)
 const externalChangeEvent = Annotation.define<boolean>();
 
 interface CodeMirrorEditorProps {
@@ -135,21 +129,18 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
             const createExtensions = (currentPlaceholder?: string, currentReadOnly?: boolean) => [
                 history(), drawSelection(), dropCursor(), EditorState.allowMultipleSelections.of(true), indentOnInput(),
                 bracketMatching(), closeBrackets(), autocompletion(), rectangularSelection(), highlightSelectionMatches(),
-                // --- FIX: Ensure defaultKeymap (including Enter/newline handling) is present ---
                 keymap.of([
                     ...closeBracketsKeymap,
-                    ...defaultKeymap, // <<<< This includes Enter key behavior
+                    ...defaultKeymap,
                     ...searchKeymap,
                     ...historyKeymap,
                     ...foldKeymap,
                     ...completionKeymap,
                     ...lintKeymap,
                     indentWithTab,
-                    // Optional: Explicitly bind Enter if default isn't working (usually not needed)
-                    // { key: "Enter", run: insertNewline }
                 ]),
                 markdown({base: markdownLanguage, codeLanguages: languages, addKeymap: true}),
-                EditorView.lineWrapping, // <<< Ensure line wrapping is enabled
+                EditorView.lineWrapping,
                 EditorView.contentAttributes.of({'aria-label': 'Markdown editor content'}),
                 EditorView.updateListener.of((update) => {
                     const isExternal = update.transactions.some(tr => tr.annotation(externalChangeEvent));
@@ -162,7 +153,7 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 }),
                 EditorState.readOnly.of(currentReadOnly ?? false),
                 ...(currentPlaceholder ? [viewPlaceholder(currentPlaceholder)] : []),
-                editorTheme, // Apply custom theme
+                editorTheme,
             ];
 
             const startState = EditorState.create({
@@ -183,11 +174,9 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 view.destroy();
                 viewRef.current = null;
             };
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, []); // Empty dependency array ensures this runs only once on mount
+        }, []);
 
-        // Effect to handle EXTERNAL value changes (No changes needed)
-        useEffect(() => { /* ... */
+        useEffect(() => { 
             const view = viewRef.current;
             if (view && value !== view.state.doc.toString()) {
                 view.dispatch({
@@ -197,8 +186,7 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
             }
         }, [value]);
 
-        // Effect to handle dynamic readOnly and placeholder props changes (No changes needed)
-        useEffect(() => { /* ... */
+        useEffect(() => { 
             const view = viewRef.current;
             if (!view) return;
             const effects: StateEffect<unknown>[] = [];
@@ -217,11 +205,10 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
 
 
         return (
-            // Container: Ensure it allows the editor view to fill its height
             <div
                 ref={editorRef}
                 className={twMerge(
-                    'cm-editor-container relative h-full w-full overflow-hidden rounded-md', // `overflow-hidden` here prevents container scrollbars
+                    'cm-editor-container relative h-full w-full overflow-hidden rounded-md',
                     'bg-glass-inset-100 backdrop-blur-lg border border-black/10 shadow-inner',
                     'focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/80',
                     className

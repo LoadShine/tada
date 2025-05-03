@@ -8,7 +8,6 @@ import {IconName} from "@/components/common/IconMap";
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'link' | 'danger' | 'glass';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
-// Use React.ButtonHTMLAttributes for standard button props
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: ButtonVariant;
     size?: ButtonSize;
@@ -21,7 +20,6 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     'aria-label'?: string;
 }
 
-// Performance: ForwardRef allows memoization if parent component uses it
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     (
         {
@@ -36,23 +34,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             disabled,
             type = 'button',
             'aria-label': ariaLabel,
-            ...props // Spread remaining standard button attributes
+            ...props
         },
         ref
     ) => {
         const isDisabled = disabled || loading;
 
-        // Use clsx for conditional classes, twMerge handles overrides
         const baseClasses = clsx(
             'inline-flex items-center justify-center font-medium whitespace-nowrap select-none outline-none relative',
             'focus-visible:ring-1 focus-visible:ring-primary/60 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas', // Updated offset color
             'transition-colors duration-30 ease-apple', // Keep color transition
             isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
             fullWidth && 'w-full',
-            'rounded-md' // Use theme border radius
+            'rounded-md'
         );
 
-        // Variant styles defined using clsx for readability
         const variantClasses: Record<ButtonVariant, string> = {
             primary: clsx('bg-primary text-primary-foreground shadow-subtle border border-primary/90', !isDisabled && 'hover:bg-primary-dark active:bg-primary/95'),
             secondary: clsx('bg-glass-alt-100 text-gray-700 border border-black/10 shadow-subtle backdrop-blur-md', !isDisabled && 'hover:bg-glass-alt/80 active:bg-glass-alt/70'),
@@ -68,7 +64,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             sm: 'text-xs px-2.5 h-[30px]',
             md: 'text-sm px-3 h-[32px]',
             lg: 'text-base px-3.5 h-[36px]',
-            icon: 'h-8 w-8 p-0', // Standard icon button size
+            icon: 'h-8 w-8 p-0',
         };
 
         // Icon size styles

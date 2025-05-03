@@ -66,10 +66,9 @@ export const iconMap = {
     'calendar-check': LucideIcons.CalendarCheck,
     'refresh-cw': LucideIcons.RefreshCw,
     'copy-plus': LucideIcons.CopyPlus,
-    // --- Progress Icons (Corrected) ---
     'circle': LucideIcons.Circle,                // For 0% / Not Started
     'circle-dot': LucideIcons.CircleDot,          // For 20%
-    'circle-dot-dashed': LucideIcons.CircleDotDashed, // For 50% (Replaced CircleHalf)
+    'circle-dot-dashed': LucideIcons.CircleDotDashed, // For 50%
     'circle-slash': LucideIcons.CircleSlash,       // For 80%
     'circle-check': LucideIcons.CircleCheckBig,    // For 100%
     'circle-gauge': LucideIcons.GaugeCircle,        // For MetaRow label in TaskDetail
