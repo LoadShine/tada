@@ -1,6 +1,5 @@
 // tailwind.config.ts
 import type {Config} from 'tailwindcss';
-const radixPlugin = require('tailwindcss-radix');
 
 const config: Config = {
     content: [
@@ -153,7 +152,7 @@ const config: Config = {
         },
     },
     plugins: [
-        radixPlugin({}), // Use the Radix plugin for data-* variants
+        require('tailwindcss-radix'), // Use the Radix plugin for data-* variants
         require('@tailwindcss/forms'), // Optional: if you need form reset styles
     ],
 };
