@@ -140,8 +140,29 @@
 }
 
 
-/* Fix potential Radix content positioning issues */
 .radix-popover-content, .radix-dropdown-content {
     /* Defaults are usually okay, but ensure transform-origin if needed */
     /* transform-origin: var(--radix-popper-transform-origin); */
+}
+
+/* --- Hide browser's default clear button for search inputs --- */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+    -webkit-appearance: none; /* Older way */
+    display: none; /* Standard way */
+}
+
+/* Optional: Add similar rules for other browsers if needed, e.g., Edge/IE */
+input[type="search"]::-ms-clear {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+input[type="search"]::-ms-reveal {
+    display: none;
+    width: 0;
+    height: 0;
 }
