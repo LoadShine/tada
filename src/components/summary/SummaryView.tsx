@@ -40,6 +40,7 @@ import SelectionCheckboxRadix from '../common/SelectionCheckbox';
 import useDebounce from '@/hooks/useDebounce';
 import {CustomDateRangePickerContent} from '../common/CustomDateRangePickerPopover';
 import SummaryHistoryModal from './SummaryHistoryModal';
+import {AnimatePresence, motion} from 'framer-motion'; // Added for subtask animation
 
 // Placeholder AI Function (keep as is)
 async function generateAiSummary(tasks: Task[]): Promise<string> {
@@ -139,7 +140,6 @@ const SummaryView: React.FC = () => {
         // Debounced save for editor changes
         if (hasUnsavedChangesRef.current && currentSummary?.id) {
             const summaryIdToUpdate = currentSummary.id;
-            // console.log(`Debounced save triggered for summary ${summaryIdToUpdate}`);
             setStoredSummaries(prev => prev.map(s => s.id === summaryIdToUpdate ? {
                 ...s,
                 summaryText: debouncedEditorContent,
@@ -154,7 +154,6 @@ const SummaryView: React.FC = () => {
     const forceSaveCurrentSummary = useCallback(() => {
         if (hasUnsavedChangesRef.current && currentSummary?.id) {
             const id = currentSummary.id;
-            // console.log(`Force saving summary ${id}`);
             setStoredSummaries(p => p.map(s => s.id === id ? {
                 ...s,
                 summaryText: summaryEditorContent, // Use direct state, not debounced
@@ -164,29 +163,25 @@ const SummaryView: React.FC = () => {
         }
     }, [currentSummary?.id, setStoredSummaries, summaryEditorContent]);
 
-    // Combined handler for period dropdown changes
     const handlePeriodValueChange = useCallback((selectedValue: string) => {
-        forceSaveCurrentSummary(); // Save before changing filter
+        forceSaveCurrentSummary();
         if (selectedValue === 'custom') {
-            // Use setTimeout to ensure dropdown closes before popover opens
             setTimeout(() => {
                 setIsRangePickerOpen(true);
             }, 0);
         } else {
             setPeriod(selectedValue as SummaryPeriodOption);
-            setIsRangePickerOpen(false); // Ensure picker is closed if selecting predefined
+            setIsRangePickerOpen(false);
         }
-    }, [setPeriod, setIsRangePickerOpen, forceSaveCurrentSummary]); // Added forceSave
+    }, [setPeriod, setIsRangePickerOpen, forceSaveCurrentSummary]);
 
 
     const handleListChange = useCallback((newList: string) => {
-        forceSaveCurrentSummary(); // Save before changing filter
+        forceSaveCurrentSummary();
         setListFilter(newList);
-    }, [setListFilter, forceSaveCurrentSummary]); // Added forceSave
+    }, [setListFilter, forceSaveCurrentSummary]);
 
-    // Task selection handler used by TaskItemMiniInline
     const handleTaskSelectionChange = useCallback((taskId: string, isSelected: boolean | 'indeterminate') => {
-        // Parent component handles the actual Set update based on the boolean state
         if (typeof isSelected === 'boolean') {
             setSelectedTaskIds(prev => {
                 const newSet = new Set(prev);
@@ -194,12 +189,9 @@ const SummaryView: React.FC = () => {
                 return newSet;
             });
         }
-        // Ignore clicks on the 'indeterminate' state itself if that case arises
     }, [setSelectedTaskIds]);
 
-    // Handler for the "Select All" checkbox
     const handleSelectAllTasks = useCallback(() => {
-        // Select only non-trashed tasks
         const nonTrashedTaskIds = filteredTasks.filter(t => t.list !== 'Trash').map(t => t.id);
         setSelectedTaskIds(new Set(nonTrashedTaskIds));
     }, [filteredTasks, setSelectedTaskIds]);
@@ -209,19 +201,17 @@ const SummaryView: React.FC = () => {
     }, [setSelectedTaskIds]);
 
     const handleSelectAllToggle = useCallback((isChecked: boolean | 'indeterminate') => {
-        // When clicking the select-all checkbox, treat indeterminate as unchecking all
         if (isChecked === true) {
             handleSelectAllTasks();
-        } else { // Handles false and 'indeterminate' clicks
+        } else {
             handleDeselectAllTasks();
         }
     }, [handleSelectAllTasks, handleDeselectAllTasks]);
 
 
     const handleGenerateClick = useCallback(async () => {
-        forceSaveCurrentSummary(); // Save any pending edits before generating
+        forceSaveCurrentSummary();
         setIsGenerating(true);
-        // Ensure only non-trashed selected tasks are included
         const tasksToSummarize = allTasks.filter(t => selectedTaskIds.has(t.id) && t.list !== 'Trash');
         try {
             const newSummaryText = await generateAiSummary(tasksToSummarize);
@@ -234,32 +224,24 @@ const SummaryView: React.FC = () => {
                 taskIds: tasksToSummarize.map(t => t.id),
                 summaryText: newSummaryText,
             };
-            // Update stored summaries, putting the new one first
             setStoredSummaries(prev => [newSummaryEntry, ...prev]);
-            // Set index to 0 to view the newly generated summary
             setCurrentIndex(0);
-            // The useEffect listening to [currentIndex, relevantSummaries] will handle loading the editor
-            hasUnsavedChangesRef.current = false; // New summary loaded, no unsaved changes
+            hasUnsavedChangesRef.current = false;
         } catch (error) {
             console.error("Error generating summary:", error);
-            // Optionally, show an error message to the user
             isInternalEditorUpdate.current = true;
             setSummaryEditorContent(`Error generating summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
             hasUnsavedChangesRef.current = false;
         } finally {
             setIsGenerating(false);
         }
-        // Optional: Deselect tasks after generation based on desired UX.
-        // handleDeselectAllTasks();
-    }, [selectedTaskIds, allTasks, filterKey, setIsGenerating, setStoredSummaries, setCurrentIndex, forceSaveCurrentSummary]); // Added forceSave
+    }, [selectedTaskIds, allTasks, filterKey, setIsGenerating, setStoredSummaries, setCurrentIndex, forceSaveCurrentSummary]);
 
     const handleEditorChange = useCallback((newValue: string) => {
-        // Only update local state and mark unsaved if it's not an internal update
         if (!isInternalEditorUpdate.current) {
             setSummaryEditorContent(newValue);
             hasUnsavedChangesRef.current = true;
         }
-        // Reset the internal update flag after the first change event
         isInternalEditorUpdate.current = false;
     }, []);
 
@@ -273,15 +255,14 @@ const SummaryView: React.FC = () => {
         setCurrentIndex(prev => Math.max(prev - 1, 0));
     }, [setCurrentIndex, forceSaveCurrentSummary]);
 
-    // Callback for the Date Range Picker Popover Content
     const handleRangeApply = useCallback((startDate: Date, endDate: Date) => {
-        forceSaveCurrentSummary(); // Save before applying range
+        forceSaveCurrentSummary();
         setPeriod({start: startDate.getTime(), end: endDate.getTime()});
-        setIsRangePickerOpen(false); // Close the popover after applying
-    }, [setPeriod, setIsRangePickerOpen, forceSaveCurrentSummary]); // Added forceSave
+        setIsRangePickerOpen(false);
+    }, [setPeriod, setIsRangePickerOpen, forceSaveCurrentSummary]);
 
     const openHistoryModal = useCallback(() => {
-        forceSaveCurrentSummary(); // Save before opening modal
+        forceSaveCurrentSummary();
         setIsHistoryModalOpen(true);
     }, [forceSaveCurrentSummary]);
     const closeHistoryModal = useCallback(() => setIsHistoryModalOpen(false), []);
@@ -297,7 +278,7 @@ const SummaryView: React.FC = () => {
 
     const listOptions = useMemo(() => [
         {label: 'All Lists', value: 'all'},
-        ...availableLists.filter(name => name !== 'Trash').map(listName => ({label: listName, value: listName})) // Exclude Trash
+        ...availableLists.filter(name => name !== 'Trash').map(listName => ({label: listName, value: listName}))
     ], [availableLists]);
 
     const selectedPeriodLabel = useMemo(() => {
@@ -327,14 +308,12 @@ const SummaryView: React.FC = () => {
 
     const selectedListLabel = useMemo(() => {
         const option = listOptions.find(l => l.value === listFilter);
-        return option ? option.label : 'Select List'; // Default text if filter is somehow invalid
+        return option ? option.label : 'Select List';
     }, [listFilter, listOptions]);
 
-    // Generate button is disabled if generating or no non-trashed tasks are selected
     const isGenerateDisabled = useMemo(() => {
         if (isGenerating) return true;
         if (selectedTaskIds.size === 0) return true;
-        // Check if *any* selected task is not in Trash
         const selectedTasks = allTasks.filter(t => selectedTaskIds.has(t.id));
         return !selectedTasks.some(t => t.list !== 'Trash');
     }, [isGenerating, selectedTaskIds, allTasks]);
@@ -342,7 +321,6 @@ const SummaryView: React.FC = () => {
     const tasksUsedCount = useMemo(() => currentSummary?.taskIds.length ?? 0, [currentSummary]);
     const summaryTimestamp = useMemo(() => currentSummary ? formatDateTime(currentSummary.createdAt) : null, [currentSummary]);
 
-    // Calculate selectAllState considering only non-trashed tasks
     const selectableTasks = useMemo(() => filteredTasks.filter(t => t.list !== 'Trash'), [filteredTasks]);
     const allSelectableTasksSelected = useMemo(() => selectableTasks.length > 0 && selectableTasks.every(task => selectedTaskIds.has(task.id)), [selectableTasks, selectedTaskIds]);
     const someSelectableTasksSelected = useMemo(() => selectableTasks.some(task => selectedTaskIds.has(task.id)) && !allSelectableTasksSelected, [selectedTaskIds, allSelectableTasksSelected, selectableTasks]);
@@ -374,15 +352,14 @@ const SummaryView: React.FC = () => {
                             className="flex items-start p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors duration-100 ease-apple"
                             title={task.title}>
                             <div className={twMerge(
-                                "flex-shrink-0 w-4 h-4 rounded-full border mt-[1px] mr-2.5 flex items-center justify-center", // Increased margin
+                                "flex-shrink-0 w-4 h-4 rounded-full border mt-[1px] mr-2.5 flex items-center justify-center",
                                 task.completed
                                     ? "bg-primary/90 border-primary/90"
                                     : task.completionPercentage && task.completionPercentage > 0
-                                        ? "border-primary/70 dark:border-primary/60" // Indicate progress with border
-                                        : "bg-white/40 dark:bg-neutral-700/30 border-gray-400/80 dark:border-neutral-500" // Default unchecked
+                                        ? "border-primary/70 dark:border-primary/60"
+                                        : "bg-white/40 dark:bg-neutral-700/30 border-gray-400/80 dark:border-neutral-500"
                             )}>
                                 {task.completed && <Icon name="check" size={9} className="text-white" strokeWidth={3}/>}
-                                {/* Show dot for in-progress */}
                                 {task.completionPercentage && task.completionPercentage > 0 && !task.completed && (
                                     <div className="w-1.5 h-1.5 bg-primary/80 dark:bg-primary/70 rounded-full"></div>
                                 )}
@@ -428,102 +405,214 @@ const SummaryView: React.FC = () => {
     );
 
 
-    // --- UPDATED Task Item Mini Component (Inline) ---
     const TaskItemMiniInline: React.FC<{
         task: Task;
         isSelected: boolean;
         onSelectionChange: (id: string, selected: boolean | 'indeterminate') => void;
     }> = React.memo(({task, isSelected, onSelectionChange}) => {
+        const [isSubtasksExpanded, setIsSubtasksExpanded] = useState(false);
         const parsedDueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
         const overdue = useMemo(() => parsedDueDate != null && isValid(parsedDueDate) && isBefore(startOfDay(parsedDueDate), startOfDay(new Date())) && !task.completed, [parsedDueDate, task.completed]);
         const uniqueId = `summary-task-${task.id}`;
-        const isDisabled = task.list === 'Trash'; // Disable selection for trashed tasks
+        const isDisabled = task.list === 'Trash';
 
-        // Handler for the label click
+        const INITIAL_VISIBLE_SUBTASKS = 1;
+
         const handleLabelClick = (e: React.MouseEvent<HTMLLabelElement>) => {
-            // Prevent default label behavior if the click is directly on the checkbox input itself
+            // Prevent toggling selection if the click is on the expand/collapse button for subtasks
+            if ((e.target as HTMLElement).closest('[data-subtask-expander="true"]')) {
+                e.preventDefault(); // Stop label's default action
+                return;
+            }
             if ((e.target as HTMLElement).closest('input[type="checkbox"]')) {
                 return;
             }
-            // If not disabled, toggle the selection state
             if (!isDisabled) {
                 onSelectionChange(task.id, !isSelected);
             }
         };
 
+        const toggleSubtaskExpansion = (e: React.MouseEvent<HTMLButtonElement>) => {
+            e.stopPropagation(); // Prevent task selection when clicking expander
+            setIsSubtasksExpanded(prev => !prev);
+        };
+
+        const sortedSubtasks = useMemo(() => {
+            if (!task.subtasks) return [];
+            return [...task.subtasks].sort((a, b) => a.order - b.order);
+        }, [task.subtasks]);
+
+        const subtasksToShow = useMemo(() => {
+            if (!sortedSubtasks) return [];
+            return isSubtasksExpanded ? sortedSubtasks : sortedSubtasks.slice(0, INITIAL_VISIBLE_SUBTASKS);
+        }, [sortedSubtasks, isSubtasksExpanded, INITIAL_VISIBLE_SUBTASKS]);
+
+        const hiddenSubtasksCount = useMemo(() => {
+            if (!sortedSubtasks) return 0;
+            return Math.max(0, sortedSubtasks.length - INITIAL_VISIBLE_SUBTASKS);
+        }, [sortedSubtasks, INITIAL_VISIBLE_SUBTASKS]);
+
 
         return (
-            // Use a label to make the whole item clickable
-            // Clicking the label will toggle the associated checkbox input
             <label
                 htmlFor={uniqueId}
                 className={twMerge(
-                    "flex items-center p-1.5 rounded-md transition-colors duration-150 ease-apple cursor-pointer", // Use cursor-pointer
-                    isSelected && !isDisabled ? "bg-primary/15 dark:bg-primary/25" : "hover:bg-black/10 dark:hover:bg-white/5",
-                    isDisabled && "opacity-60 cursor-not-allowed" // Apply disabled styles
+                    "flex flex-col p-1.5 rounded-md transition-colors duration-150 ease-apple",
+                    isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                    isSelected && !isDisabled ? "bg-primary/15 dark:bg-primary/25" : "hover:bg-black/10 dark:hover:bg-white/5"
                 )}
-                onClick={handleLabelClick} // Use onClick for the label
+                onClick={handleLabelClick}
             >
-                <SelectionCheckboxRadix
-                    id={uniqueId}
-                    checked={isSelected}
-                    onChange={(checkedState) => onSelectionChange(task.id, checkedState)} // Pass state directly
-                    aria-label={`Select task: ${task.title || 'Untitled'}`}
-                    className="mr-2.5 flex-shrink-0 pointer-events-none" // Make checkbox visually part of label, but label handles click
-                    size={16}
-                    disabled={isDisabled}
-                />
-                <div className="flex-1 overflow-hidden">
-                    {/* Task Title */}
-                    <span className={twMerge(
-                        "text-sm text-gray-800 dark:text-neutral-100 block truncate",
-                        task.completed && !isDisabled && "line-through text-muted-foreground dark:text-neutral-500",
-                        isDisabled && "text-muted-foreground dark:text-neutral-500"
-                    )}>
-                        {task.title || <span className="italic">Untitled Task</span>}
-                    </span>
-                    {/* Task Metadata */}
-                    <div
-                        className="text-xs text-muted-foreground dark:text-neutral-400 flex items-center space-x-2 mt-0.5 flex-wrap gap-y-0.5">
-                        {/* Progress Percentage */}
-                        {task.completionPercentage && task.completionPercentage < 100 && !isDisabled && (
-                            <span
-                                className="text-primary/90 dark:text-primary-light/80 font-medium">[{task.completionPercentage}%]</span>
-                        )}
-                        {/* Due Date */}
-                        {parsedDueDate && isValid(parsedDueDate) && (
-                            <span className={twMerge(
-                                "flex items-center whitespace-nowrap",
-                                overdue && !task.completed && !isDisabled && "text-red-600 dark:text-red-400 font-medium",
-                                task.completed && !isDisabled && "line-through"
-                            )}>
-                                <Icon name="calendar" size={11} className="mr-0.5 opacity-70"/>
-                                {formatRelativeDate(parsedDueDate)}
-                            </span>
-                        )}
-                        {/* List Name */}
-                        {task.list && task.list !== 'Inbox' && (
-                            <span
-                                className="flex items-center bg-black/10 dark:bg-white/10 px-1 rounded text-[10px] max-w-[70px] truncate"
-                                title={task.list}>
-                                <Icon name={task.list === 'Trash' ? 'trash' : 'list'} size={10}
-                                      className="mr-0.5 opacity-70"/>
-                                <span className="truncate">{task.list}</span>
-                            </span>
-                        )}
-                        {/* Tags */}
-                        {task.tags && task.tags.length > 0 && (
-                            <span className="flex items-center space-x-1">
-                                {task.tags.slice(0, 1).map(tag => (
-                                    <span key={tag}
-                                          className="bg-black/10 dark:bg-white/10 px-1 rounded text-[10px] max-w-[60px] truncate">#{tag}</span>
-                                ))}
-                                {task.tags.length > 1 && <span
-                                    className="text-[10px] text-muted-foreground/80 dark:text-neutral-500">+{task.tags.length - 1}</span>}
-                            </span>
-                        )}
+                <div className="flex items-center">
+                    <SelectionCheckboxRadix
+                        id={uniqueId}
+                        checked={isSelected}
+                        onChange={(checkedState) => onSelectionChange(task.id, checkedState)}
+                        aria-label={`Select task: ${task.title || 'Untitled'}`}
+                        className="mr-2.5 flex-shrink-0 pointer-events-none"
+                        size={16}
+                        disabled={isDisabled}
+                    />
+                    <div className="flex-1 overflow-hidden">
+                        <span className={twMerge(
+                            "text-sm text-gray-800 dark:text-neutral-100 block truncate",
+                            task.completed && !isDisabled && "line-through text-muted-foreground dark:text-neutral-500",
+                            isDisabled && "text-muted-foreground dark:text-neutral-500"
+                        )}>
+                            {task.title || <span className="italic">Untitled Task</span>}
+                        </span>
+                        <div
+                            className="text-xs text-muted-foreground dark:text-neutral-400 flex items-center space-x-2 mt-0.5 flex-wrap gap-y-0.5">
+                            {task.completionPercentage && task.completionPercentage < 100 && !isDisabled && (
+                                <span
+                                    className="text-primary/90 dark:text-primary-light/80 font-medium">[{task.completionPercentage}%]</span>
+                            )}
+                            {parsedDueDate && isValid(parsedDueDate) && (
+                                <span className={twMerge(
+                                    "flex items-center whitespace-nowrap",
+                                    overdue && !task.completed && !isDisabled && "text-red-600 dark:text-red-400 font-medium",
+                                    task.completed && !isDisabled && "line-through"
+                                )}>
+                                    <Icon name="calendar" size={11} className="mr-0.5 opacity-70"/>
+                                    {formatRelativeDate(parsedDueDate)}
+                                </span>
+                            )}
+                            {task.list && task.list !== 'Inbox' && (
+                                <span
+                                    className="flex items-center bg-black/10 dark:bg-white/10 px-1 rounded text-[10px] max-w-[70px] truncate"
+                                    title={task.list}>
+                                    <Icon name={task.list === 'Trash' ? 'trash' : 'list'} size={10}
+                                          className="mr-0.5 opacity-70"/>
+                                    <span className="truncate">{task.list}</span>
+                                </span>
+                            )}
+                            {task.tags && task.tags.length > 0 && (
+                                <span className="flex items-center space-x-1">
+                                    {task.tags.slice(0, 1).map(tag => (
+                                        <span key={tag}
+                                              className="bg-black/10 dark:bg-white/10 px-1 rounded text-[10px] max-w-[60px] truncate">#{tag}</span>
+                                    ))}
+                                    {task.tags.length > 1 && <span
+                                        className="text-[10px] text-muted-foreground/80 dark:text-neutral-500">+{task.tags.length - 1}</span>}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
+
+                {/* Animated Subtasks Display */}
+                {sortedSubtasks && sortedSubtasks.length > 0 && !isDisabled && (
+                    <div className={twMerge(
+                        "mt-1.5 pt-1.5 border-t border-black/5 dark:border-white/[.02]",
+                        "pl-[calc(0.375rem+16px+0.625rem)]"
+                    )}>
+                        <AnimatePresence initial={false}>
+                            <motion.div
+                                key="subtask-list-animated"
+                                initial="collapsed"
+                                animate={isSubtasksExpanded ? "open" : "collapsed"}
+                                exit="collapsed"
+                                variants={{
+                                    open: {
+                                        opacity: 1,
+                                        height: 'auto',
+                                        transition: {duration: 0.25, ease: [0.33, 1, 0.68, 1]}
+                                    },
+                                    collapsed: {
+                                        opacity: 0,
+                                        height: 0,
+                                        transition: {duration: 0.2, ease: [0.33, 1, 0.68, 1]}
+                                    }
+                                }}
+                                className="overflow-hidden"
+                            >
+                                <div
+                                    className={twMerge("max-h-28 overflow-y-auto styled-scrollbar-thin pr-1", isSubtasksExpanded ? "pb-1" : "")}>
+                                    {/* Render all subtasks when expanded, only limited when collapsed (logic handled by subtasksToShow) */}
+                                    {/* This inner div is for scrolling IF all subtasks are shown and exceed max-height */}
+                                    {sortedSubtasks.map(sub => (
+                                        <div key={sub.id} className="flex items-center text-xs mb-0.5">
+                                            <SelectionCheckboxRadix
+                                                id={`summary-subtask-item-check-${sub.id}`}
+                                                checked={sub.completed}
+                                                onChange={() => {
+                                                }}
+                                                aria-label={`Subtask: ${sub.title || 'Untitled Subtask'} status`}
+                                                className="mr-1.5 flex-shrink-0 pointer-events-none opacity-80"
+                                                size={11}
+                                                disabled={true}
+                                            />
+                                            <span className={twMerge(
+                                                "truncate text-muted-foreground dark:text-neutral-400/90",
+                                                sub.completed && "line-through opacity-70"
+                                            )}>
+                                                {sub.title || <span className="italic">Untitled Subtask</span>}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        </AnimatePresence>
+
+                        {/* Always render the initial slice for non-animated part */}
+                        {!isSubtasksExpanded && subtasksToShow.map(sub => (
+                            <div key={`preview-${sub.id}`} className="flex items-center text-xs mb-0.5">
+                                <SelectionCheckboxRadix
+                                    id={`summary-subtask-item-preview-check-${sub.id}`}
+                                    checked={sub.completed}
+                                    onChange={() => {
+                                    }}
+                                    aria-label={`Subtask: ${sub.title || 'Untitled Subtask'} status`}
+                                    className="mr-1.5 flex-shrink-0 pointer-events-none opacity-80"
+                                    size={11}
+                                    disabled={true}
+                                />
+                                <span className={twMerge(
+                                    "truncate text-muted-foreground dark:text-neutral-400/90",
+                                    sub.completed && "line-through opacity-70"
+                                )}>
+                                    {sub.title || <span className="italic">Untitled Subtask</span>}
+                                </span>
+                            </div>
+                        ))}
+
+                        {/* Expand/Collapse Button */}
+                        {sortedSubtasks.length > INITIAL_VISIBLE_SUBTASKS && (
+                            <button
+                                type="button" // Important for labels
+                                data-subtask-expander="true" // Custom attribute to identify the button
+                                onClick={toggleSubtaskExpansion}
+                                className={twMerge(
+                                    "text-[10px] text-blue-600 dark:text-blue-400 hover:underline mt-0.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 rounded",
+                                    "ml-[calc(0.375rem+11px)]" // Align with subtask text start
+                                )}
+                                aria-expanded={isSubtasksExpanded}
+                            >
+                                {isSubtasksExpanded ? "Show less" : `+ ${hiddenSubtasksCount} more subtask${hiddenSubtasksCount > 1 ? 's' : ''}`}
+                            </button>
+                        )}
+                    </div>
+                )}
             </label>
         );
     });
@@ -535,7 +624,6 @@ const SummaryView: React.FC = () => {
             {/* Page Header */}
             <div
                 className="px-3 md:px-4 py-2 border-b border-black/10 dark:border-white/10 flex justify-between items-center flex-shrink-0 bg-glass-100 dark:bg-neutral-800/70 backdrop-blur-lg z-10 h-12 shadow-sm">
-                {/* Left Section: Title + History */}
                 <div className="w-1/3 flex items-center space-x-2">
                     <h1 className="text-base font-semibold text-gray-800 dark:text-neutral-100 truncate">AI Summary</h1>
                     <Tooltip.Provider>
@@ -557,12 +645,9 @@ const SummaryView: React.FC = () => {
                     </Tooltip.Provider>
                 </div>
 
-                {/* Center Section: Filters */}
                 <div className="flex-1 flex justify-center items-center space-x-2">
-                    {/* Popover Root for the Date Range Picker */}
                     <Popover.Root modal={true} open={isRangePickerOpen} onOpenChange={setIsRangePickerOpen}>
                         <DropdownMenu.Root open={isPeriodDropdownOpen} onOpenChange={setIsPeriodDropdownOpen}>
-                            {/* Anchor the Popover to the Dropdown Trigger */}
                             <Popover.Anchor asChild>
                                 <DropdownMenu.Trigger asChild>
                                     <Button variant="ghost" size="sm"
@@ -581,23 +666,20 @@ const SummaryView: React.FC = () => {
                                         onValueChange={handlePeriodValueChange}
                                     >
                                         {periodOptions.map(p => {
-                                            // Determine value for Radix item, 'custom' for the object type
                                             const itemValue = typeof p.value === 'string' ? p.value : 'custom';
-                                            const itemKey = p.label; // Use label as key since value can be object or string
+                                            const itemKey = p.label;
                                             return (
                                                 <DropdownMenu.RadioItem
                                                     key={itemKey}
-                                                    value={itemValue} // Use the string representation for value
+                                                    value={itemValue}
                                                     className={twMerge(
                                                         "relative flex cursor-pointer select-none items-center rounded-[3px] px-2.5 py-1 text-sm outline-none transition-colors data-[disabled]:pointer-events-none h-7",
                                                         "focus:bg-black/15 data-[highlighted]:bg-black/15 dark:focus:bg-white/10 dark:data-[highlighted]:bg-white/10",
-                                                        // Checked state logic
                                                         (typeof period === 'string' && period === itemValue) || (typeof period === 'object' && itemValue === 'custom')
                                                             ? "bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary-light font-medium data-[highlighted]:bg-primary/25 dark:data-[highlighted]:bg-primary/40"
                                                             : "text-gray-700 data-[highlighted]:text-gray-800 dark:text-neutral-300 dark:data-[highlighted]:text-neutral-100",
                                                         "data-[disabled]:opacity-50"
                                                     )}
-                                                    // onSelect handles the logic, including opening Popover for 'custom'
                                                 >
                                                     {p.label}
                                                 </DropdownMenu.RadioItem>
@@ -608,20 +690,18 @@ const SummaryView: React.FC = () => {
                             </DropdownMenu.Portal>
                         </DropdownMenu.Root>
 
-                        {/* Date Range Picker Popover Content */}
                         <Popover.Portal>
                             <Popover.Content
                                 side="bottom"
                                 align="center"
                                 sideOffset={5}
                                 className={twMerge(
-                                    "z-[60] radix-popover-content", // Ensure high z-index
+                                    "z-[60] radix-popover-content",
                                     "data-[state=open]:animate-slideUpAndFade",
                                     "data-[state=closed]:animate-slideDownAndFade"
                                 )}
-                                onOpenAutoFocus={(e) => e.preventDefault()} // Prevent focus stealing
-                                onCloseAutoFocus={(e) => e.preventDefault()} // Keep focus on trigger
-                                // Modal popover handles outside interaction automatically
+                                onOpenAutoFocus={(e) => e.preventDefault()}
+                                onCloseAutoFocus={(e) => e.preventDefault()}
                             >
                                 <CustomDateRangePickerContent
                                     initialStartDate={typeof period === 'object' ? new Date(period.start) : undefined}
@@ -631,10 +711,9 @@ const SummaryView: React.FC = () => {
                                 />
                             </Popover.Content>
                         </Popover.Portal>
-                    </Popover.Root> {/* End Popover Root for Date Range */}
+                    </Popover.Root>
 
 
-                    {/* List Dropdown */}
                     <DropdownMenu.Root open={isListDropdownOpen} onOpenChange={setIsListDropdownOpen}>
                         <DropdownMenu.Trigger asChild>
                             <Button variant="ghost" size="sm"
@@ -668,7 +747,6 @@ const SummaryView: React.FC = () => {
                     </DropdownMenu.Root>
                 </div>
 
-                {/* Right Section: Generate Button */}
                 <div className="w-1/3 flex justify-end">
                     <Button variant="primary" size="sm" icon={isGenerating ? undefined : "sparkles"}
                             loading={isGenerating} onClick={handleGenerateClick} disabled={isGenerateDisabled}
@@ -678,33 +756,26 @@ const SummaryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main Content Area */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-2 md:p-3 gap-2 md:gap-3 min-h-0">
-                {/* Left Pane: Task List */}
                 <div
                     className="w-full md:w-[320px] h-1/2 md:h-full flex flex-col bg-glass-alt-100 dark:bg-neutral-800/60 backdrop-blur-xl rounded-lg shadow-lg border border-black/10 dark:border-white/10 overflow-hidden flex-shrink-0">
-                    {/* Task List Header */}
                     <div
                         className="px-3 py-2 border-b border-black/10 dark:border-white/10 flex justify-between items-center flex-shrink-0 h-11">
                         <h2 className="text-base font-semibold text-gray-800 dark:text-neutral-100 truncate">Tasks
-                            ({selectableTasks.length})</h2> {/* Show count of selectable tasks */}
-                        {/* Select All Checkbox */}
+                            ({selectableTasks.length})</h2>
                         <SelectionCheckboxRadix
                             id="select-all-summary-tasks"
                             checked={selectAllState === true}
                             indeterminate={selectAllState === 'indeterminate'}
-                            // Use the combined toggle handler
                             onChange={handleSelectAllToggle}
                             aria-label={allSelectableTasksSelected ? "Deselect all tasks" : (someSelectableTasksSelected ? "Deselect some tasks" : "Select all tasks")}
                             className="mr-1"
                             size={18}
-                            disabled={selectableTasks.length === 0} // Disable if no selectable tasks
+                            disabled={selectableTasks.length === 0}
                         />
                     </div>
-                    {/* Scrollable Task List */}
                     <div className="flex-1 overflow-y-auto styled-scrollbar p-2 space-y-1">
                         {filteredTasks.length === 0 ? (
-                            // Empty state when filters match no tasks
                             <div
                                 className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-neutral-500 px-4 text-center pt-10">
                                 <Icon name="archive" size={36}
@@ -715,7 +786,6 @@ const SummaryView: React.FC = () => {
                                     task status/progress.</p>
                             </div>
                         ) : (
-                            // Render task items
                             filteredTasks.map(task => (
                                 <TaskItemMiniInline key={task.id} task={task} isSelected={selectedTaskIds.has(task.id)}
                                                     onSelectionChange={handleTaskSelectionChange}/>
@@ -724,21 +794,16 @@ const SummaryView: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Right Pane: Summary */}
                 <div
                     className="flex-1 h-1/2 md:h-full flex flex-col bg-glass-100 dark:bg-neutral-800/80 backdrop-blur-xl rounded-lg shadow-lg border border-black/10 dark:border-white/10 overflow-hidden">
-                    <div className="flex-1 flex flex-col overflow-hidden p-3 min-h-0"> {/* Allow content to scroll */}
+                    <div className="flex-1 flex flex-col overflow-hidden p-3 min-h-0">
                         {totalRelevantSummaries > 0 || isGenerating ? (
                             <>
-                                {/* Summary Header */}
                                 <div className="flex justify-between items-center mb-2 flex-shrink-0 h-6">
-                                    {/* Timestamp */}
                                     <span className="text-xs text-muted-foreground dark:text-neutral-400">
                                          {isGenerating ? 'Generating summary...' : (summaryTimestamp ? `Generated: ${summaryTimestamp}` : 'Unsaved Summary')}
                                     </span>
-                                    {/* Controls: Referenced Tasks + Navigation */}
                                     <div className="flex items-center space-x-2">
-                                        {/* Referenced Tasks Dropdown */}
                                         <DropdownMenu.Root open={isRefTasksDropdownOpen}
                                                            onOpenChange={setIsRefTasksDropdownOpen}>
                                             <DropdownMenu.Trigger asChild disabled={!currentSummary || isGenerating}>
@@ -758,9 +823,8 @@ const SummaryView: React.FC = () => {
                                             </DropdownMenu.Trigger>
                                             <DropdownMenu.Portal>
                                                 <DropdownMenu.Content
-                                                    className={twMerge("z-[55] radix-dropdown-content p-0")} // Remove padding for custom content
+                                                    className={twMerge("z-[55] radix-dropdown-content p-0")}
                                                     sideOffset={4} align="end"
-                                                    // Keep dropdown open on interaction inside
                                                     onInteractOutside={e => e.preventDefault()}
                                                     onFocusOutside={e => e.preventDefault()}
                                                     onCloseAutoFocus={e => e.preventDefault()}
@@ -770,7 +834,6 @@ const SummaryView: React.FC = () => {
                                             </DropdownMenu.Portal>
                                         </DropdownMenu.Root>
 
-                                        {/* Summary Navigation */}
                                         {totalRelevantSummaries > 1 && !isGenerating && (
                                             <>
                                                 <Button variant="ghost" size="icon" icon="chevron-left"
@@ -790,7 +853,6 @@ const SummaryView: React.FC = () => {
                                         )}
                                     </div>
                                 </div>
-                                {/* CodeMirror Editor Container */}
                                 <div
                                     className="flex-1 min-h-0 border border-black/10 dark:border-white/10 rounded-md overflow-hidden bg-glass-inset-100 dark:bg-neutral-700/30 shadow-inner relative">
                                     <CodeMirrorEditor
@@ -800,16 +862,14 @@ const SummaryView: React.FC = () => {
                                         onChange={handleEditorChange}
                                         placeholder={isGenerating ? "Generating..." : "AI generated summary will appear here..."}
                                         className="!h-full !bg-transparent"
-                                        readOnly={isGenerating || !currentSummary} // Read-only during generation or if no summary selected
+                                        readOnly={isGenerating || !currentSummary}
                                     />
-                                    {/* Saving Indicator */}
                                     {hasUnsavedChangesRef.current && !isGenerating && currentSummary && (
                                         <span
                                             className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/70 dark:text-neutral-400/70 italic animate-pulse">
                                             saving...
                                         </span>
                                     )}
-                                    {/* Loading Overlay */}
                                     {isGenerating && (
                                         <div
                                             className="absolute inset-0 bg-glass-alt/30 backdrop-blur-sm flex items-center justify-center z-10">
@@ -819,7 +879,6 @@ const SummaryView: React.FC = () => {
                                 </div>
                             </>
                         ) : (
-                            // Empty state when no summaries match filters
                             <div
                                 className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-neutral-500 px-6 text-center">
                                 <Icon name="sparkles" size={40}
@@ -835,7 +894,6 @@ const SummaryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Summary History Modal */}
             <SummaryHistoryModal
                 isOpen={isHistoryModalOpen}
                 onClose={closeHistoryModal}
