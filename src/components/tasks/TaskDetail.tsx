@@ -1,5 +1,5 @@
 // src/components/tasks/TaskDetail.tsx
-import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useAtom, useAtomValue, useSetAtom} from 'jotai';
 import {selectedTaskAtom, selectedTaskIdAtom, tasksAtom, userListNamesAtom} from '@/store/atoms';
 import Icon from '../common/Icon';
@@ -15,7 +15,7 @@ import {CustomDatePickerContent} from '../common/CustomDatePickerPopover';
 import ConfirmDeleteModalRadix from "@/components/common/ConfirmDeleteModal";
 import {ProgressIndicator} from './TaskItem'; // Import from TaskItem
 import {IconName} from "@/components/common/IconMap";
-import SelectionCheckboxRadix from "@/components/common/SelectionCheckbox";
+// import SelectionCheckboxRadix from "@/components/common/SelectionCheckbox"; // Not directly used here
 import {
     closestCenter,
     DndContext,
@@ -29,16 +29,10 @@ import {
     useSensor,
     useSensors
 } from "@dnd-kit/core";
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy
-} from "@dnd-kit/sortable";
-import {CSS} from "@dnd-kit/utilities";
+import {arrayMove, SortableContext, verticalListSortingStrategy} from "@dnd-kit/sortable";
+// import {CSS} from "@dnd-kit/utilities"; // Not used directly here
 import {AnimatePresence, motion} from "framer-motion";
-
+import SubtaskItemDetail from "./SubtaskItemDetail"; // Import the modified SubtaskItemDetail
 
 // --- Helper TagPill Component (Kept for potential future re-use, but not actively used if tags are removed from footer) ---
 interface TagPillProps {
@@ -91,13 +85,11 @@ const RadixMenuItem: React.FC<RadixMenuItemProps> = React.memo(({
                                                                 }) => (
     <DropdownMenu.Item
         className={twMerge(
-            "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] outline-none transition-colors data-[disabled]:pointer-events-none h-8 font-normal", // UPDATED: rounded-base, px-3 py-2
+            "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] outline-none transition-colors data-[disabled]:pointer-events-none h-8 font-normal",
             isDanger
-                ? "text-red-600 data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-700 dark:text-red-400 dark:data-[highlighted]:bg-red-500/15 dark:data-[highlighted]:text-red-300" // Original TD danger style
-                // UPDATED: Added focus styling to match TaskItem's data-[highlighted] behavior for non-danger items
+                ? "text-red-600 data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-700 dark:text-red-400 dark:data-[highlighted]:bg-red-500/15 dark:data-[highlighted]:text-red-300"
                 : "data-[highlighted]:bg-black/[.07] dark:data-[highlighted]:bg-white/[.07] focus:bg-black/[.07] dark:focus:bg-white/[.07]",
-            selected && !isDanger && "bg-primary/15 text-primary data-[highlighted]:bg-primary/20 dark:bg-primary/25 dark:text-primary-light dark:data-[highlighted]:bg-primary/30", // Original TD selected style
-            // UPDATED: Added focus styling for text color consistency when background changes on focus for non-selected, non-danger items
+            selected && !isDanger && "bg-primary/15 text-primary data-[highlighted]:bg-primary/20 dark:bg-primary/25 dark:text-primary-light dark:data-[highlighted]:bg-primary/30",
             !selected && !isDanger && "text-gray-700 data-[highlighted]:text-gray-800 dark:text-neutral-200 dark:data-[highlighted]:text-neutral-50 focus:text-gray-800 dark:focus:text-neutral-50",
             "data-[disabled]:opacity-50",
             className
@@ -111,366 +103,40 @@ const RadixMenuItem: React.FC<RadixMenuItemProps> = React.memo(({
 ));
 RadixMenuItem.displayName = 'RadixMenuItem';
 
-
-// --- Subtask Item Component for TaskDetail (Refined UX) ---
-interface SubtaskItemDetailProps {
-    subtask: Subtask;
-    onUpdate: (id: string, updates: Partial<Omit<Subtask, 'id' | 'parentId' | 'createdAt'>>) => void;
-    onDelete: (id: string) => void;
-    isEditingContentForThis: boolean;
-    onToggleEditContent: (id: string | null) => void;
-    isTaskCompletedOrTrashed: boolean;
-    isDraggingOverlay?: boolean;
-}
-
-const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
-                                                                      subtask,
-                                                                      onUpdate,
-                                                                      onDelete,
-                                                                      isEditingContentForThis,
-                                                                      onToggleEditContent,
-                                                                      isTaskCompletedOrTrashed,
-                                                                      isDraggingOverlay = false
-                                                                  }) => {
-    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-    const [localTitle, setLocalTitle] = useState(subtask.title);
-    const [isEditingTitle, setIsEditingTitle] = useState(false);
-    const titleInputRef = useRef<HTMLInputElement>(null);
-    const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
-    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    const [isDateTooltipOpen, setIsDateTooltipOpen] = useState(false);
-    const [localContentCache, setLocalContentCache] = useState(subtask.content || '');
-
-    const isDisabledByParent = isTaskCompletedOrTrashed;
-    const isDisabled = isDisabledByParent || subtask.completed;
-
-    const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({
-        id: `subtask-detail-${subtask.id}`, data: {subtask, type: 'subtask-item-detail'}, disabled: isDisabledByParent,
-    });
-
-    const style = useMemo(() => {
-        const baseTransform = CSS.Transform.toString(transform);
-        if (isDraggingOverlay) return {
-            transform: baseTransform,
-            transition,
-            cursor: 'grabbing',
-            zIndex: 1000,
-            boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
-            background: 'var(--color-canvas-alt, hsl(var(--canvas-alt-h), var(--canvas-alt-s), calc(var(--canvas-alt-l) + 3%)))'
-        };
-        if (isDragging) return {
-            transform: baseTransform,
-            transition,
-            opacity: 0.6,
-            cursor: 'grabbing',
-            background: 'var(--color-glass-alt, hsla(var(--glass-alt-h), var(--glass-alt-s), var(--glass-alt-l), 0.2))'
-        };
-        return {transform: baseTransform, transition};
-    }, [transform, transition, isDragging, isDraggingOverlay]);
-
-    useEffect(() => {
-        setLocalTitle(subtask.title);
-    }, [subtask.title]);
-
-    useEffect(() => {
-        if (isEditingTitle && titleInputRef.current) {
-            titleInputRef.current.focus();
-            titleInputRef.current.select();
-        }
-    }, [isEditingTitle]);
-
-    useEffect(() => {
-        if (isEditingContentForThis && contentTextareaRef.current) {
-            setLocalContentCache(subtask.content || '');
-            contentTextareaRef.current.focus();
-            contentTextareaRef.current.style.height = 'auto';
-            requestAnimationFrame(() => {
-                if (contentTextareaRef.current) {
-                    contentTextareaRef.current.style.height = `${contentTextareaRef.current.scrollHeight}px`;
-                }
-            });
-        }
-    }, [isEditingContentForThis, subtask.content]);
-
-
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => setLocalTitle(e.target.value);
-    const saveTitle = () => {
-        const trimmedTitle = localTitle.trim();
-        if (trimmedTitle && trimmedTitle !== subtask.title) {
-            onUpdate(subtask.id, {title: trimmedTitle});
-        } else if (!trimmedTitle && subtask.title) {
-            setLocalTitle(subtask.title);
-        }
-        setIsEditingTitle(false);
-    };
-    const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') saveTitle();
-        if (e.key === 'Escape') {
-            setLocalTitle(subtask.title);
-            setIsEditingTitle(false);
-        }
-    };
-    const handleCompletionToggle = () => {
-        if (!isDisabledByParent) {
-            onUpdate(subtask.id, {
-                completed: !subtask.completed,
-                completedAt: !subtask.completed ? Date.now() : null
-            });
-        }
-    };
-
-    const handleContentTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setLocalContentCache(e.target.value);
-        e.target.style.height = 'auto';
-        e.target.style.height = `${e.target.scrollHeight}px`;
-    };
-    const saveSubtaskContent = () => {
-        if (localContentCache !== (subtask.content || '')) {
-            onUpdate(subtask.id, {content: localContentCache});
-        }
-        onToggleEditContent(null);
-    };
-    const cancelSubtaskContentEdit = () => {
-        setLocalContentCache(subtask.content || '');
-        onToggleEditContent(null);
-    };
-
-    const handleDateSelect = useCallback((dateWithTime: Date | undefined) => {
-        if (!isDisabledByParent) {
-            onUpdate(subtask.id, {dueDate: dateWithTime ? dateWithTime.getTime() : null});
-        }
-        setIsDatePickerOpen(false);
-        setIsDateTooltipOpen(false);
-    }, [onUpdate, subtask.id, isDisabledByParent]);
-
-    const closeDatePickerPopover = useCallback(() => {
-        setIsDatePickerOpen(false);
-        setIsDateTooltipOpen(false);
-    }, []);
-
-    const openDeleteConfirm = useCallback(() => {
-        if (!isDisabledByParent) {
-            setIsDeleteConfirmOpen(true);
-        }
-    }, [isDisabledByParent]);
-
-    const closeDeleteConfirm = useCallback(() => {
-        setIsDeleteConfirmOpen(false);
-    }, []);
-
-    const handleConfirmDelete = useCallback(() => {
-        onDelete(subtask.id);
-        closeDeleteConfirm();
-    }, [onDelete, subtask.id, closeDeleteConfirm]);
-
-    const subtaskDueDate = useMemo(() => safeParseDate(subtask.dueDate), [subtask.dueDate]);
-    const isSubtaskOverdue = useMemo(() => subtaskDueDate && isValid(subtaskDueDate) && !subtask.completed && !isDisabledByParent && isOverdue(subtaskDueDate), [subtaskDueDate, subtask.completed, isDisabledByParent]);
-    const hasContent = useMemo(() => !!subtask.content?.trim(), [subtask.content]);
-
-    const subtaskItemBaseClasses = "group/subtask-detail flex flex-col rounded-lg transition-colors duration-150 ease-apple";
-    const subtaskItemHoverClasses = !isDraggingOverlay && !isDragging && !isEditingContentForThis ? "hover:bg-black/[.025] dark:hover:bg-white/[.025]" : "";
-    const subtaskItemEditingContentClasses = isEditingContentForThis ? "bg-black/[.02] dark:bg-white/[.02]" : "";
-
-    const tooltipContentClass = "text-[11px] bg-grey-dark dark:bg-neutral-900/90 text-white dark:text-neutral-100 px-2 py-1 rounded-base shadow-md select-none z-[75] data-[state=delayed-open]:animate-fadeIn data-[state=closed]:animate-fadeOut";
-
-    const datePickerPopoverWrapperClasses = useMemo(() => twMerge(
-        "z-[70] p-0 bg-white dark:bg-neutral-800/95 backdrop-blur-xl rounded-lg shadow-strong border border-black/10 dark:border-white/10", // This is different from the main date picker popover style used in dropdowns. Kept specific for subtask.
-        "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
-    ), []);
-
-
-    return (
-        <>
-            <div
-                ref={setNodeRef}
-                style={style}
-                {...attributes}
-                {...listeners}
-                className={twMerge(
-                    subtaskItemBaseClasses,
-                    subtaskItemHoverClasses,
-                    subtaskItemEditingContentClasses,
-                    isDraggingOverlay && "bg-canvas-alt dark:bg-neutral-750 shadow-lg px-1.5",
-                    !isDisabledByParent && !isDragging && !isDraggingOverlay && "cursor-grab",
-                    isDisabledByParent && "cursor-not-allowed"
-                )}
-            >
-                <div className="flex items-center h-9 px-1.5">
-                    <SelectionCheckboxRadix
-                        id={`subtask-detail-check-${subtask.id}`} checked={subtask.completed}
-                        onChange={handleCompletionToggle}
-                        aria-label={`Mark subtask ${subtask.title} as ${subtask.completed ? 'incomplete' : 'complete'}`}
-                        className="mr-2.5 flex-shrink-0" size={16} disabled={isDisabledByParent}
-                    />
-                    <div className={twMerge(
-                        "flex-1 min-w-0 py-1 h-full flex items-center"
-                    )}
-                         onClick={() => !isEditingTitle && !isDisabled && setIsEditingTitle(true)}>
-                        {isEditingTitle ? (
-                            <input ref={titleInputRef} type="text" value={localTitle} onChange={handleTitleChange}
-                                   onBlur={saveTitle} onKeyDown={handleTitleKeyDown}
-                                   className={twMerge(
-                                       "w-full text-[13px] bg-transparent focus:outline-none focus:ring-0 border-none p-0 leading-tight font-medium",
-                                       subtask.completed ? "line-through text-neutral-500/70 dark:text-neutral-400/70" : "text-neutral-700 dark:text-neutral-100"
-                                   )}
-                                   placeholder="Subtask title..." disabled={isDisabled}
-                            />
-                        ) : (
-                            <span
-                                className={twMerge(
-                                    "text-[13px] cursor-text block truncate leading-tight font-medium",
-                                    subtask.completed ? "line-through text-neutral-500/70 dark:text-neutral-400/70" : "text-neutral-700 dark:text-neutral-100"
-                                )}>
-                            {subtask.title || <span className="italic text-muted-foreground/70">Untitled Subtask</span>}
-                        </span>
-                        )}
-                    </div>
-                    <div
-                        className={twMerge("flex items-center flex-shrink-0 ml-2 space-x-1 transition-opacity duration-150", (isEditingContentForThis || isEditingTitle) ? "opacity-100" : "opacity-0 group-hover/subtask-detail:opacity-100 focus-within:opacity-100")}>
-                        {(subtask.dueDate || !isDisabled) && (
-                            <Popover.Root open={isDatePickerOpen} onOpenChange={(open) => {
-                                setIsDatePickerOpen(open);
-                                if (!open) setIsDateTooltipOpen(false);
-                            }}>
-                                <Tooltip.Provider><Tooltip.Root delayDuration={300} open={isDateTooltipOpen}
-                                                                onOpenChange={setIsDateTooltipOpen}>
-                                    <Tooltip.Trigger asChild>
-                                        <Popover.Trigger asChild disabled={isDisabled}>
-                                            <Button variant="ghost" size="icon" icon="calendar"
-                                                    className={twMerge("w-7 h-7",
-                                                        isSubtaskOverdue && !subtask.completed && "text-red-500 dark:text-red-400",
-                                                        !isSubtaskOverdue && "text-muted-foreground/60 dark:text-neutral-500/60 hover:text-muted-foreground dark:hover:text-neutral-400",
-                                                        isDisabled && !subtask.dueDate && "opacity-50 cursor-not-allowed",
-                                                        isDisabled && subtask.dueDate && "opacity-60 cursor-not-allowed",
-                                                    )}
-                                                    aria-label={subtask.dueDate ? `Subtask due: ${formatRelativeDate(subtaskDueDate, true)}` : "Set subtask due date"}
-                                            />
-                                        </Popover.Trigger>
-                                    </Tooltip.Trigger>
-                                    <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="top"
-                                                                     sideOffset={6}>
-                                        {subtask.dueDate ? formatRelativeDate(subtaskDueDate, true) : "Set Due Date"}
-                                        <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/90"/>
-                                    </Tooltip.Content></Tooltip.Portal>
-                                </Tooltip.Root></Tooltip.Provider>
-                                <Popover.Portal><Popover.Content
-                                    className={datePickerPopoverWrapperClasses}
-                                    sideOffset={5}
-                                    align="end" onOpenAutoFocus={(e) => e.preventDefault()}
-                                    onCloseAutoFocus={(e) => e.preventDefault()}>
-                                    <CustomDatePickerContent initialDate={subtaskDueDate ?? undefined}
-                                                             onSelect={handleDateSelect}
-                                                             closePopover={closeDatePickerPopover}/>
-                                </Popover.Content></Popover.Portal>
-                            </Popover.Root>
-                        )}
-                        <Button variant="ghost" size="icon"
-                                icon={isEditingContentForThis ? "edit" : (hasContent ? "sticky-note" : "file-pen")}
-                                onClick={() => !isDisabled && onToggleEditContent(isEditingContentForThis ? null : subtask.id)}
-                                className={twMerge("w-7 h-7",
-                                    isEditingContentForThis ? "text-primary bg-primary/10 dark:bg-primary/20" : "text-muted-foreground/60 dark:text-neutral-500/60 hover:text-muted-foreground dark:hover:text-neutral-400",
-                                    isDisabled && "opacity-50 cursor-not-allowed",
-                                )}
-                                aria-label={isEditingContentForThis ? "Close subtask notes" : (hasContent ? "Edit subtask notes" : "Add subtask notes")}
-                                disabled={isDisabled}
-                        />
-                        <Button variant="ghost" size="icon" icon="trash"
-                                onClick={openDeleteConfirm}
-                                className={twMerge("w-7 h-7 text-muted-foreground/40 dark:text-neutral-500/40 hover:text-red-500 dark:hover:text-red-400", isDisabledByParent && "opacity-20 cursor-not-allowed")}
-                                aria-label="Delete subtask" disabled={isDisabledByParent}
-                        />
-                    </div>
-                </div>
-
-                <AnimatePresence initial={false}>
-                    {isEditingContentForThis && (
-                        <motion.div
-                            key={`content-editor-${subtask.id}`}
-                            initial={{height: 0, opacity: 0.5, marginTop: 0}}
-                            animate={{height: 'auto', opacity: 1, marginTop: '2px', marginBottom: '4px'}}
-                            exit={{height: 0, opacity: 0, marginTop: 0, marginBottom: 0}}
-                            transition={{duration: 0.25, ease: [0.33, 1, 0.68, 1]}}
-                            className="overflow-hidden pl-[calc(1rem+16px+0.625rem)] pr-2"
-                        >
-                        <textarea
-                            ref={contentTextareaRef} value={localContentCache} onChange={handleContentTextareaChange}
-                            placeholder="Add notes..."
-                            className={twMerge(
-                                "w-full text-xs min-h-[36px] max-h-[90px] py-1.5 px-2 rounded-md resize-none overflow-y-auto styled-scrollbar-thin",
-                                "bg-black/[.03] dark:bg-white/[.03] border border-black/10 dark:border-white/10",
-                                "focus:outline-none focus:border-transparent dark:focus:border-transparent",
-                                "placeholder:text-muted-foreground/60 dark:placeholder:text-neutral-500/60",
-                                "text-neutral-700 dark:text-neutral-300 leading-normal",
-                                isDisabled && "opacity-60 cursor-not-allowed"
-                            )}
-                            disabled={isDisabled} rows={1}
-                        />
-                            <div className="flex justify-end space-x-2 mt-1.5">
-                                <Button variant="ghost" size="sm" onClick={cancelSubtaskContentEdit}
-                                        className="!h-6 !px-2 !text-xs">Cancel</Button>
-                                <Button variant="primary" size="sm" onClick={saveSubtaskContent}
-                                        className="!h-6 !px-2 !text-xs">Save Notes</Button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            <ConfirmDeleteModalRadix
-                isOpen={isDeleteConfirmOpen}
-                onClose={closeDeleteConfirm}
-                onConfirm={handleConfirmDelete}
-                itemTitle={subtask.title || 'Untitled Subtask'}
-                title="Delete Subtask?"
-                description={`Are you sure you want to permanently delete the subtask "${subtask.title || 'Untitled Subtask'}"? This action cannot be undone.`}
-                confirmText="Delete"
-                confirmVariant="danger"
-            />
-        </>
-    );
-});
-SubtaskItemDetail.displayName = 'SubtaskItemDetail';
-
-
 // --- TaskDetail Component ---
 const TaskDetail: React.FC = () => {
-    const [selectedTaskInternal] = useAtom(selectedTaskAtom);
+    const [selectedTaskInternal] = useAtom(selectedTaskAtom); // Renamed to avoid conflict
     const selectedTask = useAtomValue(selectedTaskAtom);
     const setTasks = useSetAtom(tasksAtom);
     const selectedTaskId = useAtomValue(selectedTaskIdAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
     const userLists = useAtomValue(userListNamesAtom);
 
-    // Local state...
     const [localTitle, setLocalTitle] = useState('');
     const [localContent, setLocalContent] = useState('');
     const [localDueDate, setLocalDueDate] = useState<Date | undefined>(undefined);
-    const [localTagsString, setLocalTagsString] = useState('');
+    const [localTagsString, setLocalTagsString] = useState(''); // Kept for task tags
     const latestTagsStringRef = useRef(localTagsString);
 
 
-    // Modal/Popover states...
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [isFooterDatePickerOpen, setIsFooterDatePickerOpen] = useState(false); // Renamed for clarity
-    const [isHeaderMenuDatePickerOpen, setIsHeaderMenuDatePickerOpen] = useState(false); // For "Set Due Date" in header menu
+    const [isFooterDatePickerOpen, setIsFooterDatePickerOpen] = useState(false);
+    const [isHeaderMenuDatePickerOpen, setIsHeaderMenuDatePickerOpen] = useState(false);
     const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
     const [isInfoPopoverOpen, setIsInfoPopoverOpen] = useState(false);
 
-    // Tooltip states...
     const [isDateTooltipOpen, setIsDateTooltipOpen] = useState(false);
     const [isInfoTooltipOpen, setIsInfoTooltipOpen] = useState(false);
 
-
     // Subtask related states...
-    const [editingSubtaskContentId, setEditingSubtaskContentId] = useState<string | null>(null);
+    // const [editingSubtaskContentId, setEditingSubtaskContentId] = useState<string | null>(null); // REMOVED
     const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
     const newSubtaskInputRef = useRef<HTMLInputElement>(null);
     const [draggingSubtaskId, setDraggingSubtaskId] = useState<UniqueIdentifier | null>(null);
 
-    // Refs...
     const titleInputRef = useRef<HTMLInputElement>(null);
     const editorRef = useRef<CodeMirrorEditorRef>(null);
-    const moreActionsButtonRef = useRef<HTMLButtonElement>(null); // Ref for the More Actions trigger
+    const moreActionsButtonRef = useRef<HTMLButtonElement>(null);
     const latestTitleRef = useRef(localTitle);
     const latestContentRef = useRef(localContent);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -482,11 +148,11 @@ const TaskDetail: React.FC = () => {
         return () => {
             isMountedRef.current = false;
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-            if (selectedTaskInternal) {
+            if (selectedTaskInternal) { // Use selectedTaskInternal from atom for saving on unmount
                 savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
             }
         };
-    }, []);
+    }, [selectedTaskInternal]); // Added selectedTaskInternal to dependency array
 
     const savePendingChanges = useCallback((taskId: string, title: string, content: string, dueDate: Date | undefined, tagsString: string) => {
         if (!taskId || !hasUnsavedChangesRef.current || !isMountedRef.current) return;
@@ -500,9 +166,8 @@ const TaskDetail: React.FC = () => {
         const processedDueDateTimestamp = dueDate && isValid(dueDate) ? dueDate.getTime() : null;
         const processedTags = tagsString.split(',').map(t => t.trim()).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
 
-        let originalTaskState: Task | undefined;
         setTasks(prevTasks => {
-            originalTaskState = prevTasks.find(t => t.id === taskId);
+            const originalTaskState = prevTasks.find(t => t.id === taskId); // Find from prevTasks
             if (!originalTaskState) return prevTasks;
 
             const changesToSave: Partial<Task> = {};
@@ -535,11 +200,10 @@ const TaskDetail: React.FC = () => {
             savePendingChanges(prevTaskId, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
         }
 
-        setEditingSubtaskContentId(null);
+        // setEditingSubtaskContentId(null); // REMOVED
         setNewSubtaskTitle('');
         hasUnsavedChangesRef.current = false;
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-
 
         if (selectedTask) {
             const taskTitle = selectedTask.title;
@@ -555,7 +219,6 @@ const TaskDetail: React.FC = () => {
             latestTitleRef.current = taskTitle;
             latestContentRef.current = taskContent;
             latestTagsStringRef.current = taskTagsString;
-
 
             if (taskTitle === '' &&
                 document.activeElement !== titleInputRef.current &&
@@ -583,7 +246,7 @@ const TaskDetail: React.FC = () => {
             setIsMoreActionsOpen(false);
             setIsInfoPopoverOpen(false);
         }
-    }, [selectedTask?.id, savePendingChanges, localDueDate, localTagsString, selectedTaskInternal, localTitle, localContent]);
+    }, [selectedTask, savePendingChanges, localDueDate, localTagsString, selectedTaskInternal, localTitle, localContent]);
 
 
     const triggerSave = useCallback(() => {
@@ -591,14 +254,17 @@ const TaskDetail: React.FC = () => {
         hasUnsavedChangesRef.current = true;
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => {
-            savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
+            if (selectedTaskInternal) { // Check again inside timeout
+                savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
+            }
         }, 700);
-    }, [selectedTaskInternal?.id, localDueDate, savePendingChanges]);
+    }, [selectedTaskInternal, localDueDate, savePendingChanges]);
 
     const updateTask = useCallback((updates: Partial<Omit<Task, 'groupCategory' | 'completedAt' | 'completed' | 'subtasks'>>) => {
         if (!selectedTaskInternal || !isMountedRef.current) return;
         if (hasUnsavedChangesRef.current) {
-            savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
+            // Check again before direct update
+            if (selectedTaskInternal) savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
         }
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
@@ -610,14 +276,14 @@ const TaskDetail: React.FC = () => {
             ...t, ...updates,
             updatedAt: Date.now()
         } : t)));
-    }, [selectedTaskInternal?.id, setTasks, localDueDate, savePendingChanges]);
+    }, [selectedTaskInternal, setTasks, localDueDate, savePendingChanges]);
 
     const handleClose = useCallback(() => {
         if (selectedTaskInternal) {
             savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
         }
         setSelectedTaskId(null);
-    }, [selectedTaskInternal?.id, setSelectedTaskId, localDueDate, savePendingChanges]);
+    }, [selectedTaskInternal, setSelectedTaskId, localDueDate, savePendingChanges]);
 
     const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setLocalTitle(e.target.value);
@@ -635,8 +301,7 @@ const TaskDetail: React.FC = () => {
         if (hasUnsavedChangesRef.current && selectedTaskInternal) {
             savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
         }
-    }, [selectedTaskInternal?.id, localDueDate, savePendingChanges]);
-
+    }, [selectedTaskInternal, localDueDate, savePendingChanges]);
 
     const handleFooterDatePickerSelect = useCallback((dateWithTime: Date | undefined) => {
         setLocalDueDate(dateWithTime);
@@ -651,21 +316,20 @@ const TaskDetail: React.FC = () => {
     }, []);
 
     const handleHeaderMenuDateSelect = useCallback((dateWithTime: Date | undefined) => {
-        setLocalDueDate(dateWithTime); // Keep localDueDate in sync
+        setLocalDueDate(dateWithTime);
         updateTask({dueDate: dateWithTime ? dateWithTime.getTime() : null});
-        setIsHeaderMenuDatePickerOpen(false); // Close the menu's date picker
+        setIsHeaderMenuDatePickerOpen(false);
     }, [updateTask]);
 
     const closeHeaderMenuDatePickerPopover = useCallback(() => {
         setIsHeaderMenuDatePickerOpen(false);
     }, []);
 
-
     const handleListChange = useCallback((newList: string) => updateTask({list: newList}), [updateTask]);
     const handlePriorityChange = useCallback((newPriority: number | null) => updateTask({priority: newPriority}), [updateTask]);
     const handleProgressChange = useCallback((newPercentage: number | null) => {
         updateTask({completionPercentage: newPercentage});
-        if (newPercentage === 100 && selectedTask?.id === selectedTaskId) { // Check if current task is selected
+        if (newPercentage === 100 && selectedTask?.id === selectedTaskId) {
             // Optionally close or handle completion side effects
         }
     }, [updateTask, selectedTask?.id, selectedTaskId]);
@@ -685,7 +349,7 @@ const TaskDetail: React.FC = () => {
         updateTask({list: 'Trash', completionPercentage: null});
         setSelectedTaskId(null);
         closeDeleteConfirm();
-    }, [selectedTask, updateTask, setSelectedTaskId]);
+    }, [selectedTask, updateTask, setSelectedTaskId, closeDeleteConfirm]);
 
     const handleRestore = useCallback(() => {
         if (!selectedTask || selectedTask.list !== 'Trash') return;
@@ -705,7 +369,7 @@ const TaskDetail: React.FC = () => {
         const taskToDuplicate = selectedTask;
 
         const duplicatedSubtasks = (taskToDuplicate.subtasks || []).map(sub => ({
-            ...sub,
+            ...sub, // content will not be spread if not in Subtask type
             id: `subtask-${now}-${Math.random().toString(16).slice(2)}`,
             parentId: newParentTaskId,
             createdAt: now,
@@ -752,14 +416,12 @@ const TaskDetail: React.FC = () => {
             }
             titleInputRef.current?.blur();
         }
-    }, [selectedTask, selectedTaskInternal?.id, localTitle, localDueDate, savePendingChanges]);
+    }, [selectedTask, selectedTaskInternal, localTitle, localDueDate, savePendingChanges]); // Added selectedTaskInternal
 
     const isTrash = useMemo(() => selectedTask?.list === 'Trash', [selectedTask?.list]);
     const isCompleted = useMemo(() => (selectedTask?.completionPercentage ?? 0) === 100 && !isTrash, [selectedTask?.completionPercentage, isTrash]);
     const isInteractiveDisabled = useMemo(() => isTrash || isCompleted, [isTrash, isCompleted]);
 
-
-    // Subtask handlers
     const handleAddSubtask = useCallback(() => {
         if (!selectedTask || !newSubtaskTitle.trim() || isInteractiveDisabled) return;
         const now = Date.now();
@@ -767,7 +429,7 @@ const TaskDetail: React.FC = () => {
             id: `subtask-${now}-${Math.random().toString(16).slice(2)}`, parentId: selectedTask.id,
             title: newSubtaskTitle.trim(), completed: false, completedAt: null,
             order: (selectedTask.subtasks?.reduce((max, s) => Math.max(max, s.order), 0) || 0) + 1000,
-            createdAt: now, updatedAt: now, content: '', dueDate: null,
+            createdAt: now, updatedAt: now, dueDate: null, // content: '' REMOVED
         };
         setTasks(prevTasks => prevTasks.map(t => t.id === selectedTask.id ? {
             ...t,
@@ -794,14 +456,16 @@ const TaskDetail: React.FC = () => {
             ...t,
             subtasks: (t.subtasks || []).filter(sub => sub.id !== subtaskId)
         } : t));
-        if (editingSubtaskContentId === subtaskId) setEditingSubtaskContentId(null);
-    }, [selectedTask, setTasks, editingSubtaskContentId]);
+        // if (editingSubtaskContentId === subtaskId) setEditingSubtaskContentId(null); // REMOVED
+    }, [selectedTask, setTasks]);
 
-    const handleToggleEditSubtaskContent = (subtaskId: string | null) => {
-        setEditingSubtaskContentId(currentId => currentId === subtaskId ? null : subtaskId);
-    };
+    // const handleToggleEditSubtaskContent = (subtaskId: string | null) => { // REMOVED
+    //     setEditingSubtaskContentId(currentId => currentId === subtaskId ? null : subtaskId);
+    // };
 
-    const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 3}}), useSensor(KeyboardSensor, {coordinateGetter: sortableKeyboardCoordinates}));
+    const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 3}}), useSensor(KeyboardSensor, {
+        // coordinateGetter: sortableKeyboardCoordinates // Keep if SubtaskItemDetail has keyboard interaction for sorting
+    }));
     const handleSubtaskDragStart = (event: DragStartEvent) => {
         if (event.active.data.current?.type === 'subtask-item-detail') setDraggingSubtaskId(event.active.id.toString().replace('subtask-detail-', ''));
     };
@@ -821,17 +485,16 @@ const TaskDetail: React.FC = () => {
         }
     };
 
-
-    const displayDueDateForPicker = localDueDate; // For footer date picker
+    const displayDueDateForPicker = localDueDate;
     const displayDueDateForRender = localDueDate ?? safeParseDate(selectedTask?.dueDate);
     const overdue = useMemo(() => displayDueDateForRender && isValid(displayDueDateForRender) && !isCompleted && !isTrash && isOverdue(displayDueDateForRender), [displayDueDateForRender, isCompleted, isTrash]);
     const displayCreatedAt = useMemo(() => selectedTask ? formatDateTime(selectedTask.createdAt) : '', [selectedTask]);
     const displayUpdatedAt = useMemo(() => selectedTask ? formatDateTime(selectedTask.updatedAt) : '', [selectedTask]);
 
     const mainPanelClass = useMemo(() => twMerge(
-        "h-full flex flex-col shadow-xl z-20",
+        "h-full flex flex-col", // Removed shadow & z-index, handled by drawer/container
         "bg-neutral-50 dark:bg-neutral-850",
-        "border-l border-neutral-200 dark:border-neutral-700/70"
+        // "border-l border-neutral-200 dark:border-neutral-700/70" // Border handled by container in MainPage
     ), []);
 
     const headerClass = useMemo(() => twMerge(
@@ -871,16 +534,13 @@ const TaskDetail: React.FC = () => {
         "focus-visible:ring-offset-neutral-50 dark:focus-visible:ring-offset-neutral-850"
     ), []);
 
-    // UPDATED: dropdownContentClasses to align with TaskItem's actionsMenuContentClasses
     const dropdownContentClasses = useMemo(() => twMerge(
-        "z-[55] bg-white dark:bg-neutral-800 min-w-[200px] w-52 p-1 rounded-base shadow-modal", // Style from TaskItem, width, padding, z-index, shadow, rounded
+        "z-[55] bg-white dark:bg-neutral-800 min-w-[200px] w-52 p-1 rounded-base shadow-modal",
         "data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"
     ), []);
 
-    // UPDATED: datePickerPopoverWrapperClasses to align with TaskItem's datePickerPopoverWrapperClasses (which uses shadow-modal)
-    // This is for the date picker launched FROM the header dropdown menu.
     const headerMenuDatePickerPopoverWrapperClasses = useMemo(() => twMerge(
-        "z-[60] p-0 bg-white dark:bg-neutral-800 rounded-base shadow-modal", // Style from TaskItem
+        "z-[60] p-0 bg-white dark:bg-neutral-800 rounded-base shadow-modal",
         "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
     ), []);
 
@@ -889,41 +549,24 @@ const TaskDetail: React.FC = () => {
         isDanger
             ? "text-red-600 data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-700 dark:text-red-400 dark:data-[highlighted]:bg-red-500/15 dark:data-[highlighted]:text-red-300"
             : "data-[highlighted]:bg-black/[.07] dark:data-[highlighted]:bg-white/[.07] focus:bg-black/[.07] dark:focus:bg-white/[.07]",
-        // For RadioItem, selection is handled by data-state=checked
         isSelected && !isDanger && "bg-primary/15 text-primary data-[state=checked]:bg-primary/15 data-[state=checked]:text-primary dark:bg-primary/25 dark:text-primary-light data-[state=checked]:dark:bg-primary/25 data-[state=checked]:dark:text-primary-light",
         !isSelected && !isDanger && "text-gray-700 data-[highlighted]:text-gray-800 dark:text-neutral-200 dark:data-[highlighted]:text-neutral-50 focus:text-gray-800 dark:focus:text-neutral-50",
-        // Ensure data-state=checked overrides highlighted if both are true
         "data-[state=checked]:data-[highlighted]:bg-primary/20 data-[state=checked]:dark:data-[highlighted]:bg-primary/30",
         "data-[disabled]:opacity-50",
         itemSpecificClasses
     );
-
-    // Footer date picker might have its own style, check CustomDatePickerPopover or if it should also align.
-    // The existing datePickerPopoverWrapperClasses (used for footer) is more styled (backdrop-blur, shadow-strong).
-    // For consistency, if the footer date picker trigger looks like other action buttons, its popover should probably also align.
-    // However, the original request was specifically for the "more dropdown", so let's keep footer date picker distinct unless specified.
-    // The current footer date picker wrapper:
-    // const datePickerPopoverWrapperClasses = useMemo(() => twMerge(
-    //     popupContentBaseClasses, "p-0", ...
-    // ), [popupContentBaseClasses]);
-    // Where popupContentBaseClasses was:
-    // "z-[65] bg-white dark:bg-neutral-800 backdrop-blur-md rounded-lg shadow-lg border border-black/10 dark:border-white/10 p-1.5"
-    // This remains unchanged for the *footer* date picker.
 
     const tooltipContentClass = useMemo(() => twMerge(
         "text-[11px] bg-grey-dark dark:bg-neutral-900/95 text-white dark:text-neutral-100 px-2 py-1 rounded-base shadow-md select-none z-[75]",
         "data-[state=delayed-open]:animate-fadeIn data-[state=closed]:animate-fadeOut"
     ), []);
 
-    // UPDATED: subTriggerClasses to align with TaskItem's SubTrigger styling
     const subTriggerClasses = useMemo(() => twMerge(
-        "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-8", // TI structure: rounded-base, px-3 py-2
-        "text-gray-700 dark:text-neutral-200", // Base text (equivalent to TI's text-grey-dark)
-        // Equivalent to TI's: focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light data-[state=open]:bg-grey-ultra-light
+        "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-8",
+        "text-gray-700 dark:text-neutral-200",
         "focus:bg-black/[.07] dark:focus:bg-white/[.07]",
         "data-[highlighted]:bg-black/[.07] dark:data-[highlighted]:bg-white/[.07]",
         "data-[state=open]:bg-black/[.07] dark:data-[state=open]:bg-white/[.07]",
-        // Equivalent to TI's: data-[highlighted]:text-grey-dark data-[state=open]:text-grey-dark (and implied focus text color)
         "focus:text-gray-800 dark:focus:text-neutral-50",
         "data-[highlighted]:text-gray-800 dark:data-[highlighted]:text-neutral-50",
         "data-[state=open]:text-gray-800 dark:data-[state=open]:text-neutral-50",
@@ -954,9 +597,6 @@ const TaskDetail: React.FC = () => {
     const handleMoreActionsDropdownCloseFocus = useCallback((event: Event) => {
         if (isHeaderMenuDatePickerOpen) {
             event.preventDefault();
-        } else {
-            // Radix should handle focus return to trigger if no inner popover took focus.
-            // moreActionsButtonRef.current?.focus(); // Can be uncommented if Radix needs help.
         }
     }, [isHeaderMenuDatePickerOpen]);
 
@@ -992,13 +632,13 @@ const TaskDetail: React.FC = () => {
                                 </Popover.Anchor>
                                 <DropdownMenu.Portal>
                                     <DropdownMenu.Content
-                                        className={dropdownContentClasses} // UPDATED
+                                        className={dropdownContentClasses}
                                         sideOffset={5}
                                         align="end"
                                         onCloseAutoFocus={handleMoreActionsDropdownCloseFocus}
                                     >
                                         <DropdownMenu.Sub>
-                                            <DropdownMenu.SubTrigger className={subTriggerClasses}> {/* UPDATED */}
+                                            <DropdownMenu.SubTrigger className={subTriggerClasses}>
                                                 <Icon name="circle-gauge" size={15} className="mr-2 opacity-70"/>
                                                 Set Progress
                                                 <div className="ml-auto pl-5"><Icon name="chevron-right" size={16}
@@ -1006,10 +646,10 @@ const TaskDetail: React.FC = () => {
                                                                                     className="opacity-70"/></div>
                                             </DropdownMenu.SubTrigger>
                                             <DropdownMenu.Portal>
-                                                <DropdownMenu.SubContent className={dropdownContentClasses} // UPDATED
+                                                <DropdownMenu.SubContent className={dropdownContentClasses}
                                                                          sideOffset={2} alignOffset={-5}>
                                                     {progressMenuItems.map(item => (
-                                                        <RadixMenuItem // Uses updated RadixMenuItem style
+                                                        <RadixMenuItem
                                                             key={item.label}
                                                             icon={item.icon}
                                                             selected={selectedTask?.completionPercentage === item.value || (selectedTask?.completionPercentage === null && item.value === null)}
@@ -1025,7 +665,7 @@ const TaskDetail: React.FC = () => {
 
                                         <DropdownMenu.Separator className="h-px bg-black/10 dark:bg-white/10 my-1"/>
 
-                                        <RadixMenuItem // Uses updated RadixMenuItem style
+                                        <RadixMenuItem
                                             icon="calendar-plus"
                                             onSelect={(event) => {
                                                 event.preventDefault();
@@ -1062,7 +702,7 @@ const TaskDetail: React.FC = () => {
                                                                     selectedTask.priority === p,
                                                                     p ? priorityMap[p]?.color : ""
                                                                 )}
-                                                                disabled={isInteractiveDisabled} // Added disabled here
+                                                                disabled={isInteractiveDisabled}
                                                             >
                                                                 <Icon name={p ? priorityMap[p]?.icon : "flag"} size={15}
                                                                       className={twMerge("mr-2 flex-shrink-0 opacity-70", p ? priorityMap[p]?.color : "opacity-50")}/>
@@ -1096,7 +736,7 @@ const TaskDetail: React.FC = () => {
                                                                 key={list}
                                                                 value={list}
                                                                 className={radioItemClasses(selectedTask.list === list)}
-                                                                disabled={isTrash} // Added disabled here
+                                                                disabled={isTrash}
                                                             >
                                                                 <Icon name={list === 'Inbox' ? 'inbox' : 'list'}
                                                                       size={15}
@@ -1111,20 +751,20 @@ const TaskDetail: React.FC = () => {
 
                                         <DropdownMenu.Separator className="h-px bg-black/10 dark:bg-white/10 my-1"/>
                                         <RadixMenuItem icon="copy-plus"
-                                                       onSelect={handleDuplicateTask} // Uses updated RadixMenuItem style
+                                                       onSelect={handleDuplicateTask}
                                                        disabled={isTrash}>
                                             Duplicate Task
                                         </RadixMenuItem>
                                         <DropdownMenu.Separator className="h-px bg-black/10 dark:bg-white/10 my-1"/>
                                         {isTrash ? (
                                             <RadixMenuItem icon="arrow-left"
-                                                           onSelect={handleRestore} // Uses updated RadixMenuItem style
+                                                           onSelect={handleRestore}
                                                            className="text-green-600 dark:text-green-500 data-[highlighted]:!bg-green-500/15 data-[highlighted]:!text-green-700 dark:data-[highlighted]:!text-green-400">
                                                 Restore Task
                                             </RadixMenuItem>
                                         ) : (
                                             <RadixMenuItem icon="trash" onSelect={openDeleteConfirm}
-                                                           isDanger> {/* Uses updated RadixMenuItem style */}
+                                                           isDanger>
                                                 Move to Trash
                                             </RadixMenuItem>
                                         )}
@@ -1133,9 +773,9 @@ const TaskDetail: React.FC = () => {
                             </DropdownMenu.Root>
                             <Popover.Portal>
                                 <Popover.Content
-                                    className={headerMenuDatePickerPopoverWrapperClasses} // UPDATED for date picker from menu
+                                    className={headerMenuDatePickerPopoverWrapperClasses}
                                     sideOffset={5}
-                                    align="end" // Align with more actions button
+                                    align="end"
                                     onOpenAutoFocus={(e) => e.preventDefault()}
                                     onCloseAutoFocus={(e) => {
                                         e.preventDefault();
@@ -1167,7 +807,7 @@ const TaskDetail: React.FC = () => {
                         className={twMerge(
                             "px-5 pt-4 pb-5 border-t border-neutral-200/50 dark:border-neutral-700/40",
                             "flex-shrink-0 flex flex-col",
-                            sortedSubtasks.length > 0 ? "max-h-[45vh]" : ""
+                            sortedSubtasks.length > 0 ? "max-h-[45vh]" : "" // Max height for subtask area
                         )}
                     >
                         {sortedSubtasks.length > 0 && (
@@ -1194,8 +834,8 @@ const TaskDetail: React.FC = () => {
                                                         key={subtask.id} subtask={subtask}
                                                         onUpdate={handleUpdateSubtask}
                                                         onDelete={handleDeleteSubtask}
-                                                        isEditingContentForThis={editingSubtaskContentId === subtask.id}
-                                                        onToggleEditContent={handleToggleEditSubtaskContent}
+                                                        // isEditingContentForThis={editingSubtaskContentId === subtask.id} // REMOVED
+                                                        // onToggleEditContent={handleToggleEditSubtaskContent} // REMOVED
                                                         isTaskCompletedOrTrashed={isInteractiveDisabled}
                                                     />
                                                 ))}
@@ -1206,10 +846,11 @@ const TaskDetail: React.FC = () => {
                                                 <SubtaskItemDetail
                                                     subtask={selectedTask.subtasks.find(s => s.id === draggingSubtaskId)!}
                                                     onUpdate={() => {
-                                                    }} onDelete={() => {
-                                                }}
-                                                    isEditingContentForThis={false} onToggleEditContent={() => {
-                                                }}
+                                                    }}
+                                                    onDelete={() => {
+                                                    }}
+                                                    // isEditingContentForThis={false} // REMOVED
+                                                    // onToggleEditContent={() => {}} // REMOVED
                                                     isTaskCompletedOrTrashed={isInteractiveDisabled}
                                                     isDraggingOverlay={true}
                                                 />
@@ -1283,8 +924,8 @@ const TaskDetail: React.FC = () => {
                             </Tooltip.Root>
                             <Popover.Portal>
                                 <Popover.Content
-                                    className={twMerge( // Footer date picker popover content style - kept distinct from menu's date picker
-                                        "z-[65] bg-white dark:bg-neutral-800 backdrop-blur-md rounded-lg shadow-lg border border-black/10 dark:border-white/10 p-0", // p-0 for CustomDatePickerContent
+                                    className={twMerge(
+                                        "z-[65] bg-white dark:bg-neutral-800 backdrop-blur-md rounded-lg shadow-lg border border-black/10 dark:border-white/10 p-0",
                                         "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
                                     )}
                                     sideOffset={5}
@@ -1322,7 +963,7 @@ const TaskDetail: React.FC = () => {
                             </Tooltip.Root>
                             <Popover.Portal>
                                 <Popover.Content
-                                    className={twMerge(dropdownContentClasses, "p-3 text-xs w-auto")} // Info popover can use dropdownContentClasses for consistency
+                                    className={twMerge(dropdownContentClasses, "p-3 text-xs w-auto")}
                                     side="top" align="end" sideOffset={5}
                                     onCloseAutoFocus={(e) => e.preventDefault()}>
                                     <div className="space-y-1.5 text-neutral-600 dark:text-neutral-300">

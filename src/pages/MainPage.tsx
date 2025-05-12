@@ -3,58 +3,92 @@ import React from 'react';
 import TaskList from '../components/tasks/TaskList';
 import TaskDetail from '../components/tasks/TaskDetail';
 import TaskDetailPlaceholder from '../components/tasks/TaskDetailPlaceholder';
-import {useAtomValue} from 'jotai';
+import {useAtomValue, useSetAtom} from 'jotai';
 import {selectedTaskIdAtom} from '../store/atoms';
 import {TaskFilter} from '@/types';
 import {twMerge} from 'tailwind-merge';
 import {AnimatePresence, motion} from 'framer-motion';
+import useMediaQuery from '@/hooks/useMediaQuery'; // Import the custom hook
 
 interface MainPageProps {
     title: string;
-    filter: TaskFilter; // Filter prop is passed to TaskList but not directly used for layout here
+    filter: TaskFilter; // Filter prop is passed to TaskList
 }
 
-const MainPage: React.FC<MainPageProps> = ({title}) => {
+const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
     const selectedTaskId = useAtomValue(selectedTaskIdAtom);
-
-    // Responsive layout determination based on spec:
-    // Desktop (>1024px): Three-column (IconBar, TaskList 320px, Detail/Content flex)
-    // For simplicity, assuming MainPage is within a layout that already handles IconBar.
-    // Here, MainPage itself handles TaskList and TaskDetail/Placeholder.
-    // The provided spec implies TaskList is 320px or 30%. Let's use 320px for fixed.
-    // This logic would typically be in MainLayout or here using a window resize listener if more complex.
-    // For now, apply the fixed width for TaskList and flex for Detail.
+    const setSelectedTaskId = useSetAtom(selectedTaskIdAtom); // For closing drawer via backdrop
+    const isLg = useMediaQuery('(min-width: 1024px)'); // Tailwind's lg breakpoint
 
     return (
-        <div className="h-full flex flex-1 overflow-hidden">
-            {/* TaskList Container - Fixed width 320px */}
-            <div className={twMerge(
-                "h-full w-[320px] flex-shrink-0", // Fixed width for TaskList
-                "bg-white", // Background for TaskList area
-                "border-r border-grey-ultra-light" // Separator for TaskList
-            )}>
+        <div className="h-full flex flex-1 overflow-hidden"> {/* Parent flex container */}
+            {/* TaskList Container */}
+            <div
+                className={twMerge(
+                    "h-full transition-all duration-300 ease-in-out",
+                    isLg ? "w-1/2 flex-shrink-0" : "w-full flex-shrink-0", // Takes half width on lg, full on smaller
+                    "bg-white", // Background for TaskList area
+                    "border-r border-grey-ultra-light" // Separator for TaskList
+                )}
+            >
                 <TaskList title={title}/>
             </div>
 
-            {/* Right Pane (TaskDetail or Placeholder) - Takes remaining space */}
-            <div
-                className="h-full flex-1 relative overflow-hidden bg-white"> {/* Ensure this takes up remaining space and handles overflow */}
-                {!selectedTaskId && <TaskDetailPlaceholder/>}
-                <AnimatePresence initial={false}>
+            {/* Right Pane (TaskDetail or Placeholder) */}
+            {isLg ? (
+                // Desktop: Inline Task Detail or Placeholder
+                <div className={twMerge(
+                    "h-full w-1/2 flex-shrink-0 relative overflow-hidden bg-white" // Takes the other half on lg, bg-white for placeholder area
+                )}>
+                    {!selectedTaskId && <TaskDetailPlaceholder/>}
+                    <AnimatePresence initial={false}>
+                        {selectedTaskId && (
+                            <motion.div
+                                key="taskDetailActualDesktop" // Unique key for desktop
+                                className="absolute inset-0 w-full h-full z-10" // TaskDetail will provide its own background
+                                initial={{x: '100%'}} // Slide in from the right edge of this container
+                                animate={{x: 0}}
+                                exit={{x: '100%'}} // Slide out to the right edge of this container
+                                transition={{duration: 0.25, ease: [0.33, 1, 0.68, 1]}} // Original elegant transition
+                            >
+                                <TaskDetail/>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            ) : (
+                // Mobile: Task Detail as a Drawer
+                <AnimatePresence>
                     {selectedTaskId && (
-                        <motion.div
-                            key="taskDetailActual"
-                            className="absolute inset-0 w-full h-full z-10 bg-white" // Ensure TaskDetail covers placeholder
-                            initial={{x: '100%'}}
-                            animate={{x: 0}}
-                            exit={{x: '100%'}}
-                            transition={{duration: 0.25, ease: [0.33, 1, 0.68, 1]}} // Spec: 0.25s ease-in-out
-                        >
-                            <TaskDetail/>
-                        </motion.div>
+                        <>
+                            {/* Backdrop */}
+                            <motion.div
+                                key="drawer-backdrop"
+                                className="fixed inset-0 bg-black/40 dark:bg-black/60 z-30 backdrop-blur-sm"
+                                initial={{opacity: 0}}
+                                animate={{opacity: 1}}
+                                exit={{opacity: 0}}
+                                transition={{duration: 0.25, ease: "easeInOut"}}
+                                onClick={() => setSelectedTaskId(null)} // Close on backdrop click
+                            />
+                            {/* Drawer Content */}
+                            <motion.div
+                                key="drawer-task-detail"
+                                className={twMerge(
+                                    "fixed top-0 right-0 h-full w-[90%] max-w-md shadow-2xl z-40 flex flex-col", // Adjusted max-width for elegance
+                                    "bg-neutral-50 dark:bg-neutral-850" // Matches TaskDetail's background
+                                )}
+                                initial={{x: '100%'}}
+                                animate={{x: 0}}
+                                exit={{x: '100%'}}
+                                transition={{duration: 0.3, ease: [0.33, 1, 0.68, 1]}} // Refined easing
+                            >
+                                <TaskDetail/> {/* TaskDetail itself handles its internal scrolling */}
+                            </motion.div>
+                        </>
                     )}
                 </AnimatePresence>
-            </div>
+            )}
         </div>
     );
 };
