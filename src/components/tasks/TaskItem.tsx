@@ -165,6 +165,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const moreActionsButtonRef = useRef<HTMLButtonElement>(null);
     const dateDisplayRef = useRef<HTMLButtonElement>(null);
+    const taskItemRef = useRef<HTMLDivElement>(null); // Ref for the main task item div
+
     const isTrashItem = useMemo(() => task.list === 'Trash', [task.list]);
     const isCompleted = useMemo(() => (task.completionPercentage ?? 0) === 100 && !isTrashItem, [task.completionPercentage, isTrashItem]);
     const isSortable = useMemo(() => !isCompleted && !isTrashItem && !isOverlay, [isCompleted, isTrashItem, isOverlay]);
@@ -212,12 +214,22 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
     }, [overlayStyle, transform, dndTransition, isDragging, isOverlay, isSelected]);
 
     useEffect(() => {
+        // If the globally managed openItemId changes and it's not this task's ID,
+        // ensure all local popover/menu states for this item are closed.
         if (openItemId !== task.id) {
-            if (isMoreActionsOpen) setIsMoreActionsOpen(false);
-            if (isMenuDatePickerOpen) setIsMenuDatePickerOpen(false);
-            if (isDateClickPickerOpen) setIsDateClickPickerOpen(false);
+            setIsMoreActionsOpen(false);
+            setIsMenuDatePickerOpen(false);
+            setIsDateClickPickerOpen(false);
         }
-    }, [openItemId, task.id, isMoreActionsOpen, isMenuDatePickerOpen, isDateClickPickerOpen]);
+    }, [openItemId, task.id]); // Removed local state dependencies to avoid loops
+
+    // Separate useEffect to sync global state when local state closes everything
+    useEffect(() => {
+        if (!isMoreActionsOpen && !isMenuDatePickerOpen && !isDateClickPickerOpen && openItemId === task.id) {
+            setOpenItemId(null);
+        }
+    }, [isMoreActionsOpen, isMenuDatePickerOpen, isDateClickPickerOpen, openItemId, task.id, setOpenItemId]);
+
 
     const handleTaskClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
@@ -225,10 +237,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
         if (target.closest('button, input, a, [data-radix-popper-content-wrapper], [role="dialog"], [role="menuitem"], [data-date-picker-trigger="true"], [data-tooltip-trigger]')) return;
         if (isDragging) return;
         setSelectedTaskId(id => (id === task.id ? null : task.id));
-        setIsMoreActionsOpen(false);
-        setIsMenuDatePickerOpen(false);
-        setIsDateClickPickerOpen(false);
-        setOpenItemId(null);
+        // Closing menus on task click is handled by useEffect watching openItemId
+        setOpenItemId(null); // Ensure clicking task body closes menus for this item
     }, [setSelectedTaskId, task.id, isDragging, setOpenItemId]);
 
     const updateTask = useCallback((updates: Partial<Omit<Task, 'groupCategory' | 'completedAt' | 'completed' | 'subtasks'>>) => {
@@ -241,10 +251,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
         let nextPercentage: number | null = currentPercentage === 100 ? null : 100;
         updateTask({completionPercentage: nextPercentage});
         if (nextPercentage === 100 && isSelected) setSelectedTaskId(null);
-        setOpenItemId(null);
-        setIsMoreActionsOpen(false);
-        setIsMenuDatePickerOpen(false);
-        setIsDateClickPickerOpen(false);
+        setOpenItemId(null); // Close menus
     }, [task.completionPercentage, updateTask, isSelected, setSelectedTaskId, setOpenItemId]);
 
     const handleProgressIndicatorKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -262,29 +269,45 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
     const handleDateSelect = useCallback((dateWithTime: Date | undefined) => {
         const newDueDate = dateWithTime ? dateWithTime.getTime() : null;
         updateTask({dueDate: newDueDate});
+        // No need to close popovers here, the CustomDatePickerContent calls closePopover which triggers onOpenChange
     }, [updateTask]);
 
+    // Handler for the DropdownMenu open state
+    const handleMoreActionsOpenChange = useCallback((open: boolean) => {
+        setIsMoreActionsOpen(open);
+        if (open) {
+            setOpenItemId(task.id);
+            // Ensure other popovers for this item are closed when opening the main menu
+            setIsMenuDatePickerOpen(false);
+            setIsDateClickPickerOpen(false);
+        }
+        // Global state is managed via the useEffect hooks watching local state
+    }, [task.id, setOpenItemId]);
+
+
+    // Handler for the Date Picker Popover triggered *from the menu*
     const handleMenuDatePickerOpenChange = useCallback((open: boolean) => {
         setIsMenuDatePickerOpen(open);
         if (open) {
             setOpenItemId(task.id);
-            setIsDateClickPickerOpen(false); // Close the other date picker if open
-            setIsMoreActionsOpen(false); // Close actions menu if open
-        } else if (openItemId === task.id && !isMoreActionsOpen && !isDateClickPickerOpen) {
-            setOpenItemId(null);
+            // Keep the main actions menu technically open but visually replaced
+            setIsMoreActionsOpen(true); // Keep this true so focus returns correctly if needed later
+            setIsDateClickPickerOpen(false);
         }
-    }, [setIsMenuDatePickerOpen, openItemId, task.id, setOpenItemId, isMoreActionsOpen, isDateClickPickerOpen]);
+        // If closing, the useEffect watching local states will handle clearing openItemId if needed
+    }, [task.id, setOpenItemId]);
 
+    // Handler for the Date Picker Popover triggered *by clicking the date*
     const handleDateClickPickerOpenChange = useCallback((open: boolean) => {
         setIsDateClickPickerOpen(open);
         if (open) {
             setOpenItemId(task.id);
-            setIsMenuDatePickerOpen(false); // Close the other date picker if open
             setIsMoreActionsOpen(false); // Close actions menu if open
-        } else if (openItemId === task.id && !isMoreActionsOpen && !isMenuDatePickerOpen) {
-            setOpenItemId(null);
+            setIsMenuDatePickerOpen(false); // Close the other date picker if open
         }
-    }, [setIsDateClickPickerOpen, openItemId, task.id, setOpenItemId, isMoreActionsOpen, isMenuDatePickerOpen]);
+        // If closing, the useEffect watching local states will handle clearing openItemId if needed
+    }, [task.id, setOpenItemId]);
+
 
     const closeMenuDatePickerPopover = useCallback(() => handleMenuDatePickerOpenChange(false), [handleMenuDatePickerOpenChange]);
     const closeDateClickPopover = useCallback(() => handleDateClickPickerOpenChange(false), [handleDateClickPickerOpenChange]);
@@ -392,17 +415,25 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
 
     }, [searchWords, task.content, task.title, subtaskSearchMatch]);
 
+    // Combine setNodeRef with taskItemRef
+    const combinedRef = useCallback((node: HTMLDivElement | null) => {
+        setNodeRef(node);
+        (taskItemRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    }, [setNodeRef]);
+
     // TaskItem Container: Increased height, added margin-bottom. Centered items vertically.
     const baseClasses = useMemo(() => twMerge(
         'task-item flex items-center px-4 pr-3 h-[48px] mb-1.5', // Height 48px, margin-bottom 6px, align-items center
-        'group relative rounded-base',
+        'group relative rounded-base', // Added 'group' here for hover effects
         isOverlay ? 'bg-white shadow-subtle border border-grey-light'
             : isSelected && !isDragging ? 'bg-grey-ultra-light'
                 : isTrashItem || isCompleted ? 'bg-white opacity-60'
                     : 'bg-white hover:bg-grey-ultra-light',
         isDragging ? 'cursor-grabbing' : (isSortable ? 'cursor-grab' : 'cursor-default'),
-        'transition-colors duration-150 ease-in-out'
+        'transition-colors duration-150 ease-in-out outline-none', // Added outline-none to prevent default focus ring on container
+        'focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1' // Add visible focus ring to container for accessibility when tabbing
     ), [isOverlay, isSelected, isDragging, isTrashItem, isCompleted, isSortable]);
+
 
     // Task Text: Inter Regular 13px (normal weight for better readability), grey-dark. Completed: strike-through, grey-medium
     const titleClasses = useMemo(() => twMerge(
@@ -457,9 +488,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
 
     return (
         <>
-            <div ref={setNodeRef} style={style}
+            <div ref={combinedRef} // Use combined ref
+                 style={style}
                  className={baseClasses} {...(isSortable ? attributes : {})} {...(isSortable ? listeners : {})}
-                 onClick={handleTaskClick} role={isSortable ? "listitem" : "button"} tabIndex={0}
+                 onClick={handleTaskClick}
+                 role={isSortable ? "listitem" : "button"}
+                 tabIndex={isInteractive ? 0 : -1} // Make item focusable only if interactive
                  onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
                      // Allow selecting task with Enter/Space if not focusing an interactive element inside
                      if ((e.key === 'Enter' || e.key === ' ') && !(e.target as HTMLElement).closest('button, input, a, [role="menuitem"], [data-date-picker-trigger="true"], [data-tooltip-trigger]')) {
@@ -471,6 +505,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                          e.preventDefault();
                          e.stopPropagation(); // Prevent task selection
                          handleDateClickPickerOpenChange(true);
+                     }
+                     // Allow opening the 'more actions' menu with Enter/Space when the item container is focused
+                     if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === taskItemRef.current && moreActionsButtonRef.current) {
+                         e.preventDefault();
+                         e.stopPropagation();
+                         moreActionsButtonRef.current.click(); // Simulate click to open dropdown
                      }
                  }}
                  aria-selected={isSelected} aria-labelledby={`task-title-${task.id}`}>
@@ -579,9 +619,10 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                 {isDateClickable && (
                                     <Popover.Portal><Popover.Content side="bottom" align="start" sideOffset={5}
                                                                      className={datePickerPopoverWrapperClasses}
+                                                                     onOpenAutoFocus={(e) => e.preventDefault()} // Keep this
                                                                      onCloseAutoFocus={(e) => {
                                                                          e.preventDefault();
-                                                                         dateDisplayRef.current?.focus(); // Return focus to trigger button
+                                                                         dateDisplayRef.current?.focus();
                                                                      }}>
                                         <CustomDatePickerContent
                                             initialDate={dueDate ?? undefined} onSelect={handleDateSelect}
@@ -641,44 +682,37 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                 {/* Hover Actions Menu Trigger */}
                 {isInteractive && (
                     <div
-                        className="task-item-actions absolute top-1/2 -translate-y-1/2 right-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 ease-in-out z-10"
+                        className="task-item-actions absolute top-1/2 -translate-y-1/2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 ease-in-out z-10" // Use group-focus-within
                         onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}>
+                        {/* Combined Root for Dropdown Menu and its associated Date Picker Popover */}
                         <Popover.Root modal={true} open={isMenuDatePickerOpen}
                                       onOpenChange={handleMenuDatePickerOpenChange}>
-                            <DropdownMenu.Root open={isMoreActionsOpen} onOpenChange={(open) => {
-                                setIsMoreActionsOpen(open);
-                                if (open) {
-                                    setOpenItemId(task.id);
-                                    setIsMenuDatePickerOpen(false); // Ensure other popovers close
-                                    setIsDateClickPickerOpen(false);
-                                } else if (openItemId === task.id && !isMenuDatePickerOpen && !isDateClickPickerOpen) {
-                                    setOpenItemId(null);
-                                }
-                            }}>
+                            <DropdownMenu.Root open={isMoreActionsOpen} onOpenChange={handleMoreActionsOpenChange}>
                                 <Popover.Anchor asChild>
                                     <DropdownMenu.Trigger asChild disabled={!isInteractive}>
                                         <Button
                                             ref={moreActionsButtonRef} variant="ghost" size="icon"
                                             icon="more-horizontal"
-                                            className="h-7 w-7 text-grey-medium hover:bg-grey-light" // Slightly different hover for actions
+                                            className="h-7 w-7 text-grey-medium hover:bg-grey-light focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-grey-light" // Ensure focus style matches hover
                                             iconProps={{size: 16, strokeWidth: 1.5}} // Slightly bolder icon
                                             aria-label={`More actions for ${task.title || 'task'}`}/>
                                     </DropdownMenu.Trigger>
                                 </Popover.Anchor>
                                 <DropdownMenu.Portal>
-                                    <DropdownMenu.Content className={actionsMenuContentClasses} sideOffset={4}
-                                                          align="end"
-                                                          onCloseAutoFocus={(e) => {
-                                                              // Only prevent focus return if a date picker is *staying* open from the menu action
-                                                              if (!isMenuDatePickerOpen) {
-                                                                  e.preventDefault();
-                                                                  // Return focus to trigger unless another popover took focus
-                                                                  if (!isDateClickPickerOpen) {
-                                                                      moreActionsButtonRef.current?.focus();
-                                                                  }
-                                                              }
-                                                          }}>
+                                    <DropdownMenu.Content
+                                        className={actionsMenuContentClasses}
+                                        sideOffset={4}
+                                        align="end"
+                                        // REMOVED onOpenAutoFocus={(e) => e.preventDefault()} from here
+                                        onCloseAutoFocus={(e) => {
+                                            const parentElement = taskItemRef.current;
+                                            const isParentHovered = parentElement?.matches(':hover');
+                                            if (isMenuDatePickerOpen || !isParentHovered) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                    >
                                         {/* --- Menu Items --- */}
                                         <DropdownMenu.Sub>
                                             <DropdownMenu.SubTrigger
@@ -692,7 +726,9 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                             </DropdownMenu.SubTrigger>
                                             <DropdownMenu.Portal>
                                                 <DropdownMenu.SubContent className={actionsMenuContentClasses}
-                                                                         sideOffset={2} alignOffset={-5}>
+                                                                         sideOffset={2} alignOffset={-5}
+                                                    // REMOVED onOpenAutoFocus={(e) => e.preventDefault()} from here
+                                                >
                                                     {progressMenuItems.map(item => (
                                                         <TaskItemRadixMenuItem key={item.label} icon={item.icon}
                                                                                selected={task.completionPercentage === item.value || (task.completionPercentage === null && item.value === null)}
@@ -707,12 +743,13 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
 
                                         <DropdownMenu.Separator className="h-px bg-grey-light my-1"/>
 
-                                        {/* Trigger for Date Picker Popover */}
+                                        {/* Trigger for Date Picker Popover (within the menu) */}
                                         <Popover.Trigger asChild>
+                                            {/* Use RadixMenuItem for consistent styling, but it acts as the Popover Trigger */}
                                             <TaskItemRadixMenuItem icon="calendar-plus"
                                                                    onSelect={(event) => {
-                                                                       event.preventDefault(); // Prevent closing menu immediately
-                                                                       handleMenuDatePickerOpenChange(true);
+                                                                       event.preventDefault(); // Prevent menu closing
+                                                                       handleMenuDatePickerOpenChange(true); // Manually open popover
                                                                    }}
                                                                    disabled={!isInteractive}>
                                                 Set Due Date...
@@ -735,7 +772,9 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                             </DropdownMenu.SubTrigger>
                                             <DropdownMenu.Portal>
                                                 <DropdownMenu.SubContent className={actionsMenuContentClasses}
-                                                                         sideOffset={2} alignOffset={-5}>
+                                                                         sideOffset={2} alignOffset={-5}
+                                                    // REMOVED onOpenAutoFocus={(e) => e.preventDefault()} from here
+                                                >
                                                     <DropdownMenu.RadioGroup value={String(task.priority ?? 'none')}
                                                                              onValueChange={(value) => handlePriorityChange(value === 'none' ? null : Number(value))}>
                                                         {[null, 1, 2, 3, 4].map(p => (
@@ -743,34 +782,18 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                                                 key={p ?? 'none'}
                                                                 value={String(p ?? 'none')}
                                                                 className={twMerge(
-                                                                    // Base styles
                                                                     "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-8",
-
-                                                                    // --- Text Color Logic ---
-                                                                    // 1. Default state: Set text based on priority (p) or 'None'
                                                                     p && priorityMap[p] ? priorityMap[p].iconColor : 'text-grey-dark',
-                                                                    // 2. Checked state: Re-affirm text color (overrides highlight potentially)
                                                                     `data-[state=checked]:${p && priorityMap[p] ? priorityMap[p].iconColor : 'text-grey-dark'}`,
-                                                                    // 3. Highlighted state (when NOT checked): Change text to grey-dark
-                                                                    // Check against task.priority which holds the *currently selected* value
                                                                     (task.priority !== p) && 'data-[highlighted]:text-grey-dark',
-
-                                                                    // --- Background Color Logic ---
-                                                                    // 1. Highlighted state: Light grey bg
                                                                     'focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light',
-                                                                    // 2. Checked state: Light grey bg (NEW - overrides highlight bg)
                                                                     'data-[state=checked]:bg-grey-ultra-light',
-
-                                                                    // --- Disabled ---
                                                                     "data-[disabled]:opacity-50"
                                                                 )}
                                                                 disabled={!isInteractive}>
-                                                                {/* Icon only for actual priorities */}
                                                                 {p && <Icon name="flag" size={16} strokeWidth={1}
-                                                                            className="mr-2 flex-shrink-0 opacity-70"/>}
-                                                                {/* Label */}
+                                                                            className={twMerge("mr-2 flex-shrink-0", p && priorityMap[p] ? priorityMap[p].iconColor : '')}/>}
                                                                 {p && priorityMap[p] ? `P${p} - ${priorityMap[p].label}` : 'None'}
-                                                                {/* Check indicator for selected item */}
                                                                 <DropdownMenu.ItemIndicator
                                                                     className="absolute right-2 inline-flex items-center">
                                                                     <Icon name="check" size={14} strokeWidth={2}/>
@@ -797,7 +820,9 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                             <DropdownMenu.Portal>
                                                 <DropdownMenu.SubContent
                                                     className={twMerge(actionsMenuContentClasses, "max-h-40 overflow-y-auto styled-scrollbar-thin")}
-                                                    sideOffset={2} alignOffset={-5}>
+                                                    sideOffset={2} alignOffset={-5}
+                                                    // REMOVED onOpenAutoFocus={(e) => e.preventDefault()} from here
+                                                >
                                                     <DropdownMenu.RadioGroup value={task.list}
                                                                              onValueChange={handleListChange}>
                                                         {availableLists.map(list => (
@@ -805,8 +830,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                                                                     className={twMerge(
                                                                                         "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-8",
                                                                                         "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light",
-                                                                                        // Using standard active colors for list selection for now
-                                                                                        "data-[state=checked]:bg-primary-light data-[state=checked]:text-primary data-[highlighted]:bg-primary-light",
+                                                                                        "data-[state=checked]:bg-primary-light data-[state=checked]:text-primary",
                                                                                         "text-grey-dark data-[highlighted]:text-grey-dark",
                                                                                         "data-[disabled]:opacity-50"
                                                                                     )}
@@ -815,7 +839,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                                                       size={16} strokeWidth={1}
                                                                       className="mr-2 flex-shrink-0 opacity-70"/>
                                                                 {list}
-                                                                {/* Check indicator for selected item */}
                                                                 <DropdownMenu.ItemIndicator
                                                                     className="absolute right-2 inline-flex items-center">
                                                                     <Icon name="check" size={14} strokeWidth={2}/>
@@ -847,12 +870,11 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                             {/* Date Picker Popover Content (triggered from menu) */}
                             <Popover.Portal>
                                 <Popover.Content side="right" align="start"
-                                                 sideOffset={5} // Position relative to menu trigger
+                                                 sideOffset={5} // Position relative to menu trigger anchor
                                                  className={datePickerPopoverWrapperClasses}
+                                                 onOpenAutoFocus={(e) => e.preventDefault()} // Keep this
                                                  onCloseAutoFocus={(e) => {
                                                      e.preventDefault();
-                                                     // Return focus to the main actions button after closing date picker from menu
-                                                     moreActionsButtonRef.current?.focus();
                                                  }}>
                                     <CustomDatePickerContent
                                         initialDate={dueDate ?? undefined} onSelect={handleDateSelect}
