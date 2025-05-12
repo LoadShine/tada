@@ -74,7 +74,6 @@ const initialTasksDataRaw: Omit<Task, 'groupCategory' | 'completed' | 'completed
                 createdAt: subDays(new Date(), 4).getTime(),
                 updatedAt: subDays(new Date(), 3).getTime(),
                 dueDate: subDays(startOfDay(new Date()), 3).setHours(9, 0, 0, 0),
-                content: "Called and left a message."
             },
             {
                 id: 'sub11-2',
@@ -86,7 +85,6 @@ const initialTasksDataRaw: Omit<Task, 'groupCategory' | 'completed' | 'completed
                 createdAt: subDays(new Date(), 4).getTime(),
                 updatedAt: subDays(new Date(), 1).getTime(),
                 dueDate: subDays(startOfDay(new Date()), 2).setHours(14, 0, 0, 0),
-                content: "Login to Cigna portal and verify benefits."
             },
         ]
     },
@@ -134,7 +132,6 @@ const initialTasksDataRaw: Omit<Task, 'groupCategory' | 'completed' | 'completed
                 order: 2,
                 createdAt: subDays(new Date(), 1).getTime(),
                 updatedAt: subDays(new Date(), 1).getTime(),
-                content: "Summarize findings for the main review meeting. Highlight any critical issues."
             },
         ]
     },
@@ -199,7 +196,6 @@ const initialTasks: Task[] = initialTasksDataRaw
         }
         const subtasks = (taskRaw.subtasks || []).map(subRaw => ({
             ...subRaw,
-            content: subRaw.content ?? '',
             createdAt: subRaw.createdAt || now,
             updatedAt: subRaw.updatedAt || now,
             completedAt: subRaw.completed ? (subRaw.completedAt || subRaw.updatedAt || now) : null,
@@ -242,12 +238,10 @@ export const tasksAtom = atom(
                         sub.title !== prevSub.title ||
                         sub.completed !== prevSub.completed ||
                         sub.dueDate !== prevSub.dueDate ||
-                        sub.content !== prevSub.content ||
                         sub.order !== prevSub.order;
                     return {
                         ...sub,
                         parentId: updatedTask.id,
-                        content: sub.content ?? '',
                         createdAt: sub.createdAt || now,
                         updatedAt: subChanged ? now : (sub.updatedAt || now),
                         completedAt: sub.completed ? (sub.completedAt || (subChanged ? now : sub.updatedAt) || now) : null,
@@ -468,7 +462,7 @@ export const rawSearchResultsAtom = atom<Task[]>((get) => {
     if (!search) return [];
     const allTasks = get(tasksAtom);
     const searchWords = search.split(' ').filter(Boolean);
-    return allTasks.filter(task => searchWords.every(word => task.title.toLowerCase().includes(word) || (task.content && task.content.toLowerCase().includes(word)) || (task.tags && task.tags.some(tag => tag.toLowerCase().includes(word))) || (task.list.toLowerCase().includes(word)) || (task.subtasks && task.subtasks.some(sub => sub.title.toLowerCase().includes(word) || (sub.content && sub.content.toLowerCase().includes(word)))))).sort((a, b) => {
+    return allTasks.filter(task => searchWords.every(word => task.title.toLowerCase().includes(word) || (task.content && task.content.toLowerCase().includes(word)) || (task.tags && task.tags.some(tag => tag.toLowerCase().includes(word))) || (task.list.toLowerCase().includes(word)) || (task.subtasks && task.subtasks.some(sub => sub.title.toLowerCase().includes(word))))).sort((a, b) => {
         const aIsActive = a.list !== 'Trash' && !a.completed;
         const bIsActive = b.list !== 'Trash' && !b.completed;
         if (aIsActive !== bIsActive) return aIsActive ? -1 : 1;
