@@ -334,14 +334,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                 text: subtask.title,
                 original: subtask.title
             };
-            if (subtask.content) {
-                const subtaskContentIncludesAllSearch = searchWords.every(w => subtask.content!.toLowerCase().includes(w));
-                if (subtaskContentIncludesAllSearch && !parentContentIncludesAllSearch && !parentTitleIncludesAllSearch) return {
-                    type: 'content',
-                    text: generateContentSnippet(subtask.content, searchTerm),
-                    original: subtask.content
-                };
-            }
         }
         return null;
     }, [searchWords, task.title, task.content, task.subtasks, searchTerm]);
