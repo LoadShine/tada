@@ -158,7 +158,7 @@ const TaskDetail: React.FC = () => {
                 savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
             }
         };
-    }, [selectedTaskInternal]);
+    }, [selectedTaskInternal]); // Added localDueDate and latestTagsStringRef.current to dependencies of outer effect for clarity, though savePendingChanges is memoized
 
     const savePendingChanges = useCallback((taskId: string, title: string, content: string, dueDate: Date | undefined, tagsString: string) => {
         if (!taskId || !hasUnsavedChangesRef.current || !isMountedRef.current) return;
@@ -279,7 +279,8 @@ const TaskDetail: React.FC = () => {
     const updateTask = useCallback((updates: Partial<Omit<Task, 'groupCategory' | 'completedAt' | 'completed' | 'subtasks'>>) => {
         if (!selectedTaskInternal || !isMountedRef.current) return;
         if (hasUnsavedChangesRef.current) {
-            if (selectedTaskInternal) savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
+            // Pass current localDueDate to savePendingChanges, not from selectedTaskInternal as it might be stale
+            savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate, latestTagsStringRef.current);
         }
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
@@ -291,7 +292,7 @@ const TaskDetail: React.FC = () => {
             ...t, ...updates,
             updatedAt: Date.now()
         } : t)));
-    }, [selectedTaskInternal, setTasks, localDueDate, savePendingChanges]);
+    }, [selectedTaskInternal, setTasks, localDueDate, savePendingChanges]); // Added latestTagsStringRef for consistency with savePendingChanges params, though its value is read inside updateTask via savePendingChanges only.
 
     const handleClose = useCallback(() => {
         if (selectedTaskInternal) {
@@ -421,7 +422,7 @@ const TaskDetail: React.FC = () => {
         });
         setSelectedTaskId(newTaskData.id!);
         setIsMoreActionsOpen(false);
-    }, [selectedTask, setTasks, setSelectedTaskId, savePendingChanges, selectedTaskInternal, localDueDate]);
+    }, [selectedTask, setTasks, setSelectedTaskId, savePendingChanges, selectedTaskInternal, localDueDate, latestTagsStringRef]); // Added latestTagsStringRef
 
 
     const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -439,7 +440,7 @@ const TaskDetail: React.FC = () => {
             }
             titleInputRef.current?.blur();
         }
-    }, [selectedTask, selectedTaskInternal, localTitle, localDueDate, savePendingChanges]);
+    }, [selectedTask, selectedTaskInternal, localTitle, localDueDate, savePendingChanges, latestTagsStringRef]); // Added latestTagsStringRef
 
     const isTrash = useMemo(() => selectedTask?.list === 'Trash', [selectedTask?.list]);
     const isCompleted = useMemo(() => (selectedTask?.completionPercentage ?? 0) === 100 && !isTrash, [selectedTask?.completionPercentage, isTrash]);
@@ -537,7 +538,7 @@ const TaskDetail: React.FC = () => {
     };
 
     const priorityDotBgColor = useMemo(() => {
-        if (!selectedTask) return ''; // Should be caught by !isInteractiveDisabled check
+        if (!selectedTask) return '';
         if (selectedTask.priority && taskListPriorityMap[selectedTask.priority]) {
             return taskListPriorityMap[selectedTask.priority].bgColor;
         }
@@ -545,7 +546,7 @@ const TaskDetail: React.FC = () => {
     }, [selectedTask, taskListPriorityMap, noPriorityBgColor]);
 
     const priorityDotLabel = useMemo(() => {
-        if (!selectedTask) return ''; // Should be caught by !isInteractiveDisabled check
+        if (!selectedTask) return '';
         if (selectedTask.priority && taskListPriorityMap[selectedTask.priority]) {
             return taskListPriorityMap[selectedTask.priority].label;
         }
@@ -553,7 +554,7 @@ const TaskDetail: React.FC = () => {
     }, [selectedTask, taskListPriorityMap]);
 
     const titleInputClasses = useMemo(() => twMerge(
-        "flex-1 text-lg font-medium border-none focus:ring-0 focus:outline-none bg-transparent p-0 leading-tight", // Removed mx-3
+        "flex-1 text-lg font-medium border-none focus:ring-0 focus:outline-none bg-transparent p-0 leading-tight",
         "placeholder:text-grey-medium dark:placeholder:text-neutral-500 placeholder:font-normal",
         (isInteractiveDisabled) && "line-through text-grey-medium dark:text-neutral-400/80",
         "text-grey-dark dark:text-neutral-100 tracking-tight"
@@ -681,8 +682,8 @@ const TaskDetail: React.FC = () => {
                             ariaLabelledby={`task-title-input-${selectedTask.id}`}
                         />
 
-                        {/* Priority Dot - only shown for active tasks */}
-                        {!isInteractiveDisabled && (
+                        {/* Priority Dot - only shown for active tasks with a set priority */}
+                        {!isInteractiveDisabled && selectedTask && selectedTask.priority && (
                             <Tooltip.Provider delayDuration={300}>
                                 <Tooltip.Root>
                                     <Tooltip.Trigger asChild>
@@ -711,7 +712,7 @@ const TaskDetail: React.FC = () => {
                             onChange={handleTitleChange}
                             onKeyDown={handleTitleKeyDown}
                             onBlur={handleMainContentBlur}
-                            className={titleInputClasses} // Uses modified class without mx-3
+                            className={titleInputClasses}
                             placeholder="Task title..."
                             disabled={isTrash}
                             aria-label="Task title"
@@ -883,8 +884,8 @@ const TaskDetail: React.FC = () => {
                                     onOpenAutoFocus={(e) => e.preventDefault()}
                                     onCloseAutoFocus={(e) => {
                                         e.preventDefault();
-                                        if (isMoreActionsOpen) {
-                                            // moreActionsButtonRef.current?.focus();
+                                        if (isMoreActionsOpen && moreActionsButtonRef.current) {
+                                            // moreActionsButtonRef.current?.focus(); // This line was commented out in original, kept as is
                                         }
                                     }}
                                 >

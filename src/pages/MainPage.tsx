@@ -35,7 +35,7 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
 
             {isLg ? (
                 <div className={twMerge(
-                    "h-full w-1/2 flex-shrink-0 relative overflow-hidden bg-white"
+                    "h-full flex-1 flex-shrink-0 relative overflow-hidden bg-white"
                 )}>
                     {!selectedTaskId && <TaskDetailPlaceholder/>}
                     <AnimatePresence initial={false}>

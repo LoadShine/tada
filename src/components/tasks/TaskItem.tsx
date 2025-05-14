@@ -105,7 +105,7 @@ function generateContentSnippet(content: string, term: string, length: number = 
     return snippet;
 }
 
-const taskListPriorityMap: Record<number, { // Copied from TaskList for consistency
+const taskListPriorityMap: Record<number, {
     label: string;
     iconColor: string;
     bgColor: string;
@@ -146,7 +146,7 @@ const taskListPriorityMap: Record<number, { // Copied from TaskList for consiste
         dotColor: 'bg-grey-medium'
     },
 };
-const noPriorityBgColor = 'bg-grey-light dark:bg-neutral-600'; // Adjusted dark mode for consistency
+const noPriorityBgColor = 'bg-grey-light dark:bg-neutral-600';
 
 
 // Aligned with TaskList.tsx style functions
@@ -202,7 +202,7 @@ const TaskItemRadixMenuItem: React.FC<TaskItemRadixMenuItemProps> = React.memo((
         {...props}
     >
         {icon && (
-            <Icon name={icon} size={14} strokeWidth={1.5} // Standardized icon size/stroke for menu
+            <Icon name={icon} size={14} strokeWidth={1.5}
                   className={twMerge("mr-2 flex-shrink-0 opacity-80", iconColor)}
                   aria-hidden="true"/>)}
         <span className="flex-grow">{children}</span>
@@ -226,7 +226,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
     const userLists = useAtomValue(userListNamesAtom);
     const {openItemId, setOpenItemId} = useTaskItemMenu();
     const isSelected = useMemo(() => selectedTaskId === task.id, [selectedTaskId, task.id]);
-    const [isMenuPopoverOpen, setIsMenuPopoverOpen] = useState(false); // For date picker from menu
+    const [isMenuPopoverOpen, setIsMenuPopoverOpen] = useState(false);
     const [isDateClickPickerOpen, setIsDateClickPickerOpen] = useState(false);
     const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -253,22 +253,21 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
 
     const style = useMemo(() => {
         const baseTransform = CSS.Transform.toString(transform);
-        const calculatedTransition = dndTransition || 'background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out'; // Added box-shadow transition
+        const calculatedTransition = dndTransition || 'background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
         if (isDragging && !isOverlay) return {
             transform: baseTransform,
             transition: calculatedTransition,
             opacity: 0.7,
             cursor: 'grabbing',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)', // Enhanced shadow
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)',
             zIndex: 10,
-            // background: 'hsl(var(--color-white))' // Already handled by baseClasses if needed
         };
         if (isOverlay) return {
             ...overlayStyle,
             transform: baseTransform,
             transition: calculatedTransition,
             cursor: 'grabbing',
-            boxShadow: '0 8px 16px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)', // Enhanced shadow for overlay
+            boxShadow: '0 8px 16px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)',
             zIndex: 1000,
         };
         return {
@@ -325,7 +324,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
     const handleProgressChange = useCallback((newPercentage: number | null) => {
         updateTask({completionPercentage: newPercentage});
         if (newPercentage === 100 && isSelected) setSelectedTaskId(null);
-        // Keep menu open for button row style selection
     }, [updateTask, isSelected, setSelectedTaskId]);
 
     const handleDateSelect = useCallback((dateWithTime: Date | undefined) => {
@@ -337,7 +335,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
         setIsMoreActionsOpen(open);
         if (open) {
             setOpenItemId(task.id);
-            setIsMenuPopoverOpen(false); // Ensure only one popover type is attempted
+            setIsMenuPopoverOpen(false);
             setIsDateClickPickerOpen(false);
         }
     }, [task.id, setOpenItemId]);
@@ -347,11 +345,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
         setIsMenuPopoverOpen(open);
         if (open) {
             setOpenItemId(task.id);
-            setIsMoreActionsOpen(true); // Keep main dropdown open
+            setIsMoreActionsOpen(true);
             setIsDateClickPickerOpen(false);
-        } else {
-            // Optional: if dropdown is to be closed when popover closes, manage setIsMoreActionsOpen(false) here
-            // However, Radix typically handles nested focus well.
         }
     }, [task.id, setOpenItemId]);
 
@@ -370,12 +365,11 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
 
     const handlePriorityChange = useCallback((newPriority: number | null) => {
         updateTask({priority: newPriority});
-        // Keep menu open for button row style selection
     }, [updateTask]);
 
     const handleListChange = useCallback((newList: string) => {
         updateTask({list: newList});
-        setIsMoreActionsOpen(false); // Close after list selection
+        setIsMoreActionsOpen(false);
     }, [updateTask]);
 
     const handleDuplicateTask = useCallback(() => {
@@ -416,7 +410,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
             return newTasks;
         });
         setSelectedTaskId(newParentTaskId);
-        setIsMoreActionsOpen(false); // Close menu after action
+        setIsMoreActionsOpen(false);
     }, [task, setTasks, setSelectedTaskId]);
 
     const openDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(true), []);
@@ -425,7 +419,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
         updateTask({list: 'Trash', completionPercentage: null});
         if (isSelected) setSelectedTaskId(null);
         closeDeleteConfirm();
-        setIsMoreActionsOpen(false); // Close menu after action
+        setIsMoreActionsOpen(false);
     }, [updateTask, isSelected, setSelectedTaskId, closeDeleteConfirm]);
 
     const dueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
@@ -481,7 +475,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
         'task-item flex items-center px-4 pr-3 h-[48px] mb-1.5',
         'group relative rounded-base',
         isOverlay
-            ? 'bg-white dark:bg-neutral-750 shadow-xl border border-grey-light dark:border-neutral-600' // Enhanced overlay style
+            ? 'bg-white dark:bg-neutral-750 shadow-xl border border-grey-light dark:border-neutral-600'
             : isSelected && !isDragging
                 ? 'bg-grey-ultra-light dark:bg-neutral-700'
                 : isTrashItem || isCompleted
@@ -501,15 +495,13 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
     const listIcon: IconName = useMemo(() => task.list === 'Inbox' ? 'inbox' : (task.list === 'Trash' ? 'trash' : 'list'), [task.list]);
     const availableLists = useMemo(() => userLists.filter(l => l !== 'Trash'), [userLists]);
 
-    // Aligned with TaskList.moreOptionsDropdownContentClasses
     const actionsMenuContentClasses = useMemo(() => twMerge(
         'z-[60] min-w-[200px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700',
         'data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide'
     ), []);
 
-    // Aligned with TaskList.datePickerPopoverWrapperClasses
     const datePickerPopoverWrapperClasses = useMemo(() => twMerge(
-        "z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800", // z-index higher than dropdown
+        "z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800",
         "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
     ), []);
 
@@ -584,7 +576,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
 
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex items-center">
-                        {!isCompleted && !isTrashItem && (
+                        {!isCompleted && !isTrashItem && task.priority && (
                             <Tooltip.Provider delayDuration={300}><Tooltip.Root>
                                 <Tooltip.Trigger asChild>
                                      <span
@@ -671,7 +663,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                 </Popover.Trigger>
                                 {isDateClickable && (
                                     <Popover.Portal><Popover.Content side="bottom" align="start" sideOffset={5}
-                                                                     className={datePickerPopoverWrapperClasses} // Use aligned class
+                                                                     className={datePickerPopoverWrapperClasses}
                                                                      onOpenAutoFocus={(e) => e.preventDefault()}
                                                                      onCloseAutoFocus={(e) => {
                                                                          e.preventDefault();
@@ -839,8 +831,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                         <Popover.Trigger asChild>
                                             <TaskItemRadixMenuItem icon="calendar-plus"
                                                                    onSelect={(event) => {
-                                                                       event.preventDefault(); // Prevent DropdownMenu from closing
-                                                                       handleMenuPopoverOpenChange(true); // Open the Popover
+                                                                       event.preventDefault();
+                                                                       handleMenuPopoverOpenChange(true);
                                                                    }}
                                                                    disabled={!isInteractive}>
                                                 Set Due Date...
@@ -908,10 +900,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({task, groupCategory, isOverlay 
                                                  onOpenAutoFocus={(e) => e.preventDefault()}
                                                  onCloseAutoFocus={(e) => {
                                                      e.preventDefault();
-                                                     // Focus management: if main dropdown is still open, let it manage or focus its trigger
-                                                     // if (isMoreActionsOpen && moreActionsButtonRef.current) {
-                                                     // moreActionsButtonRef.current.focus();
-                                                     // }
                                                  }}>
                                     <CustomDatePickerContent
                                         initialDate={dueDate ?? undefined} onSelect={handleDateSelect}
