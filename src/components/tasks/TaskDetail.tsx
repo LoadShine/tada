@@ -511,15 +511,15 @@ const TaskDetail: React.FC = () => {
 
     const mainPanelClass = useMemo(() => twMerge(
         "h-full flex flex-col",
-        "bg-white dark:bg-neutral-850",
+        "bg-white dark:bg-neutral-850", // Overall component background
     ), []);
 
     const headerClass = useMemo(() => twMerge(
-        "px-4 py-2 h-14 flex items-center justify-between flex-shrink-0",
-        "border-b border-grey-light dark:border-neutral-700/60"
+        "px-4 py-2 h-14 flex items-center justify-between flex-shrink-0", // px-4 makes border-b inset
+        "border-b border-grey-light dark:border-neutral-700/60",
+        "bg-white dark:bg-neutral-850" // Explicit background for header
     ), []);
 
-    // Priority map, consistent with TaskItem's structure
     const taskListPriorityMap: Record<number, {
         label: string;
         iconColor: string;
@@ -555,20 +555,21 @@ const TaskDetail: React.FC = () => {
     ), [isInteractiveDisabled]);
 
     const editorContainerClass = useMemo(() => twMerge(
-        "flex-1 min-h-0 overflow-hidden",
+        "flex-1 min-h-0 overflow-hidden", // This container itself doesn't need px, its children do
         "prose dark:prose-invert max-w-none prose-sm prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2"
     ), []);
 
     const editorClasses = useMemo(() => twMerge(
-        "!h-full text-sm !bg-transparent !border-none !shadow-none",
+        "!h-full text-sm !bg-transparent !border-none !shadow-none", // Transparent bg, children handle padding
         (isInteractiveDisabled) && "opacity-60 cursor-not-allowed",
         isTrash && "pointer-events-none",
         "dark:!text-neutral-300"
     ), [isInteractiveDisabled, isTrash]);
 
     const footerClass = useMemo(() => twMerge(
-        "px-3 py-2 h-11 flex items-center justify-between flex-shrink-0",
-        "border-t border-grey-light dark:border-neutral-700/60"
+        "px-4 py-2 h-11 flex items-center justify-between flex-shrink-0", // px-4 makes border-t inset
+        "border-t border-grey-light dark:border-neutral-700/60",
+        "bg-white dark:bg-neutral-850" // Explicit background for footer
     ), []);
 
     const actionButtonClass = useMemo(() => twMerge(
@@ -591,7 +592,7 @@ const TaskDetail: React.FC = () => {
     ), [displayDueDateForRender, overdue, isCompleted, isTrash]);
 
     const dropdownContentClasses = useMemo(() => twMerge(
-        "z-[60] min-w-[180px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700", // Adjusted min-width
+        "z-[60] min-w-[180px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700",
         "data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"
     ), []);
 
@@ -609,7 +610,7 @@ const TaskDetail: React.FC = () => {
         const iconAreaSpace = 28;
         let dateTextSpace = 0;
         if (newSubtaskDueDate && subtaskDateTextWidth > 0) {
-            dateTextSpace = 4 + subtaskDateTextWidth + 4 + 4;
+            dateTextSpace = 4 + subtaskDateTextWidth + 4; // icon + space + date + space + text starts
         }
         return iconAreaSpace + dateTextSpace;
     }, [newSubtaskDueDate, subtaskDateTextWidth]);
@@ -762,7 +763,7 @@ const TaskDetail: React.FC = () => {
                                             className="px-2.5 pt-1.5 pb-0.5 text-[11px] text-grey-medium dark:text-neutral-400 uppercase tracking-wider">Priority
                                         </div>
                                         <div className="flex justify-around items-center px-1.5 py-1">
-                                            {[1, 2, 3].map(pVal => { // Changed from [1, 2, 3, 4]
+                                            {[1, 2, 3].map(pVal => {
                                                 const pData = taskListPriorityMap[pVal];
                                                 const isSelected = selectedTask.priority === pVal;
                                                 return (
@@ -874,9 +875,7 @@ const TaskDetail: React.FC = () => {
                                     onOpenAutoFocus={(e) => e.preventDefault()}
                                     onCloseAutoFocus={(e) => {
                                         e.preventDefault();
-                                        if (isMoreActionsOpen && moreActionsButtonRef.current) {
-                                            // moreActionsButtonRef.current?.focus();
-                                        }
+                                        // No specific focus needed here if popover closes naturally
                                     }}
                                 >
                                     <CustomDatePickerContent
@@ -896,17 +895,22 @@ const TaskDetail: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto styled-scrollbar-thin flex flex-col">
+                {/* Main scrollable content area for editor and subtasks */}
+                {/* This div itself does not need padding if its children (editor, subtasks) have it */}
+                <div
+                    className="flex-1 overflow-y-auto styled-scrollbar-thin flex flex-col bg-white dark:bg-neutral-850">
+                    {/* Editor content area - p-5 provides inset */}
                     <div className={twMerge(editorContainerClass, "p-5 pb-3")}>
                         <CodeMirrorEditor ref={editorRef} value={localContent} onChange={handleContentChange}
                                           onBlur={handleMainContentBlur}
                                           placeholder="Add notes, links, or details here... Markdown is supported."
                                           className={editorClasses} readOnly={isInteractiveDisabled}/>
                     </div>
+                    {/* Subtask section - px-5 makes border-t inset. pb-3 reduces bottom space. */}
                     <div
                         className={twMerge(
-                            "px-5 pt-4 pb-5 border-t border-grey-light/70 dark:border-neutral-700/40",
-                            "flex-shrink-0 flex flex-col",
+                            "px-5 pt-4 pb-3 border-t border-grey-light/70 dark:border-neutral-700/40",
+                            "flex-shrink-0 flex flex-col bg-white dark:bg-neutral-850", // Ensure bg for this section
                             sortedSubtasks.length > 0 ? "max-h-[45vh]" : ""
                         )}
                     >
@@ -958,9 +962,11 @@ const TaskDetail: React.FC = () => {
                         )}
 
                         {!isInteractiveDisabled && (
+                            // Add Subtask input wrapper - pt-2.5 pb-1.5 reduces vertical space.
+                            // Conditional border-t here is inset due to parent's px-5.
                             <div
                                 className={twMerge(
-                                    "flex items-center flex-shrink-0 py-2.5",
+                                    "flex items-center flex-shrink-0 pt-2.5 pb-1.5",
                                     sortedSubtasks.length > 0 ? "border-t border-grey-light/50 dark:border-neutral-700/30 mt-auto" : "mt-1"
                                 )}>
                                 <div
@@ -1122,8 +1128,7 @@ const TaskDetail: React.FC = () => {
                                     onCloseAutoFocus={(e) => e.preventDefault()}>
                                     <div className="space-y-1.5 text-grey-medium dark:text-neutral-300">
                                         <p>
-                                            <strong
-                                                className="font-medium text-grey-dark dark:text-neutral-200">Created:</strong>
+                                            <strong className="font-medium text-grey-dark dark:text-neutral-200">Created:</strong>
                                             {displayCreatedAt}
                                         </p>
                                         <p><strong

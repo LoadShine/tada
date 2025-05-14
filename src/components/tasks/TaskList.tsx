@@ -92,9 +92,9 @@ const TaskGroupHeader: React.FC<{
 }> = React.memo(({title, groupKey}) => (
     <div
         className={twMerge(
-            "flex items-center justify-between px-4 pt-3 pb-1.5",
+            "flex items-center justify-between px-4 pt-3 pb-1.5", // px-4 is important for inset appearance within its own context
             "text-[12px] font-normal text-grey-medium uppercase tracking-[0.5px]",
-            "sticky top-0 z-10 bg-white dark:bg-neutral-800"
+            "sticky top-0 z-10 bg-white dark:bg-neutral-800" // Background applied here if p-2 is on parent
         )}
     >
         <span>{title}</span>
@@ -461,7 +461,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                     key={task.id}
                     task={task}
                     groupCategory={isGroupedView && groupKey !== 'flat-list' ? groupKey as TaskGroupCategory : undefined}
-                    scrollContainerRef={scrollContainerRef}
+                    scrollContainerRef={scrollContainerRef} // scrollContainerRef is now the padded div
                 />
             ))}
         </AnimatePresence>
@@ -486,10 +486,10 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     }, [isSearching, searchTerm, currentFilterGlobal, pageTitle]);
 
     const headerClass = useMemo(() => twMerge(
-        "px-6 py-0 h-[56px]",
+        "px-6 py-0 h-[56px]", // px-6 makes the border-b inset
         "border-b border-grey-light dark:border-neutral-700",
         "flex justify-between items-center flex-shrink-0 z-10",
-        "bg-white dark:bg-neutral-800"
+        "bg-white dark:bg-neutral-800" // Background for header itself
     ), []);
 
     const showNewTaskInputArea = useMemo(() =>
@@ -502,7 +502,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     ), []);
 
     const moreOptionsDropdownContentClasses = useMemo(() => twMerge(
-        "z-[60] min-w-[180px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700", // Adjusted min-width
+        "z-[60] min-w-[180px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700",
         "data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"
     ), []);
 
@@ -516,8 +516,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     ), [newTaskPriority]);
 
     const inputPaddingLeft = useMemo(() => {
-        const basePadding = 32;
-        const dateTextPadding = dateTextWidth > 0 ? dateTextWidth + 8 + 12 : 0;
+        const basePadding = 32; // Standard width for icon button area
+        const dateTextPadding = dateTextWidth > 0 ? dateTextWidth + 8 + 4 : 0; // dateText + space after date + space before input text start
         return basePadding + dateTextPadding;
     }, [dateTextWidth]);
 
@@ -542,7 +542,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
     return (
         <TaskItemMenuProvider>
-            <div className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden relative">
+            <div
+                className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden relative"> {/* This is the overall component bg */}
                 <div className={headerClass}>
                     <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate pr-2"
                         title={pageTitle}>{pageTitle}</h1>
@@ -550,7 +551,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
                 {showNewTaskInputArea && (
                     <div
-                        className="px-3 py-2.5 border-b border-grey-ultra-light dark:border-neutral-700/50 bg-white dark:bg-neutral-800">
+                        className="px-4 py-2.5 border-b border-grey-ultra-light dark:border-neutral-700/50 bg-white dark:bg-neutral-800"> {/* px-4 makes border-b inset. Background for this section. */}
                         <div className={newTaskInputWrapperClass}>
                             <div className="absolute left-0.5 top-1/2 -translate-y-1/2 flex items-center h-full">
                                 <Popover.Root open={isNewTaskDatePickerOpen} onOpenChange={setIsNewTaskDatePickerOpen}>
@@ -591,7 +592,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                 </Popover.Root>
 
                                 {newTaskDueDate && (
-                                    <div className="flex items-center pl-1 pr-1 h-full">
+                                    <div
+                                        className="flex items-center pl-1 pr-1 h-full pointer-events-none"> {/* pointer-events-none ensures click-through for padding calculation */}
                                         <span
                                             ref={dateDisplayRef}
                                             className="text-[12px] text-primary dark:text-primary-light whitespace-nowrap font-medium"
@@ -733,10 +735,12 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                 <Popover.Root open={isBulkRescheduleOpen} onOpenChange={setIsBulkRescheduleOpen}>
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd} measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
-                        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto styled-scrollbar relative">
+                        {/* Added p-2 to this scroll container for internal gutter */}
+                        <div ref={scrollContainerRef}
+                             className="flex-1 overflow-y-auto styled-scrollbar relative p-2 bg-white dark:bg-neutral-800">
                             {isEmpty ? (
                                 <div
-                                    className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-6 text-center pt-10">
+                                    className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-6 text-center pt-10"> {/* px-6 here is fine for empty state content */}
                                     <Icon
                                         name={currentFilterGlobal === 'trash' ? 'trash' : (currentFilterGlobal === 'completed' ? 'check-square' : (isSearching ? 'search' : 'archive'))}
                                         size={32} strokeWidth={1}
@@ -747,20 +751,34 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                             the input bar
                                             above to add a new task.</p>)}
                                 </div>
-                            ) : (<div className="pb-16"><SortableContext items={sortableItems}
-                                                                         strategy={verticalListSortingStrategy}>
-                                {isGroupedView ? (<> {groupOrder.map(groupKey => {
-                                        const groupTasks = (tasksToDisplay as Record<TaskGroupCategory, Task[]>)[groupKey];
-                                        if (groupTasks && groupTasks.length > 0) {
-                                            return (<div key={groupKey} className="mb-4 last:mb-0"><TaskGroupHeader
-                                                title={groupTitles[groupKey]}
-                                                groupKey={groupKey}/> {renderTaskGroup(groupTasks, groupKey)} </div>);
-                                        }
-                                        return null;
-                                    })} </>
-                                ) : (<div
-                                    className="pt-0.5"> {renderTaskGroup(tasksToDisplay as Task[], 'flat-list')} </div>)}
-                            </SortableContext></div>)}
+                            ) : (
+                                <div className="pb-16"> {/* pb-16 for scroll-past last item, good */}
+                                    <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
+                                        {isGroupedView ? (<>
+                                            {groupOrder.map(groupKey => {
+                                                const groupTasks = (tasksToDisplay as Record<TaskGroupCategory, Task[]>)[groupKey];
+                                                if (groupTasks && groupTasks.length > 0) {
+                                                    return (
+                                                        // TaskGroupHeader itself has px-4, which is good.
+                                                        // The tasks rendered by renderTaskGroup will be inside the p-2 of scrollContainerRef
+                                                        <div key={groupKey} className="mb-4 last:mb-0">
+                                                            <TaskGroupHeader title={groupTitles[groupKey]}
+                                                                             groupKey={groupKey}/>
+                                                            {renderTaskGroup(groupTasks, groupKey)}
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })}
+                                        </>) : (
+                                            // For flat list, pt-0.5 is minimal, tasks will be inside p-2 of scrollContainerRef
+                                            <div className="pt-0.5">
+                                                {renderTaskGroup(tasksToDisplay as Task[], 'flat-list')}
+                                            </div>
+                                        )}
+                                    </SortableContext>
+                                </div>
+                            )}
                         </div>
                         <DragOverlay dropAnimation={null}>
                             {draggingTask ? (
