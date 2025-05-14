@@ -102,7 +102,7 @@ const TaskGroupHeader: React.FC<{
         className={twMerge(
             "flex items-center justify-between px-4 pt-3 pb-1.5",
             "text-[12px] font-normal text-grey-medium uppercase tracking-[0.5px]",
-            "sticky top-0 z-10 bg-white"
+            "sticky top-0 z-10 bg-white dark:bg-neutral-800"
         )}
     >
         <span>{title}</span>
@@ -132,15 +132,20 @@ const groupOrder: TaskGroupCategory[] = ['overdue', 'today', 'next7days', 'later
 const getNewTaskMenuSubTriggerClasses = () => twMerge(
     "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-8",
     "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light data-[state=open]:bg-grey-ultra-light",
+    "dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700 dark:data-[state=open]:bg-neutral-700",
     "text-grey-dark data-[highlighted]:text-grey-dark data-[state=open]:text-grey-dark",
+    "dark:text-neutral-300 dark:data-[highlighted]:text-neutral-100 dark:data-[state=open]:text-neutral-100",
     "data-[disabled]:opacity-50"
 );
 
 const getNewTaskMenuRadioItemListClasses = () => twMerge(
     "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-8",
     "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light",
+    "dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700",
     "data-[state=checked]:bg-primary-light data-[state=checked]:text-primary",
+    "dark:data-[state=checked]:bg-primary-dark/30 dark:data-[state=checked]:text-primary-light",
     "text-grey-dark data-[highlighted]:text-grey-dark",
+    "dark:text-neutral-300 dark:data-[highlighted]:text-neutral-100",
     "data-[disabled]:opacity-50"
 );
 
@@ -159,7 +164,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     const [isBulkRescheduleOpen, setIsBulkRescheduleOpen] = useState(false);
 
     const newTaskTitleInputRef = useRef<HTMLInputElement>(null);
-    const dateDisplayRef = useRef<HTMLSpanElement>(null); // For measuring date text width
+    const dateDisplayRef = useRef<HTMLSpanElement>(null);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskDueDate, setNewTaskDueDate] = useState<Date | null>(null);
     const [newTaskPriority, setNewTaskPriority] = useState<number | null>(null);
@@ -490,9 +495,9 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
     const headerClass = useMemo(() => twMerge(
         "px-6 py-0 h-[56px]",
-        "border-b border-grey-light",
+        "border-b border-grey-light dark:border-neutral-700",
         "flex justify-between items-center flex-shrink-0 z-10",
-        "bg-white"
+        "bg-white dark:bg-neutral-800"
     ), []);
 
     const showNewTaskInputArea = useMemo(() =>
@@ -500,12 +505,13 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         [currentFilterGlobal, isSearching]);
 
     const datePickerPopoverWrapperClasses = useMemo(() => twMerge(
-        "z-[70] p-0 bg-white rounded-base shadow-modal",
+        "z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800",
         "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
     ), []);
 
     const moreOptionsDropdownContentClasses = useMemo(() => twMerge(
-        "z-[60] min-w-[220px] p-1 bg-white rounded-base shadow-modal data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"
+        "z-[60] min-w-[220px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700",
+        "data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"
     ), []);
 
     const newTaskInputWrapperClass = useMemo(() => twMerge(
@@ -513,13 +519,13 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         "bg-grey-ultra-light dark:bg-neutral-700/60",
         "rounded-base",
         "transition-all duration-150 ease-in-out",
-        "border border-transparent dark:border-transparent", // Default transparent border
-        newTaskPriority && priorityMap[newTaskPriority]?.dotColor ? `${priorityMap[newTaskPriority]?.borderColor}` : "border-transparent" // Left border for priority
+        "border border-transparent dark:border-transparent",
+        newTaskPriority && priorityMap[newTaskPriority]?.dotColor ? `${priorityMap[newTaskPriority]?.borderColor}` : "border-transparent"
     ), [newTaskPriority]);
 
     const inputPaddingLeft = useMemo(() => {
-        const basePadding = 32; // Space for calendar icon button (w-8 * 4px/unit = 32px)
-        const dateTextPadding = dateTextWidth > 0 ? dateTextWidth + 8 + 12 : 0; // date text + space + clear button (w-3 * 4px/unit = 12px)
+        const basePadding = 32;
+        const dateTextPadding = dateTextWidth > 0 ? dateTextWidth + 8 + 12 : 0;
         return basePadding + dateTextPadding;
     }, [dateTextWidth]);
 
@@ -533,25 +539,26 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     const clearDate = (e: React.MouseEvent) => {
         e.stopPropagation();
         setNewTaskDueDate(null);
-        setIsNewTaskDatePickerOpen(false); // Ensure picker closes if it was somehow open
+        setIsNewTaskDatePickerOpen(false);
     };
 
     const handlePriorityFlagClick = (priorityValue: number | null) => {
         setNewTaskPriority(currentPriority => currentPriority === priorityValue ? null : priorityValue);
-        setIsNewTaskMoreOptionsOpen(false); // Close dropdown after selection
+        setIsNewTaskMoreOptionsOpen(false);
         newTaskTitleInputRef.current?.focus();
     };
 
     return (
         <TaskItemMenuProvider>
-            <div className="h-full flex flex-col bg-white overflow-hidden relative">
+            <div className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden relative">
                 <div className={headerClass}>
-                    <h1 className="text-[18px] font-light text-grey-dark truncate pr-2"
+                    <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate pr-2"
                         title={pageTitle}>{pageTitle}</h1>
                 </div>
 
                 {showNewTaskInputArea && (
-                    <div className="px-3 py-2.5 border-b border-grey-ultra-light bg-white">
+                    <div
+                        className="px-3 py-2.5 border-b border-grey-ultra-light dark:border-neutral-700/50 bg-white dark:bg-neutral-800">
                         <div className={newTaskInputWrapperClass}>
                             <div className="absolute left-0.5 top-1/2 -translate-y-1/2 flex items-center h-full">
                                 <Popover.Root open={isNewTaskDatePickerOpen} onOpenChange={setIsNewTaskDatePickerOpen}>
@@ -560,7 +567,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                             type="button"
                                             className={twMerge(
                                                 "flex items-center justify-center w-7 h-7 rounded-l-base hover:bg-grey-light focus:outline-none",
-                                                newTaskDueDate ? "text-primary hover:text-primary-dark" : "text-grey-medium hover:text-grey-dark"
+                                                "dark:hover:bg-neutral-600",
+                                                newTaskDueDate ? "text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-primary" : "text-grey-medium hover:text-grey-dark dark:text-neutral-400 dark:hover:text-neutral-200"
                                             )}
                                             aria-label="Set due date"
                                         >
@@ -594,7 +602,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                     <div className="flex items-center pl-1 pr-1 h-full">
                                         <span
                                             ref={dateDisplayRef}
-                                            className="text-[12px] text-primary whitespace-nowrap font-medium"
+                                            className="text-[12px] text-primary dark:text-primary-light whitespace-nowrap font-medium"
                                         >
                                             {formatRelativeDate(newTaskDueDate, false)}
                                         </span>
@@ -622,7 +630,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                     <DropdownMenu.Trigger asChild>
                                         <button
                                             type="button"
-                                            className="flex items-center justify-center w-7 h-7 rounded-r-base hover:bg-grey-light text-grey-medium hover:text-grey-dark focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-primary"
+                                            className="flex items-center justify-center w-7 h-7 rounded-r-base hover:bg-grey-light dark:hover:bg-neutral-600 text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-primary"
                                             aria-label="More task options"
                                         >
                                             <Icon name="chevron-down" size={16} strokeWidth={1.5}/>
@@ -639,38 +647,50 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                             }}
                                         >
                                             <div
-                                                className="px-3 pt-2 pb-1 text-[11px] text-grey-medium uppercase tracking-wider">Priority
+                                                className="px-3 pt-2 pb-1 text-[11px] text-grey-medium dark:text-neutral-400 uppercase tracking-wider">Priority
                                             </div>
                                             <div className="flex justify-around items-center px-2 py-1.5">
-                                                {[1, 2, 3, 4].map(pVal => (
-                                                    <button
-                                                        key={pVal}
-                                                        onClick={() => handlePriorityFlagClick(pVal)}
-                                                        className={twMerge(
-                                                            "flex items-center justify-center w-8 h-8 rounded-md transition-colors",
-                                                            priorityMap[pVal]?.iconColor,
-                                                            newTaskPriority === pVal ? `${priorityMap[pVal]?.bgColor} !text-white shadow-sm ring-1 ring-offset-1 ring-offset-white ring-black/20` : `hover:${priorityMap[pVal]?.bgColor}/20`,
-                                                        )}
-                                                        title={priorityMap[pVal]?.label}
-                                                        aria-pressed={newTaskPriority === pVal}
-                                                    >
-                                                        <Icon name="flag" size={16} strokeWidth={1.5}/>
-                                                    </button>
-                                                ))}
+                                                {[1, 2, 3, 4].map(pVal => {
+                                                    const pData = priorityMap[pVal];
+                                                    const isSelected = newTaskPriority === pVal;
+                                                    return (
+                                                        <button
+                                                            key={pVal}
+                                                            onClick={() => handlePriorityFlagClick(pVal)}
+                                                            className={twMerge(
+                                                                "flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-150 ease-in-out focus:outline-none",
+                                                                pData.iconColor,
+                                                                // Conditional background for selected, hover, or focus-visible
+                                                                isSelected ? "bg-grey-ultra-light dark:bg-neutral-700"
+                                                                    : "hover:bg-grey-ultra-light dark:hover:bg-neutral-700 focus-visible:bg-grey-ultra-light dark:focus-visible:bg-neutral-700"
+                                                            )}
+                                                            title={pData.label}
+                                                            aria-pressed={isSelected}
+                                                        >
+                                                            <Icon name="flag" size={16} strokeWidth={1.5}/>
+                                                        </button>
+                                                    );
+                                                })}
                                                 <button
                                                     onClick={() => handlePriorityFlagClick(null)}
                                                     className={twMerge(
-                                                        "flex items-center justify-center w-8 h-8 rounded-md transition-colors text-grey-medium",
-                                                        newTaskPriority === null ? "bg-grey-light text-grey-dark shadow-sm ring-1 ring-offset-1 ring-offset-white ring-black/20" : "hover:bg-grey-light/50",
+                                                        "flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-150 ease-in-out focus:outline-none",
+                                                        newTaskPriority === null
+                                                            ? "text-grey-dark dark:text-neutral-200"
+                                                            : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-300 focus-visible:text-grey-dark dark:focus-visible:text-neutral-300",
+
+                                                        newTaskPriority === null ? "bg-grey-ultra-light dark:bg-neutral-700"
+                                                            : "hover:bg-grey-ultra-light dark:hover:bg-neutral-700 focus-visible:bg-grey-ultra-light dark:focus-visible:bg-neutral-700"
                                                     )}
                                                     title="No Priority"
                                                     aria-pressed={newTaskPriority === null}
                                                 >
-                                                    <Icon name="slash" size={16} strokeWidth={2}/>
+                                                    <Icon name="minus" size={16} strokeWidth={1.5}/>
                                                 </button>
                                             </div>
 
-                                            <DropdownMenu.Separator className="h-px bg-grey-light my-1"/>
+                                            <DropdownMenu.Separator
+                                                className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
 
                                             <DropdownMenu.Sub>
                                                 <DropdownMenu.SubTrigger className={getNewTaskMenuSubTriggerClasses()}>
@@ -678,7 +698,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                                           className="mr-2 flex-shrink-0 opacity-80"/>
                                                     Add to List
                                                     <span
-                                                        className="ml-auto mr-1 text-grey-medium text-xs truncate max-w-[70px] text-right">{newTaskListState}</span>
+                                                        className="ml-auto mr-1 text-grey-medium dark:text-neutral-400 text-xs truncate max-w-[70px] text-right">{newTaskListState}</span>
                                                     <Icon name="chevron-right" size={16} strokeWidth={1}
                                                           className="opacity-70 flex-shrink-0"/>
                                                 </DropdownMenu.SubTrigger>
@@ -725,13 +745,15 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto styled-scrollbar relative">
                             {isEmpty ? (
                                 <div
-                                    className="flex flex-col items-center justify-center h-full text-grey-medium px-6 text-center pt-10">
+                                    className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-6 text-center pt-10">
                                     <Icon
                                         name={currentFilterGlobal === 'trash' ? 'trash' : (currentFilterGlobal === 'completed' ? 'check-square' : (isSearching ? 'search' : 'archive'))}
-                                        size={32} strokeWidth={1} className="mb-3 text-grey-light opacity-80"/>
-                                    <p className="text-[13px] font-normal text-grey-dark">{emptyStateTitle}</p>
+                                        size={32} strokeWidth={1}
+                                        className="mb-3 text-grey-light dark:text-neutral-500 opacity-80"/>
+                                    <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-300">{emptyStateTitle}</p>
                                     {showNewTaskInputArea && (
-                                        <p className="text-[11px] mt-1 text-grey-medium font-light">Use the input bar
+                                        <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">Use
+                                            the input bar
                                             above to add a new task.</p>)}
                                 </div>
                             ) : (<div className="pb-16"><SortableContext items={sortableItems}
@@ -751,9 +773,10 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                         </div>
                         <DragOverlay dropAnimation={null}>
                             {draggingTask ? (
-                                <div className="shadow-lg rounded-base bg-white"><TaskItem task={draggingTask}
-                                                                                           isOverlay={true}
-                                                                                           scrollContainerRef={scrollContainerRef}/>
+                                <div className="shadow-lg rounded-base bg-white dark:bg-neutral-700"><TaskItem
+                                    task={draggingTask}
+                                    isOverlay={true}
+                                    scrollContainerRef={scrollContainerRef}/>
                                 </div>) : null}
                         </DragOverlay>
                     </DndContext>
