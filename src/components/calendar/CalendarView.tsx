@@ -270,9 +270,10 @@ const CalendarView: React.FC = () => {
                     className="flex-1 space-y-0.5 overflow-y-auto styled-scrollbar-thin min-h-[50px]">
                     {isCurrentMonthDay && tasksToShow.map((task) => (
                         <DraggableCalendarTask key={task.id} task={task} onClick={() => handleTaskClick(task.id)}/>))}
-                    {isCurrentMonthDay && hasMoreTasks && (<button onClick={() => toggleExpandDay(dateKey)}
-                                                                   className="w-full text-[10px] text-center text-primary hover:text-primary-dark py-0.5 px-1 rounded-base bg-primary-light/30 hover:bg-primary-light/50 transition-colors duration-150 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary font-light"
-                                                                   aria-expanded={isExpanded}> + {dayTasks.length - MAX_VISIBLE_TASKS} more </button>)}
+                    {isCurrentMonthDay && hasMoreTasks && (<Button onClick={() => toggleExpandDay(dateKey)}
+                                                                   variant="link" size="sm"
+                                                                   className="w-full text-[11px] !h-5 px-1 text-center py-0.5 text-primary hover:text-primary-dark font-light"
+                                                                   aria-expanded={isExpanded}> + {dayTasks.length - MAX_VISIBLE_TASKS} more </Button>)}
                 </div>
             </DroppableDayCell>
         );

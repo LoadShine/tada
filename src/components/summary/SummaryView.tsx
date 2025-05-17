@@ -616,15 +616,14 @@ const SummaryView: React.FC = () => {
                                     <DropdownMenu.Root open={isRefTasksDropdownOpen}
                                                        onOpenChange={setIsRefTasksDropdownOpen}>
                                         <DropdownMenu.Trigger asChild disabled={!currentSummary || isGenerating}>
-                                            <button
-                                                className={twMerge("flex items-center text-[11px] font-light h-6 px-1.5 rounded-base transition-colors duration-150 ease-in-out focus:outline-none", !currentSummary || isGenerating ? "text-grey-medium/50 dark:text-neutral-500/50 cursor-not-allowed" : "text-primary dark:text-primary-light hover:bg-primary-light dark:hover:bg-primary-dark/30 focus-visible:ring-1 focus-visible:ring-primary")}
+                                            <Button
+                                                variant="link" size="sm" icon="file-text"
+                                                className="text-[11px] !h-5 px-1 text-primary hover:text-primary-dark -mr-1"
                                                 aria-haspopup="true">
-                                                <Icon name="file-text" size={12} strokeWidth={1}
-                                                      className="mr-1 opacity-80"/>{tasksUsedCount} tasks
-                                                used<Icon
-                                                name="chevron-down" size={12} strokeWidth={1}
+                                                {tasksUsedCount} tasks used
+                                                <Icon name="chevron-down" size={12} strokeWidth={1}
                                                 className="ml-0.5 opacity-70"/>
-                                            </button>
+                                            </Button>
                                         </DropdownMenu.Trigger>
                                         <DropdownMenu.Portal>
                                             <DropdownMenu.Content

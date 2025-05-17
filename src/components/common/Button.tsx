@@ -41,23 +41,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         const variantClasses: Record<ButtonVariant, string> = {
             primary: clsx(
                 'bg-primary text-white',
-                !isDisabled && 'hover:bg-primary-dark active:scale-[0.98]'
+                !isDisabled && 'hover:bg-primary-dark'
             ),
             secondary: clsx(
                 'bg-grey-ultra-light text-primary',
-                !isDisabled && 'hover:bg-primary-light active:scale-[0.98]'
+                !isDisabled && 'hover:bg-primary-light'
             ),
             link: clsx(
                 'text-primary underline-offset-2 h-auto px-0 py-0 rounded-none shadow-none',
-                !isDisabled && 'hover:text-primary-dark hover:underline active:scale-[0.98]'
+                !isDisabled && 'hover:text-primary-dark hover:underline'
             ),
             danger: clsx(
                 'bg-error text-white',
-                !isDisabled && 'hover:bg-error/80 active:scale-[0.98]'
+                !isDisabled && 'hover:bg-error/80'
             ),
             ghost: clsx(
                 'text-grey-medium border-transparent', // Default ghost icon color
-                !isDisabled && 'hover:bg-grey-ultra-light hover:text-grey-dark active:scale-[0.98]' // Ghost icon hover text color
+                !isDisabled && 'hover:bg-grey-ultra-light hover:text-grey-dark' // Ghost icon hover text color
             ),
         };
 

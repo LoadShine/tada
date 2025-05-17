@@ -32,9 +32,9 @@
         --color-error: 3 76% 58%; /* #E34C45 */
 
         /* UI Elements */
-        --border-radius-small: 6px;
-        --border-radius-base: 10px;
-        --border-radius-large: 14px;
+        --border-radius-small: 2px;
+        --border-radius-base: 6px;
+        --border-radius-large: 10px;
         --border-radius-full: 9999px;
 
         /* Shadows (Softer) */
