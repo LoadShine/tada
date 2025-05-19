@@ -1,3 +1,4 @@
+// src/store/atoms.ts
 import {atom} from 'jotai';
 import {atomWithStorage, createJSONStorage, RESET} from 'jotai/utils';
 import {SettingsTab, Task, TaskFilter, TaskGroupCategory, User} from '@/types';
@@ -284,9 +285,6 @@ export const tasksAtom = atom(
                 }
             }
 
-            // Removed logic that synced parent task dueDate with subtask dueDate
-            // Parent task dueDate is now independent
-
             let currentPercentage = updatedTask.completionPercentage ?? null;
             let isCompleted = updatedTask.completed;
 
@@ -389,6 +387,26 @@ const summaryStorage = createJSONStorage<StoredSummary[]>(() => localStorage);
 export const storedSummariesAtom = atomWithStorage<StoredSummary[]>('tada_summaries_v2_radix', [], summaryStorage, {getOnInit: true});
 export const currentSummaryIndexAtom = atom<number>(0);
 export const isGeneratingSummaryAtom = atom<boolean>(false);
+
+export const SUMMARY_FIELD_OPTIONS: { id: string; label: string }[] = [
+    {id: 'accomplishments', label: '今日工作总结'},
+    {id: 'tomorrowPlan', label: '明日工作计划'},
+    {id: 'challenges', label: '遇到的问题与困难'},
+    {id: 'teamCommunication', label: '团队沟通情况'},
+    {id: 'learnings', label: '学习与成长收获'},
+    {id: 'blockers', label: '当前主要瓶颈'},
+];
+
+// Default selected fields - selecting the first two for a common use case
+const defaultSelectedSummaryFields = [SUMMARY_FIELD_OPTIONS[0].id, SUMMARY_FIELD_OPTIONS[1].id];
+
+export const summarySelectedFieldsAtom = atomWithStorage<string[]>(
+    'tada_summarySelectedFields_v1',
+    defaultSelectedSummaryFields,
+    undefined,
+    {getOnInit: true}
+);
+
 
 // --- Derived Atoms ---
 export const selectedTaskAtom = atom((get) => {
