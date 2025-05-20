@@ -47,6 +47,7 @@ import {
 import {twMerge} from 'tailwind-merge';
 import {TaskItemMenuProvider} from '@/context/TaskItemMenuContext';
 import {IconName} from '../common/IconMap';
+import {analyzeTaskWithAI} from '@/services/aiService'; // <-- 新增AI服务导入
 
 const priorityMap: Record<number, {
     label: string;
@@ -92,9 +93,9 @@ const TaskGroupHeader: React.FC<{
 }> = React.memo(({title, groupKey}) => (
     <div
         className={twMerge(
-            "flex items-center justify-between px-4 pt-3 pb-1.5", // px-4 is important for inset appearance within its own context
+            "flex items-center justify-between px-4 pt-3 pb-1.5",
             "text-[12px] font-normal text-grey-medium uppercase tracking-[0.5px]",
-            "sticky top-0 z-10 bg-white dark:bg-neutral-800" // Background applied here if p-2 is on parent
+            "sticky top-0 z-10 bg-white dark:bg-neutral-800"
         )}
     >
         <span>{title}</span>
@@ -165,6 +166,11 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     const [isNewTaskDatePickerOpen, setIsNewTaskDatePickerOpen] = useState(false);
     const [isNewTaskMoreOptionsOpen, setIsNewTaskMoreOptionsOpen] = useState(false);
     const [dateTextWidth, setDateTextWidth] = useState(0);
+
+    // --- AI Task States ---
+    const [isAiTaskInputVisible, setIsAiTaskInputVisible] = useState(false);
+    const [isAiProcessing, setIsAiProcessing] = useState(false);
+    // --- End AI Task States ---
 
     const availableListsForNewTask = useMemo(() => userLists.filter(l => l !== 'Trash'), [userLists]);
 
@@ -386,7 +392,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
         const now = Date.now();
         let newOrder: number;
-        const allCurrentTasks = allTasks;
+        const allCurrentTasks = allTasks; // get current tasks for order calculation
         const topTaskOrder = allCurrentTasks
             .filter(t => !t.completed && t.list !== 'Trash')
             .sort((a, b) => a.order - b.order)[0]?.order;
@@ -394,9 +400,9 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         if (typeof topTaskOrder === 'number' && isFinite(topTaskOrder)) {
             newOrder = topTaskOrder - 1000;
         } else {
-            newOrder = Date.now() - 1000;
+            newOrder = Date.now() - 1000; // Fallback if no tasks or no order
         }
-        if (!isFinite(newOrder)) {
+        if (!isFinite(newOrder)) { // Ensure finite number
             newOrder = Date.now();
             console.warn("NewTaskInput: Order calculation fallback (Date.now()).");
         }
@@ -406,7 +412,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
             title: titleToSave,
             completedAt: null,
             list: newTaskListState,
-            completionPercentage: null, // New tasks default to null (0%)
+            completionPercentage: null,
             dueDate: newTaskDueDate ? newTaskDueDate.getTime() : null,
             priority: newTaskPriority,
             order: newOrder,
@@ -424,8 +430,113 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
     }, [
         newTaskTitle, newTaskDueDate, newTaskPriority, newTaskListState,
-        setTasks, allTasks
+        setTasks, allTasks // Added allTasks dependency
     ]);
+
+    const isRegularNewTaskModeAllowed = useMemo(() =>
+            !['completed', 'trash'].includes(currentFilterGlobal) && !isSearching,
+        [currentFilterGlobal, isSearching]
+    );
+
+    // --- AI Task Logic ---
+    const toggleAiTaskInput = useCallback(() => {
+        if (isAiProcessing) return; // Prevent toggling while AI is processing
+        const nextState = !isAiTaskInputVisible;
+        setIsAiTaskInputVisible(nextState);
+        if (nextState) { // If opening AI input
+            setNewTaskTitle('');
+            setNewTaskDueDate(null);
+            setNewTaskPriority(null);
+            // Set default list for AI tasks
+            if (currentFilterGlobal.startsWith('list-')) {
+                const listName = currentFilterGlobal.substring(5);
+                if (userLists.includes(listName) && listName !== 'Trash') {
+                    setNewTaskListState(listName);
+                } else {
+                    setNewTaskListState('Inbox'); // Fallback if list from filter is invalid
+                }
+            } else {
+                setNewTaskListState('Inbox'); // Default for 'all', 'today', etc.
+            }
+            setTimeout(() => newTaskTitleInputRef.current?.focus(), 0);
+        }
+    }, [isAiTaskInputVisible, isAiProcessing, currentFilterGlobal, userLists]);
+
+
+    const handleAiTaskCommit = useCallback(async () => {
+        const sentence = newTaskTitle.trim();
+        if (!sentence || isAiProcessing) return;
+
+        setIsAiProcessing(true);
+
+        try {
+            const aiSuggestions = await analyzeTaskWithAI(sentence, newTaskDueDate);
+
+            const now = Date.now();
+            let newOrder: number;
+            const allCurrentTasks = allTasks;
+            const topTaskOrder = allCurrentTasks
+                .filter(t => !t.completed && t.list !== 'Trash')
+                .sort((a, b) => a.order - b.order)[0]?.order;
+
+            if (typeof topTaskOrder === 'number' && isFinite(topTaskOrder)) {
+                newOrder = topTaskOrder - 1000;
+            } else {
+                newOrder = Date.now() - 1000;
+            }
+            if (!isFinite(newOrder)) {
+                newOrder = Date.now();
+            }
+
+            const taskId = `task-${now}-${Math.random().toString(16).slice(2)}`;
+
+            const taskToAdd: Omit<Task, 'groupCategory' | 'completed'> = {
+                id: taskId,
+                title: sentence,
+                completedAt: null,
+                list: newTaskListState,
+                completionPercentage: null,
+                dueDate: newTaskDueDate ? newTaskDueDate.getTime() : null,
+                priority: newTaskPriority,
+                order: newOrder,
+                createdAt: now,
+                updatedAt: now,
+                content: aiSuggestions.content,
+                tags: aiSuggestions.tags,
+                subtasks: aiSuggestions.subtasks.map((sub, index) => ({
+                    id: `subtask-${taskId}-${index}-${Math.random().toString(16).slice(2)}`,
+                    parentId: taskId,
+                    title: sub.title,
+                    completed: false,
+                    completedAt: null,
+                    // Ensure sub.dueDate is parsed correctly into a timestamp or null
+                    dueDate: sub.dueDate ? (safeParseDate(sub.dueDate)?.getTime() ?? null) : null,
+                    order: index,
+                    createdAt: now,
+                    updatedAt: now,
+                })),
+            };
+
+            setTasks(prev => [taskToAdd as Task, ...prev].sort((a, b) => a.order - b.order));
+            setNewTaskTitle(''); // Clear input after successful commit
+            setNewTaskDueDate(null);
+            setNewTaskPriority(null);
+
+        } catch (error) {
+            console.error("AI Task generation failed:", error);
+            // TODO: Show a user-friendly error notification (e.g., toast)
+        } finally {
+            setIsAiProcessing(false);
+            setIsAiTaskInputVisible(false); // Close AI input mode
+            if (isRegularNewTaskModeAllowed) { // If regular input is allowed, focus it
+                setTimeout(() => newTaskTitleInputRef.current?.focus(), 0);
+            }
+        }
+    }, [
+        newTaskTitle, newTaskDueDate, newTaskPriority, newTaskListState,
+        setTasks, allTasks, isAiProcessing, isRegularNewTaskModeAllowed // Added dependencies
+    ]);
+    // --- End AI Task Logic ---
 
 
     const handleBulkRescheduleDateSelect = useCallback((date: Date | undefined) => {
@@ -461,7 +572,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                     key={task.id}
                     task={task}
                     groupCategory={isGroupedView && groupKey !== 'flat-list' ? groupKey as TaskGroupCategory : undefined}
-                    scrollContainerRef={scrollContainerRef} // scrollContainerRef is now the padded div
+                    scrollContainerRef={scrollContainerRef}
                 />
             ))}
         </AnimatePresence>
@@ -486,15 +597,19 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     }, [isSearching, searchTerm, currentFilterGlobal, pageTitle]);
 
     const headerClass = useMemo(() => twMerge(
-        "px-6 py-0 h-[56px]", // px-6 makes the border-b inset
+        "px-6 py-0 h-[56px]",
         "border-b border-grey-light dark:border-neutral-700",
         "flex justify-between items-center flex-shrink-0 z-10",
-        "bg-white dark:bg-neutral-800" // Background for header itself
+        "bg-white dark:bg-neutral-800"
     ), []);
 
-    const showNewTaskInputArea = useMemo(() =>
-            !['completed', 'trash'].includes(currentFilterGlobal) && !isSearching,
-        [currentFilterGlobal, isSearching]);
+    // Determine if the input section (for regular or AI task) should be shown
+    const shouldShowInputSection = useMemo(() =>
+            isRegularNewTaskModeAllowed || isAiTaskInputVisible,
+        [isRegularNewTaskModeAllowed, isAiTaskInputVisible]
+    );
+    // If the section is shown, is it in AI mode?
+    const isCurrentlyAiMode = isAiTaskInputVisible;
 
     const datePickerPopoverWrapperClasses = useMemo(() => twMerge(
         "z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800",
@@ -512,12 +627,13 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         "rounded-base",
         "transition-all duration-150 ease-in-out",
         "border border-transparent dark:border-transparent",
-        newTaskPriority && priorityMap[newTaskPriority]?.dotColor ? `${priorityMap[newTaskPriority]?.borderColor}` : "border-transparent"
-    ), [newTaskPriority]);
+        newTaskPriority && priorityMap[newTaskPriority]?.dotColor ? `${priorityMap[newTaskPriority]?.borderColor}` : "border-transparent",
+        isCurrentlyAiMode && isAiProcessing && "opacity-70" // Visual cue for processing
+    ), [newTaskPriority, isCurrentlyAiMode, isAiProcessing]);
 
     const inputPaddingLeft = useMemo(() => {
-        const basePadding = 32; // Standard width for icon button area
-        const dateTextPadding = dateTextWidth > 0 ? dateTextWidth + 8 + 4 : 0; // dateText + space after date + space before input text start
+        const basePadding = 32;
+        const dateTextPadding = dateTextWidth > 0 ? dateTextWidth + 8 + 4 : 0;
         return basePadding + dateTextPadding;
     }, [dateTextWidth]);
 
@@ -543,15 +659,37 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     return (
         <TaskItemMenuProvider>
             <div
-                className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden relative"> {/* This is the overall component bg */}
+                className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden relative">
                 <div className={headerClass}>
                     <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate pr-2"
                         title={pageTitle}>{pageTitle}</h1>
+                    <Button
+                        variant="ghost"
+                        size="icon" // Using size="icon" for a compact base, then customizing padding/size.
+                        onClick={toggleAiTaskInput}
+                        className={twMerge(
+                            "text-grey-medium dark:text-neutral-400 hover:text-primary dark:hover:text-primary-light focus-visible:text-primary dark:focus-visible:text-primary-light",
+                            "ml-2 flex-shrink-0 h-7 w-auto px-2 py-1 rounded-base flex items-center", // Custom classes for size and padding
+                            (isAiProcessing) && "opacity-50 cursor-not-allowed"
+                        )}
+                        title="Add task with AI"
+                        aria-expanded={isAiTaskInputVisible}
+                        disabled={isAiProcessing}
+                    >
+                        {isAiProcessing ? (
+                            <Icon name="loader" size={14} strokeWidth={1.5} className="mr-1 animate-spin"/>
+                        ) : (
+                            <Icon name="sparkles" size={14} strokeWidth={1.5} className="mr-1"/>
+                        )}
+                        <span className="text-[11px] font-medium">
+                            {isAiProcessing ? "Processing..." : "AI Task"}
+                        </span>
+                    </Button>
                 </div>
 
-                {showNewTaskInputArea && (
-                    <div className="bg-white dark:bg-neutral-800"> {/* Container for the new task input area section */}
-                        <div className="px-4 py-2.5"> {/* Provides padding around the input field */}
+                {shouldShowInputSection && (
+                    <div className="bg-white dark:bg-neutral-800">
+                        <div className="px-4 py-2.5">
                             <div className={newTaskInputWrapperClass}>
                                 <div className="absolute left-0.5 top-1/2 -translate-y-1/2 flex items-center h-full">
                                     <Popover.Root open={isNewTaskDatePickerOpen}
@@ -562,9 +700,11 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                                 className={twMerge(
                                                     "flex items-center justify-center w-7 h-7 rounded-l-base hover:bg-grey-light focus:outline-none",
                                                     "dark:hover:bg-neutral-600",
-                                                    newTaskDueDate ? "text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-primary" : "text-grey-medium hover:text-grey-dark dark:text-neutral-400 dark:hover:text-neutral-200"
+                                                    newTaskDueDate ? "text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-primary" : "text-grey-medium hover:text-grey-dark dark:text-neutral-400 dark:hover:text-neutral-200",
+                                                    (isCurrentlyAiMode && isAiProcessing) && "opacity-50 cursor-not-allowed"
                                                 )}
                                                 aria-label="Set due date"
+                                                disabled={isCurrentlyAiMode && isAiProcessing}
                                             >
                                                 <Icon name="calendar" size={16} strokeWidth={1.5}/>
                                             </button>
@@ -577,7 +717,9 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                                 onOpenAutoFocus={(e) => e.preventDefault()}
                                                 onCloseAutoFocus={(e) => {
                                                     e.preventDefault();
-                                                    newTaskTitleInputRef.current?.focus();
+                                                    if (!(isCurrentlyAiMode && isAiProcessing)) {
+                                                        newTaskTitleInputRef.current?.focus();
+                                                    }
                                                 }}
                                             >
                                                 <CustomDatePickerContent
@@ -594,7 +736,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
                                     {newTaskDueDate && (
                                         <div
-                                            className="flex items-center pl-1 pr-1 h-full pointer-events-none"> {/* pointer-events-none ensures click-through for padding calculation */}
+                                            className="flex items-center pl-1 pr-1 h-full pointer-events-none">
                                             <span
                                                 ref={dateDisplayRef}
                                                 className="text-[12px] text-primary dark:text-primary-light whitespace-nowrap font-medium"
@@ -611,15 +753,30 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                     value={newTaskTitle}
                                     onChange={(e) => setNewTaskTitle(e.target.value)}
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && newTaskTitle.trim()) commitNewTask();
+                                        if (e.key === 'Enter' && newTaskTitle.trim()) {
+                                            isCurrentlyAiMode ? handleAiTaskCommit() : commitNewTask();
+                                        }
+                                        if (e.key === 'Escape') {
+                                            if (isCurrentlyAiMode) {
+                                                setIsAiTaskInputVisible(false);
+                                            } else {
+                                                setNewTaskTitle(''); // Clear input on Escape for regular mode
+                                            }
+                                        }
                                     }}
-                                    placeholder={`Add task to "${newTaskListState}"`}
+                                    placeholder={isCurrentlyAiMode ? `Describe task for AI (e.g., "Plan a team building event next month")` : `Add task to "${newTaskListState}"`}
                                     className={newTaskInputClass}
                                     style={{paddingLeft: `${inputPaddingLeft}px`}}
+                                    disabled={isCurrentlyAiMode && isAiProcessing}
                                 />
 
                                 <div
-                                    className="absolute right-0.5 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-focus-within:opacity-100 transition-opacity duration-150 pointer-events-none group-focus-within:pointer-events-auto">
+                                    className={twMerge(
+                                        "absolute right-0.5 top-1/2 -translate-y-1/2 flex items-center transition-opacity duration-150",
+                                        "opacity-0 group-focus-within:opacity-100 pointer-events-none group-focus-within:pointer-events-auto",
+                                        (isCurrentlyAiMode && isAiProcessing) && "!opacity-50 !pointer-events-none" // Force disable appearance
+                                    )}
+                                >
                                     <DropdownMenu.Root open={isNewTaskMoreOptionsOpen}
                                                        onOpenChange={setIsNewTaskMoreOptionsOpen}>
                                         <DropdownMenu.Trigger asChild>
@@ -627,6 +784,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                                 type="button"
                                                 className="flex items-center justify-center w-7 h-7 rounded-r-base hover:bg-grey-light dark:hover:bg-neutral-600 text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-primary"
                                                 aria-label="More task options"
+                                                disabled={isCurrentlyAiMode && isAiProcessing}
                                             >
                                                 <Icon name="chevron-down" size={16} strokeWidth={1.5}/>
                                             </button>
@@ -638,7 +796,9 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                                 align="end"
                                                 onCloseAutoFocus={(e) => {
                                                     e.preventDefault();
-                                                    newTaskTitleInputRef.current?.focus();
+                                                    if (!(isCurrentlyAiMode && isAiProcessing)) {
+                                                        newTaskTitleInputRef.current?.focus();
+                                                    }
                                                 }}
                                             >
                                                 <div
@@ -733,7 +893,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                 </div>
                             </div>
                         </div>
-                        {/* Inset separator line below the new task input area */}
                         <div className="h-px bg-grey-ultra-light dark:bg-neutral-700/50 mx-4"></div>
                     </div>
                 )}
@@ -741,32 +900,29 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                 <Popover.Root open={isBulkRescheduleOpen} onOpenChange={setIsBulkRescheduleOpen}>
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd} measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
-                        {/* Added p-2 to this scroll container for internal gutter */}
                         <div ref={scrollContainerRef}
                              className="flex-1 overflow-y-auto styled-scrollbar relative p-2 bg-white dark:bg-neutral-800">
                             {isEmpty ? (
                                 <div
-                                    className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-6 text-center pt-10"> {/* px-6 here is fine for empty state content */}
+                                    className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-6 text-center pt-10">
                                     <Icon
                                         name={currentFilterGlobal === 'trash' ? 'trash' : (currentFilterGlobal === 'completed' ? 'check-square' : (isSearching ? 'search' : 'archive'))}
                                         size={32} strokeWidth={1}
                                         className="mb-3 text-grey-light dark:text-neutral-500 opacity-80"/>
                                     <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-300">{emptyStateTitle}</p>
-                                    {showNewTaskInputArea && (
+                                    {(isRegularNewTaskModeAllowed && !isCurrentlyAiMode) && ( // Show prompt only if regular input is relevant
                                         <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">Use
                                             the input bar
                                             above to add a new task.</p>)}
                                 </div>
                             ) : (
-                                <div className="pb-16"> {/* pb-16 for scroll-past last item, good */}
+                                <div className="pb-16">
                                     <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
                                         {isGroupedView ? (<>
                                             {groupOrder.map(groupKey => {
                                                 const groupTasks = (tasksToDisplay as Record<TaskGroupCategory, Task[]>)[groupKey];
                                                 if (groupTasks && groupTasks.length > 0) {
                                                     return (
-                                                        // TaskGroupHeader itself has px-4, which is good.
-                                                        // The tasks rendered by renderTaskGroup will be inside the p-2 of scrollContainerRef
                                                         <div key={groupKey} className="mb-4 last:mb-0">
                                                             <TaskGroupHeader title={groupTitles[groupKey]}
                                                                              groupKey={groupKey}/>
@@ -777,7 +933,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                                 return null;
                                             })}
                                         </>) : (
-                                            // For flat list, pt-0.5 is minimal, tasks will be inside p-2 of scrollContainerRef
                                             <div className="pt-0.5">
                                                 {renderTaskGroup(tasksToDisplay as Task[], 'flat-list')}
                                             </div>
