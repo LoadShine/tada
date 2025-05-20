@@ -179,7 +179,7 @@ const SummaryView: React.FC = () => {
     const [isGenerating, setIsGenerating] = useAtom(isGeneratingSummaryAtom);
     const referencedTasks = useAtomValue(referencedTasksForSummaryAtom);
     const allTasks = useAtomValue(tasksAtom);
-    const [selectedFields, setSelectedFields] = useAtom(summarySelectedFieldsAtom); // Added
+    const [selectedFields, setSelectedFields] = useAtom(summarySelectedFieldsAtom);
 
     const [summaryEditorContent, setSummaryEditorContent] = useState('');
     const debouncedEditorContent = useDebounce(summaryEditorContent, 700);
@@ -192,7 +192,7 @@ const SummaryView: React.FC = () => {
     const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
     const [isListDropdownOpen, setIsListDropdownOpen] = useState(false);
     const [isRefTasksDropdownOpen, setIsRefTasksDropdownOpen] = useState(false);
-    const [isFieldsDropdownOpen, setIsFieldsDropdownOpen] = useState(false); // Added
+    const [isFieldsDropdownOpen, setIsFieldsDropdownOpen] = useState(false);
 
     useEffect(() => {
         setSelectedTaskIds(new Set());
@@ -283,7 +283,7 @@ const SummaryView: React.FC = () => {
         setIsGenerating(true);
         const tasksToSummarize = allTasks.filter(t => selectedTaskIds.has(t.id) && t.list !== 'Trash');
         try {
-            const newSummaryText = await generateAiSummary(tasksToSummarize, selectedFields, fieldLabelsMap); // Modified
+            const newSummaryText = await generateAiSummary(tasksToSummarize, selectedFields, fieldLabelsMap);
             const [periodKey, listKey] = filterKey.split('__');
             const newSummaryEntry: StoredSummary = {
                 id: `summary-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -304,7 +304,7 @@ const SummaryView: React.FC = () => {
         } finally {
             setIsGenerating(false);
         }
-    }, [selectedTaskIds, allTasks, filterKey, setIsGenerating, setStoredSummaries, setCurrentIndex, forceSaveCurrentSummary, selectedFields, fieldLabelsMap]); // selectedFields and fieldLabelsMap added
+    }, [selectedTaskIds, allTasks, filterKey, setIsGenerating, setStoredSummaries, setCurrentIndex, forceSaveCurrentSummary, selectedFields, fieldLabelsMap]);
 
     const handleEditorChange = useCallback((newValue: string) => {
         if (!isInternalEditorUpdate.current) {
@@ -409,13 +409,13 @@ const SummaryView: React.FC = () => {
 
     const tooltipContentClass = "text-[11px] bg-grey-dark dark:bg-neutral-900/95 text-white dark:text-neutral-100 px-2 py-1 rounded-base shadow-md select-none z-[70] data-[state=open]:animate-fadeIn data-[state=closed]:animate-fadeOut";
 
-    const handleFieldSelectionChange = useCallback((fieldId: string) => { // Added
+    const handleFieldSelectionChange = useCallback((fieldId: string) => {
         setSelectedFields(prev =>
             prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]
         );
     }, [setSelectedFields]);
 
-    const summaryFieldItemStyle = (checked?: boolean) => twMerge( // Added styling function for summary field items
+    const summaryFieldItemStyle = (checked?: boolean) => twMerge(
         "relative flex cursor-pointer select-none items-center rounded-base px-3 py-2 text-[13px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-8",
         "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light",
         "dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700",
@@ -504,11 +504,15 @@ const SummaryView: React.FC = () => {
         }, [sortedSubtasks, INITIAL_VISIBLE_SUBTASKS]);
 
         return (<label htmlFor={uniqueId}
-                       className={twMerge("flex flex-col p-2 rounded-base transition-colors duration-150 ease-in-out", isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer", isSelected && !isDisabled ? "bg-primary-light dark:bg-primary-dark/20" : "hover:bg-grey-ultra-light dark:hover:bg-neutral-750")}
+                       className={twMerge(
+                           "flex flex-col p-2 rounded-base transition-colors duration-150 ease-in-out",
+                           isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                           isSelected && !isDisabled ? "bg-grey-ultra-light dark:bg-neutral-700" : "hover:bg-grey-ultra-light dark:hover:bg-neutral-750"
+                       )}
                        onClick={handleLabelClick}>
             <div className="flex items-center"><SelectionCheckboxRadix id={uniqueId} checked={isSelected}
                                                                        onChange={(checkedState) => onSelectionChange(task.id, checkedState)}
-                                                                       aria-label={`Select task: ${task.title || 'Untitled'}`}
+                                                                       aria-label={`Select task: ${task.title || 'Untitled Task'}`}
                                                                        className="mr-2 flex-shrink-0 pointer-events-none"
                                                                        size={16} disabled={isDisabled}/>
                 <div className="flex-1 overflow-hidden"><span
@@ -775,7 +779,7 @@ const SummaryView: React.FC = () => {
                                 </DropdownMenu.Trigger>
                                 <DropdownMenu.Portal>
                                     <DropdownMenu.Content
-                                        className={twMerge(dropdownContentBaseClasses, "min-w-[240px] p-1.5")} // Added p-1.5 to content
+                                        className={twMerge(dropdownContentBaseClasses, "min-w-[240px] p-1.5")}
                                         sideOffset={5} align="end"
                                         onCloseAutoFocus={e => e.preventDefault()}
                                     >
@@ -790,10 +794,10 @@ const SummaryView: React.FC = () => {
                                                     key={field.id}
                                                     className={summaryFieldItemStyle(isSelected)}
                                                     onSelect={(event) => {
-                                                        event.preventDefault(); // Keep menu open for multi-selection
+                                                        event.preventDefault();
                                                         handleFieldSelectionChange(field.id);
                                                     }}
-                                                    textValue={field.label} // For typeahead search in dropdown
+                                                    textValue={field.label}
                                                 >
                                                     <div
                                                         className="w-5 h-5 flex items-center justify-center mr-2 flex-shrink-0">
