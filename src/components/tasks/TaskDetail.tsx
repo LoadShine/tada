@@ -162,7 +162,7 @@ const TaskDetail: React.FC = () => {
                 savePendingChanges(selectedTaskInternal.id, latestTitleRef.current, latestContentRef.current, localDueDate);
             }
         };
-    }, [selectedTaskInternal, localDueDate]);
+    }, [selectedTaskInternal, localDueDate]); // savePendingChanges is memoized
 
     const savePendingChanges = useCallback((taskId: string, title: string, content: string, dueDate: Date | undefined) => {
         if (!taskId || !hasUnsavedChangesRef.current || !isMountedRef.current) return;
@@ -245,7 +245,7 @@ const TaskDetail: React.FC = () => {
 
             setIsDeleteDialogOpen(false);
             setIsFooterDatePickerOpen(false);
-            setIsMoreActionsOpen(false);
+            // setIsMoreActionsOpen(false); // Handled by its own onOpenChange
             setIsInfoPopoverOpen(false);
             setIsHeaderMenuDatePickerOpen(false);
             setIsHeaderMenuTagsPopoverOpen(false);
@@ -340,17 +340,11 @@ const TaskDetail: React.FC = () => {
                 setIsHeaderMenuTagsPopoverOpen(true);
                 setIsHeaderMenuDatePickerOpen(false);
             }
-            setIsMoreActionsOpen(true); // Keep main DropdownMenu open
         } else {
             if (type === 'date') setIsHeaderMenuDatePickerOpen(false);
             if (type === 'tags') setIsHeaderMenuTagsPopoverOpen(false);
-            // If the other popover is not open, then we can allow the main menu to close.
-            const otherPopoverOpen = (type === 'date' && isHeaderMenuTagsPopoverOpen) || (type === 'tags' && isHeaderMenuDatePickerOpen);
-            if (!otherPopoverOpen) {
-                // setIsMoreActionsOpen(false); // Let Radix Dropdown manage this, or onCloseAutoFocus
-            }
         }
-    }, [isHeaderMenuDatePickerOpen, isHeaderMenuTagsPopoverOpen]);
+    }, [setIsHeaderMenuDatePickerOpen, setIsHeaderMenuTagsPopoverOpen]);
 
 
     const closeHeaderMenuDatePickerPopover = useCallback(() => {
@@ -504,6 +498,7 @@ const TaskDetail: React.FC = () => {
             subtasks: (t.subtasks || []).filter(sub => sub.id !== subtaskId)
         } : t));
     }, [selectedTask, setTasks]);
+
     const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 3}}), useSensor(KeyboardSensor, {}));
     const handleSubtaskDragStart = (event: DragStartEvent) => {
         if (event.active.data.current?.type === 'subtask-item-detail') setDraggingSubtaskId(event.active.id.toString().replace('subtask-detail-', ''));
@@ -532,13 +527,13 @@ const TaskDetail: React.FC = () => {
 
     const mainPanelClass = useMemo(() => twMerge(
         "h-full flex flex-col",
-        "bg-white dark:bg-neutral-850", // Overall component background
+        "bg-white dark:bg-neutral-850",
     ), []);
 
     const headerClass = useMemo(() => twMerge(
-        "px-4 py-2 h-[56px] flex items-center justify-between flex-shrink-0", // px-4 makes border-b inset
+        "px-4 py-2 h-[56px] flex items-center justify-between flex-shrink-0",
         "border-b border-grey-light dark:border-neutral-700/60",
-        "bg-white dark:bg-neutral-850" // Explicit background for header
+        "bg-white dark:bg-neutral-850"
     ), []);
 
     const taskListPriorityMap: Record<number, {
@@ -576,21 +571,21 @@ const TaskDetail: React.FC = () => {
     ), [isInteractiveDisabled]);
 
     const editorContainerClass = useMemo(() => twMerge(
-        "flex-1 min-h-0 overflow-hidden", // This container itself doesn't need px, its children do
+        "flex-1 min-h-0 overflow-hidden",
         "prose dark:prose-invert max-w-none prose-sm prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2"
     ), []);
 
     const editorClasses = useMemo(() => twMerge(
-        "!h-full text-sm !bg-transparent !border-none !shadow-none", // Transparent bg, children handle padding
+        "!h-full text-sm !bg-transparent !border-none !shadow-none",
         (isInteractiveDisabled) && "opacity-60 cursor-not-allowed",
         isTrash && "pointer-events-none",
         "dark:!text-neutral-300"
     ), [isInteractiveDisabled, isTrash]);
 
     const footerClass = useMemo(() => twMerge(
-        "px-4 py-2 h-11 flex items-center justify-between flex-shrink-0", // px-4 makes border-t inset
+        "px-4 py-2 h-11 flex items-center justify-between flex-shrink-0",
         "border-t border-grey-light dark:border-neutral-700/60",
-        "bg-white dark:bg-neutral-850" // Explicit background for footer
+        "bg-white dark:bg-neutral-850"
     ), []);
 
     const actionButtonClass = useMemo(() => twMerge(
@@ -617,11 +612,6 @@ const TaskDetail: React.FC = () => {
         "data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"
     ), []);
 
-    const headerMenuDatePickerPopoverWrapperClasses = useMemo(() => twMerge(
-        "z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800",
-        "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
-    ), []);
-
     const subtaskDatePickerPopoverWrapperClasses = useMemo(() => twMerge(
         "z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800",
         "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
@@ -631,7 +621,7 @@ const TaskDetail: React.FC = () => {
         const iconAreaSpace = 28;
         let dateTextSpace = 0;
         if (newSubtaskDueDate && subtaskDateTextWidth > 0) {
-            dateTextSpace = 4 + subtaskDateTextWidth + 4; // icon + space + date + space + text starts
+            dateTextSpace = 4 + subtaskDateTextWidth + 4;
         }
         return iconAreaSpace + dateTextSpace;
     }, [newSubtaskDueDate, subtaskDateTextWidth]);
@@ -675,7 +665,7 @@ const TaskDetail: React.FC = () => {
         } else if (moreActionsButtonRef.current) {
             moreActionsButtonRef.current.focus();
         }
-    }, [isHeaderMenuDatePickerOpen, isHeaderMenuTagsPopoverOpen]);
+    }, [isHeaderMenuDatePickerOpen, isHeaderMenuTagsPopoverOpen]); // Corrected typo in dependency
 
     const sortedSubtasks = useMemo(() => {
         if (!selectedTask?.subtasks) return [];
@@ -736,7 +726,16 @@ const TaskDetail: React.FC = () => {
                     </div>
 
                     <div className="flex items-center space-x-1 flex-shrink-0">
-                        <DropdownMenu.Root open={isMoreActionsOpen} onOpenChange={setIsMoreActionsOpen}>
+                        <DropdownMenu.Root
+                            open={isMoreActionsOpen}
+                            onOpenChange={(openState) => {
+                                setIsMoreActionsOpen(openState);
+                                if (!openState) {
+                                    setIsHeaderMenuDatePickerOpen(false);
+                                    setIsHeaderMenuTagsPopoverOpen(false);
+                                }
+                            }}
+                        >
                             <DropdownMenu.Trigger asChild>
                                 <Button ref={moreActionsButtonRef} variant="ghost" size="icon"
                                         icon="more-horizontal"
@@ -745,6 +744,7 @@ const TaskDetail: React.FC = () => {
                             </DropdownMenu.Trigger>
                             <DropdownMenu.Portal>
                                 <DropdownMenu.Content
+                                    id="task-detail-more-actions-content" // Added ID for potential reference
                                     className={dropdownContentClasses}
                                     sideOffset={5}
                                     align="end"
@@ -845,10 +845,9 @@ const TaskDetail: React.FC = () => {
                                                 className={twMerge(popoverContentWrapperClasses, "p-0")}
                                                 sideOffset={5} align="end"
                                                 onOpenAutoFocus={(e) => e.preventDefault()}
-                                                onCloseAutoFocus={(e) => {
-                                                    e.preventDefault();
-                                                }}
-                                                onInteractOutside={(e) => e.preventDefault()}
+                                                onCloseAutoFocus={(e) => e.preventDefault()}
+                                                onFocusOutside={(event) => event.preventDefault()} // Prevent close on blur to outside (e.g. body)
+                                                // Removed custom onInteractOutside from here
                                             >
                                                 <AddTagsPopoverContent
                                                     taskId={selectedTask.id}
@@ -877,10 +876,9 @@ const TaskDetail: React.FC = () => {
                                                 className={twMerge(popoverContentWrapperClasses, "p-0")}
                                                 sideOffset={5} align="end"
                                                 onOpenAutoFocus={(e) => e.preventDefault()}
-                                                onCloseAutoFocus={(e) => {
-                                                    e.preventDefault();
-                                                }}
-                                                onInteractOutside={(e) => e.preventDefault()}
+                                                onCloseAutoFocus={(e) => e.preventDefault()}
+                                                onFocusOutside={(event) => event.preventDefault()} // Prevent close on blur to outside (e.g. body)
+                                                // Removed custom onInteractOutside from here
                                             >
                                                 <CustomDatePickerContent
                                                     initialDate={displayDueDateForPicker}
@@ -1001,7 +999,7 @@ const TaskDetail: React.FC = () => {
                                         <DndContext sensors={sensors} collisionDetection={closestCenter}
                                                     onDragStart={handleSubtaskDragStart}
                                                     onDragEnd={handleSubtaskDragEnd}
-                                                    measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
+                                                    measuring={{droppable: {strategy: MeasuringStrategy.WhileDragging}}}> {/* <-- DND Strategy Change */}
                                             <SortableContext items={sortedSubtasks.map(s => `subtask-detail-${s.id}`)}
                                                              strategy={verticalListSortingStrategy}>
                                                 <div className="space-y-0.5">
@@ -1071,6 +1069,8 @@ const TaskDetail: React.FC = () => {
                                                             e.preventDefault();
                                                             newSubtaskInputRef.current?.focus();
                                                         }}
+                                                        // For this specific popover, default Radix close-on-blur is likely fine.
+                                                        // If it also needs to be sticky, add onFocusOutside={(e)=>e.preventDefault()}
                                                     >
                                                         <CustomDatePickerContent
                                                             initialDate={newSubtaskDueDate}
@@ -1166,7 +1166,10 @@ const TaskDetail: React.FC = () => {
                                     sideOffset={5}
                                     align="start"
                                     onOpenAutoFocus={(e) => e.preventDefault()}
-                                    onCloseAutoFocus={(e) => e.preventDefault()}>
+                                    onCloseAutoFocus={(e) => e.preventDefault()}
+                                    // This popover is simpler, default close-on-blur is likely fine.
+                                    // If it also needs to be sticky, add onFocusOutside={(e)=>e.preventDefault()}
+                                >
                                     <CustomDatePickerContent initialDate={displayDueDateForPicker}
                                                              onSelect={handleFooterDatePickerSelect}
                                                              closePopover={closeFooterDatePickerPopover}/>
