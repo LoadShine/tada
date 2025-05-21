@@ -158,7 +158,7 @@ const getSummaryMenuRadioItemStyle = (checked?: boolean) => twMerge(
     "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light",
     "dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700",
     checked
-        ? "bg-primary-light text-primary dark:bg-primary-dark/30 dark:text-primary-light"
+        ? "bg-grey-ultra-light text-primary dark:bg-primary-dark/30 dark:text-primary-light"
         : "text-grey-dark data-[highlighted]:text-grey-dark dark:text-neutral-300 dark:data-[highlighted]:text-neutral-100",
     "data-[disabled]:opacity-50"
 );
