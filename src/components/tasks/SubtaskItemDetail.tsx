@@ -217,9 +217,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                         )}
                     </div>
                     <div
-                        className={twMerge("flex items-center flex-shrink-0 ml-2 space-x-1 transition-opacity duration-150", isEditingTitle ? "opacity-100" : "opacity-0 group-hover/subtask-detail:opacity-100 focus-within:opacity-100")}>
-                        {/* Render date control area if due date exists OR if it's not disabled (to allow setting one)
-                            AND parent task is not completed/trashed */}
+                        className="flex items-center flex-shrink-0 ml-2 space-x-1 transition-opacity duration-150">
                         {(!isDisabledByParent && (subtask.dueDate || !subtask.completed)) && (
                             <Popover.Root open={isDatePickerOpen} onOpenChange={(open) => {
                                 setIsDatePickerOpen(open);
@@ -228,7 +226,6 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                                 <Tooltip.Provider><Tooltip.Root delayDuration={300} open={isDateTooltipOpen}
                                                                 onOpenChange={setIsDateTooltipOpen}>
                                     <Tooltip.Trigger asChild>
-                                        {/* Popover Trigger is disabled if subtask is completed OR parent is disabled/trashed */}
                                         <Popover.Trigger asChild disabled={isDisabled}>
                                             <button
                                                 type="button"
