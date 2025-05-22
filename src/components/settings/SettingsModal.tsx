@@ -15,15 +15,25 @@ interface SettingsItem {
     icon: IconName;
 }
 
-const settingsSections: SettingsItem[] = [{id: 'account', label: 'Account', icon: 'user'}, {
-    id: 'appearance',
-    label: 'Appearance',
-    icon: 'settings'
-}, {id: 'premium', label: 'Premium', icon: 'crown'}, {
-    id: 'notifications',
-    label: 'Notifications',
-    icon: 'bell'
-}, {id: 'integrations', label: 'Integrations', icon: 'share'}, {id: 'about', label: 'About', icon: 'info'},];
+const settingsSections: SettingsItem[] = [
+    {
+        id: 'account',
+        label: 'Account',
+        icon: 'user'
+    }, {
+        id: 'appearance',
+        label: 'Appearance',
+        icon: 'settings'
+    }, {
+        id: 'premium',
+        label: 'Premium',
+        icon: 'crown'
+    }, {
+        id: 'about',
+        label: 'About',
+        icon: 'info'
+    },
+];
 const SettingsRow: React.FC<{
     label: string,
     value?: React.ReactNode,
@@ -127,10 +137,6 @@ const SettingsModal: React.FC = () => {
                 return <PlaceholderSettings title="Appearance" icon="settings"/>;
             case 'premium':
                 return <PlaceholderSettings title="Premium" icon="crown"/>;
-            case 'notifications':
-                return <PlaceholderSettings title="Notifications" icon="bell"/>;
-            case 'integrations':
-                return <PlaceholderSettings title="Integrations" icon="share"/>;
             case 'about':
                 return <PlaceholderSettings title="About" icon="info"/>;
             default:
@@ -159,7 +165,7 @@ const SettingsModal: React.FC = () => {
                             {settingsSections.map((item) => (
                                 <button key={item.id} onClick={() => handleTabClick(item.id)}
                                         className={twMerge('flex items-center w-full px-3 py-2 h-8 text-[13px] rounded-base transition-colors duration-200 ease-in-out',
-                                            selectedTab === item.id ? 'bg-primary-light text-primary font-normal' : 'text-grey-dark font-light hover:bg-grey-light hover:text-grey-dark',
+                                            selectedTab === item.id ? 'bg-grey-light text-primary font-normal' : 'text-grey-dark font-light hover:bg-grey-light hover:text-grey-dark',
                                             'focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-grey-ultra-light'
                                         )} aria-current={selectedTab === item.id ? 'page' : undefined}>
                                     {/* Icon opacity increased for better visibility */}
