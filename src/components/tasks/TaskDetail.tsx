@@ -1,7 +1,12 @@
-// src/components/tasks/TaskDetail.tsx
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useAtom, useAtomValue, useSetAtom} from 'jotai';
-import {selectedTaskAtom, selectedTaskIdAtom, tasksAtom, userListNamesAtom,} from '@/store/atoms';
+import {
+    preferencesSettingsAtom,
+    selectedTaskAtom,
+    selectedTaskIdAtom,
+    tasksAtom,
+    userListNamesAtom,
+} from '@/store/atoms'; // Added preferencesSettingsAtom
 import Icon from '../common/Icon';
 import Button from '../common/Button';
 import CodeMirrorEditor, {CodeMirrorEditorRef} from '../common/CodeMirrorEditor';
@@ -113,6 +118,7 @@ const TaskDetail: React.FC = () => {
     const setTasks = useSetAtom(tasksAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
     const userLists = useAtomValue(userListNamesAtom);
+    const preferences = useAtomValue(preferencesSettingsAtom); // Added for confirmDeletions
 
     const [localTitle, setLocalTitle] = useState('');
     const [localContent, setLocalContent] = useState('');
@@ -378,7 +384,6 @@ const TaskDetail: React.FC = () => {
         updateTask({completionPercentage: nextPercentage});
     }, [selectedTask, updateTask]);
 
-    const openDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(true), []);
     const closeDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(false), []);
 
     const confirmDelete = useCallback(() => {
@@ -386,7 +391,17 @@ const TaskDetail: React.FC = () => {
         updateTask({list: 'Trash', completionPercentage: null});
         setSelectedTaskId(null);
         closeDeleteConfirm();
+        setIsMoreActionsOpen(false); // Ensure dropdown closes if delete happens via modal
     }, [selectedTask, updateTask, setSelectedTaskId, closeDeleteConfirm]);
+
+    const handleDeleteTask = useCallback(() => {
+        if (preferences.confirmDeletions) {
+            setIsDeleteDialogOpen(true);
+        } else {
+            confirmDelete();
+        }
+    }, [preferences.confirmDeletions, confirmDelete, setIsDeleteDialogOpen]);
+
 
     const handleRestore = useCallback(() => {
         if (!selectedTask || selectedTask.list !== 'Trash') return;
@@ -677,21 +692,6 @@ const TaskDetail: React.FC = () => {
     if (!selectedTask) return null;
 
     const headerMenuSubPopoverSideOffset = 5;
-    // Estimate the width of the main dropdown menu (min-w-[180px] + padding)
-    // This could be dynamically calculated for perfect alignment, but a static value is simpler for now.
-    // 180px (min-width) + 2*4px (p-1 for content) = 188px. We want it to appear on the left of this.
-    // The popover itself has its own width (tags: 250px, date: 300px).
-    // alignOffset will shift it left relative to its default "end" alignment.
-    // To align the right edge of the popover with the left edge of the main menu:
-    // alignOffset for Tags: -(Width of Tags Popover + main menu width + desired gap)
-    // alignOffset for Date: -(Width of Date Popover + main menu width + desired gap)
-    // A simpler approach might be to align to "start" of the *trigger item* then shift it significantly left.
-    // Let's try side="left" with align="start" or "center" relative to the trigger and sideOffset to push it out.
-
-    // Assuming the trigger item (RadixMenuItem) is roughly the same width as the main dropdown menu.
-    // If main dropdown is 180px, popover is 250px (tags)
-    // side="left", align="end" (align popover's right edge with trigger's left edge)
-    // sideOffset would push it further left.
 
     return (
         <>
@@ -984,8 +984,7 @@ const TaskDetail: React.FC = () => {
                                             Restore Task
                                         </RadixMenuItem>
                                     ) : (
-                                        <RadixMenuItem icon="trash" onSelect={openDeleteConfirm}
-                                                       isDanger>
+                                        <RadixMenuItem icon="trash" onSelect={handleDeleteTask} isDanger>
                                             Move to Trash
                                         </RadixMenuItem>
                                     )}

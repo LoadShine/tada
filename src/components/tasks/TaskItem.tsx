@@ -1,9 +1,8 @@
-// src/components/tasks/TaskItem.tsx
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Task, TaskGroupCategory} from '@/types';
 import {formatDate, formatRelativeDate, isOverdue, isValid, safeParseDate} from '@/utils/dateUtils';
-import {useAtom, useSetAtom} from 'jotai';
-import {searchTermAtom, selectedTaskIdAtom, tasksAtom, userListNamesAtom} from '@/store/atoms';
+import {useAtom, useAtomValue, useSetAtom} from 'jotai'; // Changed from jotai/index to just jotai
+import {preferencesSettingsAtom, searchTermAtom, selectedTaskIdAtom, tasksAtom, userListNamesAtom} from '@/store/atoms'; // Added preferencesSettingsAtom
 import Icon from '../common/Icon';
 import {twMerge} from 'tailwind-merge';
 import {clsx} from 'clsx';
@@ -18,7 +17,6 @@ import {CustomDatePickerContent} from "@/components/common/CustomDatePickerPopov
 import {useTaskItemMenu} from '@/context/TaskItemMenuContext';
 import ConfirmDeleteModalRadix from "@/components/common/ConfirmDeleteModal";
 import * as Tooltip from '@radix-ui/react-tooltip';
-import {useAtomValue} from "jotai/index";
 import AddTagsPopoverContent from "@/components/common/AddTagsPopoverContent";
 
 export const ProgressIndicator: React.FC<{
@@ -217,6 +215,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     const setTasks = useSetAtom(tasksAtom);
     const [searchTerm] = useAtom(searchTermAtom);
     const userLists = useAtomValue(userListNamesAtom);
+    const preferences = useAtomValue(preferencesSettingsAtom); // Added for confirmDeletions
     const {openItemId, setOpenItemId} = useTaskItemMenu();
 
     const isSelected = useMemo(() => selectedTaskId === task.id, [selectedTaskId, task.id]);
@@ -348,11 +347,9 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             // If main menu closes, ensure its sub-popovers also close
             setIsDatePickerPopoverOpen(false);
             setIsTagsPopoverOpen(false);
-            if (openItemId === task.id) { // Only clear if this item was the one with open menu
-                // setOpenItemId(null); // This is handled by the useEffect for all popovers closing
-            }
+            // No need to call setOpenItemId(null) here, useEffect will handle it if all popovers are closed
         }
-    }, [task.id, setOpenItemId, openItemId]);
+    }, [task.id, setOpenItemId]);
 
 
     const handleMenuSubPopoverOpenChange = useCallback((open: boolean, type: 'date' | 'tags') => {
@@ -428,7 +425,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         const newTaskData: Omit<Task, 'groupCategory' | 'completed'> = {
             id: newParentTaskId,
             title: `${task.title} (Copy)`,
-            order: task.order + 0.01,
+            dueDate: task.dueDate, // <-- FIXED: Inherit dueDate
+            order: task.order + 0.01, // A small increment to place it after the original
             createdAt: now,
             updatedAt: now,
             completionPercentage: task.completionPercentage === 100 ? null : task.completionPercentage,
@@ -443,19 +441,17 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         setTasks(prev => {
             const index = prev.findIndex(t => t.id === task.id);
             const newTasks = [...prev];
-            if (index !== -1) {
-                newTasks.splice(index + 1, 0, newTaskData as Task);
-            } else {
-                newTasks.push(newTaskData as Task);
-            }
-            return newTasks.sort((a, b) => a.order - b.order);
+            // Insert after the original task, or at the end if original not found (shouldn't happen)
+            newTasks.splice(index !== -1 ? index + 1 : prev.length, 0, newTaskData as Task);
+            // Re-sort or re-evaluate order if your list relies on strict ordering for display
+            // For now, simple insertion and relying on existing sort logic elsewhere.
+            return newTasks.sort((a, b) => a.order - b.order); // Ensure list remains sorted by order
         });
-        setSelectedTaskId(newParentTaskId);
+        setSelectedTaskId(newParentTaskId); // Optionally select the new task
         setIsMoreActionsOpen(false); // Close main menu
         setOpenItemId(null);
     }, [task, setTasks, setSelectedTaskId, setOpenItemId]);
 
-    const openDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(true), []);
     const closeDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(false), []);
     const confirmDeleteTask = useCallback(() => {
         updateTask({list: 'Trash', completionPercentage: null});
@@ -464,6 +460,15 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         setIsMoreActionsOpen(false); // Close main menu
         setOpenItemId(null);
     }, [updateTask, isSelected, setSelectedTaskId, closeDeleteConfirm, setOpenItemId]);
+
+    const handleDeleteTask = useCallback(() => {
+        if (preferences.confirmDeletions) {
+            setIsDeleteDialogOpen(true);
+        } else {
+            confirmDeleteTask();
+        }
+    }, [preferences.confirmDeletions, confirmDeleteTask, setIsDeleteDialogOpen]);
+
 
     const dueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
     const isValidDueDate = useMemo(() => dueDate && isValid(dueDate), [dueDate]);
@@ -999,7 +1004,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                     </TaskItemRadixMenuItem>
 
                                     {!isTrashItem && (
-                                        <TaskItemRadixMenuItem icon="trash" onSelect={openDeleteConfirm} isDanger>
+                                        <TaskItemRadixMenuItem icon="trash" onSelect={handleDeleteTask} isDanger>
                                             Move to Trash
                                         </TaskItemRadixMenuItem>
                                     )}
