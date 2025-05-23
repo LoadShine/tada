@@ -676,6 +676,23 @@ const TaskDetail: React.FC = () => {
 
     if (!selectedTask) return null;
 
+    const headerMenuSubPopoverSideOffset = 5;
+    // Estimate the width of the main dropdown menu (min-w-[180px] + padding)
+    // This could be dynamically calculated for perfect alignment, but a static value is simpler for now.
+    // 180px (min-width) + 2*4px (p-1 for content) = 188px. We want it to appear on the left of this.
+    // The popover itself has its own width (tags: 250px, date: 300px).
+    // alignOffset will shift it left relative to its default "end" alignment.
+    // To align the right edge of the popover with the left edge of the main menu:
+    // alignOffset for Tags: -(Width of Tags Popover + main menu width + desired gap)
+    // alignOffset for Date: -(Width of Date Popover + main menu width + desired gap)
+    // A simpler approach might be to align to "start" of the *trigger item* then shift it significantly left.
+    // Let's try side="left" with align="start" or "center" relative to the trigger and sideOffset to push it out.
+
+    // Assuming the trigger item (RadixMenuItem) is roughly the same width as the main dropdown menu.
+    // If main dropdown is 180px, popover is 250px (tags)
+    // side="left", align="end" (align popover's right edge with trigger's left edge)
+    // sideOffset would push it further left.
+
     return (
         <>
             <div className={mainPanelClass}>
@@ -832,13 +849,14 @@ const TaskDetail: React.FC = () => {
                                     <DropdownMenu.Separator
                                         className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
 
+                                    {/* Add Tags Popover */}
                                     <Popover.Root modal={false} open={isHeaderMenuTagsPopoverOpen}
                                                   onOpenChange={(open) => handleHeaderMenuPopoverOpenChange(open, 'tags')}>
                                         <Popover.Trigger asChild>
                                             <RadixMenuItem
                                                 icon="tag"
                                                 onSelect={(event) => {
-                                                    event.preventDefault(); // Important to prevent menu from closing
+                                                    event.preventDefault();
                                                     handleHeaderMenuPopoverOpenChange(true, 'tags');
                                                 }}
                                                 disabled={isInteractiveDisabled}
@@ -847,10 +865,12 @@ const TaskDetail: React.FC = () => {
                                         <Popover.Portal>
                                             <Popover.Content
                                                 className={twMerge(popoverContentWrapperClasses, "p-0")}
-                                                sideOffset={5} align="end"
+                                                side="left" // Open to the left of the trigger item
+                                                align="start" // Align top edge of popover with top edge of trigger
+                                                sideOffset={headerMenuSubPopoverSideOffset} // Small gap
                                                 onOpenAutoFocus={(e) => e.preventDefault()}
-                                                onCloseAutoFocus={(e) => e.preventDefault()} // Prevent focus shift when this popover closes
-                                                onFocusOutside={(event) => event.preventDefault()} // Keep popover open on outside focus if not interactive
+                                                onCloseAutoFocus={(e) => e.preventDefault()}
+                                                onFocusOutside={(event) => event.preventDefault()}
                                             >
                                                 <AddTagsPopoverContent
                                                     taskId={selectedTask.id}
@@ -862,13 +882,14 @@ const TaskDetail: React.FC = () => {
                                         </Popover.Portal>
                                     </Popover.Root>
 
+                                    {/* Set Due Date Popover */}
                                     <Popover.Root modal={false} open={isHeaderMenuDatePickerOpen}
                                                   onOpenChange={(open) => handleHeaderMenuPopoverOpenChange(open, 'date')}>
                                         <Popover.Trigger asChild>
                                             <RadixMenuItem
                                                 icon="calendar-plus"
                                                 onSelect={(event) => {
-                                                    event.preventDefault(); // Important to prevent menu from closing
+                                                    event.preventDefault();
                                                     handleHeaderMenuPopoverOpenChange(true, 'date');
                                                 }}
                                                 disabled={isInteractiveDisabled}
@@ -877,15 +898,17 @@ const TaskDetail: React.FC = () => {
                                         <Popover.Portal>
                                             <Popover.Content
                                                 className={twMerge(popoverContentWrapperClasses, "p-0")}
-                                                sideOffset={5} align="end"
+                                                side="left" // Open to the left of the trigger item
+                                                align="start" // Align top edge of popover with top edge of trigger
+                                                sideOffset={headerMenuSubPopoverSideOffset} // Small gap
                                                 onOpenAutoFocus={(e) => e.preventDefault()}
-                                                onCloseAutoFocus={(e) => e.preventDefault()} // Prevent focus shift when this popover closes
-                                                onFocusOutside={(event) => event.preventDefault()} // Keep popover open on outside focus if not interactive
+                                                onCloseAutoFocus={(e) => e.preventDefault()}
+                                                onFocusOutside={(event) => event.preventDefault()}
                                             >
                                                 <CustomDatePickerContent
                                                     initialDate={displayDueDateForPicker}
                                                     onSelect={(date) => {
-                                                        handleFooterDatePickerSelect(date); // Reuses existing logic
+                                                        handleFooterDatePickerSelect(date);
                                                         closeHeaderMenuDatePickerPopover();
                                                     }}
                                                     closePopover={closeHeaderMenuDatePickerPopover}
@@ -894,11 +917,12 @@ const TaskDetail: React.FC = () => {
                                         </Popover.Portal>
                                     </Popover.Root>
 
+                                    {/* Move to List Submenu */}
                                     <DropdownMenu.Sub>
                                         <DropdownMenu.SubTrigger
                                             className={getSubTriggerClasses()}
                                             disabled={isTrash}
-                                            onPointerEnter={() => {
+                                            onPointerEnter={() => { // Explicitly close other popovers on hover/focus
                                                 if (isHeaderMenuDatePickerOpen) handleHeaderMenuPopoverOpenChange(false, 'date');
                                                 if (isHeaderMenuTagsPopoverOpen) handleHeaderMenuPopoverOpenChange(false, 'tags');
                                             }}
