@@ -13,7 +13,6 @@ import {
     referencedTasksForSummaryAtom,
     relevantStoredSummariesAtom,
     storedSummariesAtom,
-    StoredSummary,
     SUMMARY_FIELD_OPTIONS,
     summaryListFilterAtom,
     summaryPeriodFilterAtom,
@@ -26,7 +25,7 @@ import {
 import Button from '../common/Button';
 import Icon from '../common/Icon';
 import CodeMirrorEditor, {CodeMirrorEditorRef} from '../common/CodeMirrorEditor';
-import {Task} from '@/types';
+import {StoredSummary, Task} from '@/types';
 import {
     format,
     formatDateTime,
