@@ -3,79 +3,74 @@ import {DarkModeOption, DefaultNewTaskDueDate} from "@/store/atoms.ts";
 
 export interface User {
     id: string;
-    name: string;
-    email: string;
-    phone?: string; // Optional phone number
-    avatar?: string; // Optional avatar URL
-    isPremium: boolean; // Premium status flag
+    username: string;
+    email: string | null;
+    phone?: string | null;
+    avatarUrl?: string | null;
+    isPremium: boolean;
 }
 
 export interface Subtask {
     id: string;
-    parentId: string;
+    parentId: string; // Corresponds to task_id on backend
     title: string;
     completed: boolean;
     completedAt: number | null;
     dueDate?: number | null;
-    order: number; // Fractional index for sorting within the parent
+    order: number;
     createdAt: number;
     updatedAt: number;
 }
 
 export interface Task {
-    id: string;
+    id:string;
     title: string;
     completed: boolean;
     completedAt: number | null;
-    completionPercentage: number | null; // For parent task progress
-    dueDate?: number | null; // Store as timestamp (milliseconds since epoch) or null
-    list: string; // List name (e.g., 'Inbox', 'Work', 'Trash')
-    content?: string; // Optional Markdown content for notes
-    order: number; // Fractional index for sorting
-    createdAt: number; // Timestamp when created
-    updatedAt: number; // Timestamp when last updated
-    tags?: string[]; // Optional array of tag strings
-    priority?: number | null; // Priority level (e.g., 1-4) or null
-    groupCategory: TaskGroupCategory; // Derived category for grouping (non-optional)
-    subtasks?: Subtask[]; // Array of subtasks
+    completePercentage: number | null;
+    dueDate?: number | null;
+    listName: string; // Renamed from 'list' to match backend alias
+    content?: string;
+    order: number;
+    createdAt: number;
+    updatedAt: number;
+    tags?: string[];
+    priority?: number | null;
+    groupCategory: TaskGroupCategory; // This is a derived, client-side only property
+    subtasks?: Subtask[];
 }
 
-// Defines the possible filter strings used for routing and state
 export type TaskFilter =
     | 'all'
     | 'today'
     | 'next7days'
     | 'completed'
     | 'trash'
-    | `list-${string}` // e.g., 'list-Inbox', 'list-Work'
-    | `tag-${string}`; // e.g., 'tag-urgent', 'tag-review'
+    | `list-${string}`
+    | `tag-${string}`;
 
-// Defines the possible tabs in the settings modal
 export type SettingsTab =
     | 'account'
     | 'appearance'
-    | 'preferences' // Added
+    | 'preferences'
     | 'premium'
-    // | 'notifications' // Removed for now, can be re-added
-    // | 'integrations' // Removed for now, can be re-added
     | 'about';
 
-// Defines the categories used for grouping tasks in the 'All Tasks' view
 export type TaskGroupCategory =
     | 'overdue'
     | 'today'
     | 'next7days'
-    | 'later' // Due date is beyond 7 days
-    | 'nodate'; // No due date assigned or task is completed/trashed
+    | 'later'
+    | 'nodate';
 
 export interface StoredSummary {
     id: string;
     createdAt: number;
+    updatedAt: number;
     periodKey: string;
     listKey: string;
     taskIds: string[];
     summaryText: string;
-    updatedAt?: number;
 }
 
 export interface AppearanceSettings {

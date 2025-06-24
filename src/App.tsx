@@ -24,34 +24,34 @@ import {
     tasksErrorAtom,
     tasksLoadingAtom,
     userDefinedListsAtom,
-    userDefinedListsErrorAtom,
-    userDefinedListsLoadingAtom,
+    defaultAppearanceSettingsForApi,
+    defaultPreferencesSettingsForApi,
 } from './store/atoms';
 import {startOfDay} from "@/utils/dateUtils";
 import {APP_THEMES} from "@/config/themes";
 import Icon from "@/components/common/Icon";
-// Lazy load pages
+
 const MainPage = lazy(() => import('./pages/MainPage'));
 const SummaryPage = lazy(() => import('./pages/SummaryPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage')); // Added
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));   // Added
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 
 const AppLoadingSpinner: React.FC = () => (
-    <div
-        className="fixed inset-0 flex items-center justify-center bg-white/80 dark:bg-grey-deep/80 z-[20000] backdrop-blur-sm">
+    <div className="fixed inset-0 flex items-center justify-center bg-white/80 dark:bg-grey-deep/80 z-[20000] backdrop-blur-sm">
         <Icon name="loader" size={32} className="text-primary dark:text-primary-light animate-spin" strokeWidth={1.5}/>
     </div>
 );
 
-// SettingsApplicator, RouteChangeHandler, ListPageWrapper, TagPageWrapper, DailyTaskRefresh, GlobalStatusDisplay remain the same
 const SettingsApplicator: React.FC = () => {
-    const appearance = useAtomValue(appearanceSettingsAtom);
-    const appearanceLoading = useAtomValue(appearanceSettingsLoadingAtom);
+    const loadedAppearance = useAtomValue(appearanceSettingsAtom);
+    const loadedPreferences = useAtomValue(preferencesSettingsAtom);
+
+    const appearance = loadedAppearance ?? defaultAppearanceSettingsForApi();
+    const preferences = loadedPreferences ?? defaultPreferencesSettingsForApi();
+
     useEffect(() => {
-        if (appearanceLoading || !appearance) return;
         const applyDarkMode = (mode: 'light' | 'dark' | 'system') => {
             if (mode === 'system') {
                 const systemPrefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
@@ -61,43 +61,51 @@ const SettingsApplicator: React.FC = () => {
             }
         };
         applyDarkMode(appearance.darkMode);
+
         let mediaQueryListener: ((this: MediaQueryList, ev: MediaQueryListEvent) => any) | undefined;
         if (appearance.darkMode === 'system') {
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             mediaQueryListener = () => applyDarkMode('system');
             mediaQuery.addEventListener('change', mediaQueryListener);
         }
+
         const selectedTheme = APP_THEMES.find(theme => theme.id === appearance.themeId) || APP_THEMES[0];
         document.documentElement.style.setProperty('--color-primary-hsl', selectedTheme.colors.primary);
         document.documentElement.style.setProperty('--color-primary-light-hsl', selectedTheme.colors.light);
         document.documentElement.style.setProperty('--color-primary-dark-hsl', selectedTheme.colors.dark);
+
+        // --- 核心修复逻辑在这里 ---
         if (appearance.backgroundImageUrl && appearance.backgroundImageUrl !== 'none') {
             document.body.style.backgroundImage = `url('${appearance.backgroundImageUrl}')`;
             document.body.style.backgroundSize = 'cover';
             document.body.style.backgroundPosition = 'center';
             document.body.style.backgroundRepeat = 'no-repeat';
             document.body.style.backgroundAttachment = 'fixed';
+
+            // 仅在有背景图时应用滤镜
+            const filterValue = `brightness(${appearance.backgroundImageBrightness}%) ${appearance.backgroundImageBlur > 0 ? `blur(${appearance.backgroundImageBlur}px)` : ''}`;
+            document.body.style.filter = filterValue.trim();
         } else {
+            // 没有背景图时，移除背景和滤镜
             document.body.style.backgroundImage = 'none';
+            document.body.style.filter = 'none';
         }
-        const filterValue = `brightness(${appearance.backgroundImageBrightness}%) ${appearance.backgroundImageBlur > 0 ? `blur(${appearance.backgroundImageBlur}px)` : ''}`;
-        document.body.style.filter = filterValue.trim() || 'none';
+
         return () => {
-            const currentAppearance = appearance;
-            if (mediaQueryListener && currentAppearance && currentAppearance.darkMode === 'system') {
+            if (mediaQueryListener && appearance && appearance.darkMode === 'system') {
                 window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', mediaQueryListener);
             }
         };
-    }, [appearance, appearanceLoading]);
-    const preferences = useAtomValue(preferencesSettingsAtom);
-    const preferencesLoading = useAtomValue(preferencesSettingsLoadingAtom);
+    }, [appearance]);
+
     useEffect(() => {
-        if (preferencesLoading || !preferences) return;
         document.documentElement.lang = preferences.language;
-    }, [preferences, preferencesLoading]);
+    }, [preferences]);
+
     return null;
 };
 SettingsApplicator.displayName = 'SettingsApplicator';
+
 const RouteChangeHandler: React.FC = () => {
     const [currentFilterInternal, setCurrentFilter] = useAtom(currentFilterAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
@@ -119,6 +127,7 @@ const RouteChangeHandler: React.FC = () => {
     return <Outlet/>;
 };
 RouteChangeHandler.displayName = 'RouteChangeHandler';
+
 const ListPageWrapper: React.FC = () => {
     const {listName} = useParams<{ listName: string }>();
     const decodedListName = listName ? decodeURIComponent(listName) : 'Inbox';
@@ -127,6 +136,7 @@ const ListPageWrapper: React.FC = () => {
     return <MainPage title={decodedListName} filter={filter}/>;
 };
 ListPageWrapper.displayName = 'ListPageWrapper';
+
 const TagPageWrapper: React.FC = () => {
     const {tagName} = useParams<{ tagName: string }>();
     const decodedTagName = tagName ? decodeURIComponent(tagName) : '';
@@ -135,6 +145,7 @@ const TagPageWrapper: React.FC = () => {
     return <MainPage title={`#${decodedTagName}`} filter={filter}/>;
 };
 TagPageWrapper.displayName = 'TagPageWrapper';
+
 const DailyTaskRefresh: React.FC = () => {
     const setTasks = useSetAtom(tasksAtom);
     const lastCheckDateRef = useRef<string>(startOfDay(new Date()).toISOString().split('T')[0]);
@@ -158,30 +169,35 @@ const DailyTaskRefresh: React.FC = () => {
     return null;
 };
 DailyTaskRefresh.displayName = 'DailyTaskRefresh';
+
 const GlobalStatusDisplay: React.FC = () => {
     const isLoadingCurrentUser = useAtomValue(currentUserLoadingAtom);
     const isLoadingTasks = useAtomValue(tasksLoadingAtom);
     const isLoadingAppearance = useAtomValue(appearanceSettingsLoadingAtom);
     const isLoadingPreferences = useAtomValue(preferencesSettingsLoadingAtom);
-    const isLoadingLists = useAtomValue(userDefinedListsLoadingAtom);
+    // userDefinedLists is derived, so no loading state
     const isLoadingSummaries = useAtomValue(storedSummariesLoadingAtom);
     const errorCurrentUser = useAtomValue(currentUserErrorAtom);
     const errorTasks = useAtomValue(tasksErrorAtom);
     const errorAppearance = useAtomValue(appearanceSettingsErrorAtom);
     const errorPreferences = useAtomValue(preferencesSettingsErrorAtom);
-    const errorLists = useAtomValue(userDefinedListsErrorAtom);
+    // No error state for derived userDefinedLists
     const errorSummaries = useAtomValue(storedSummariesErrorAtom);
-    const anyLoading = isLoadingCurrentUser || isLoadingTasks || isLoadingAppearance || isLoadingPreferences || isLoadingLists || isLoadingSummaries;
-    const errors = [errorCurrentUser, errorTasks, errorAppearance, errorPreferences, errorLists, errorSummaries].filter(Boolean);
+    const anyLoading = isLoadingCurrentUser || isLoadingTasks || isLoadingAppearance || isLoadingPreferences || isLoadingSummaries;
+    const errors = [errorCurrentUser, errorTasks, errorAppearance, errorPreferences, errorSummaries].filter(Boolean);
     if (!anyLoading && errors.length === 0) return null;
-    return (<div
-        className="fixed bottom-4 right-4 z-[10000] p-3 bg-neutral-800 text-white rounded-lg shadow-xl text-xs space-y-1 max-w-sm"> {anyLoading && (
-        <div className="flex items-center"><Icon name="loader" size={14} className="animate-spin mr-2"/>Loading
-            application data...</div>)} {errors.map((error, index) => (
-        <div key={index} className="flex items-start text-red-400"><Icon name="alert-circle" size={14}
-                                                                         className="mr-2 mt-px flex-shrink-0"/><span>{error}</span>
-        </div>))} </div>);
+    return (
+        <div className="fixed bottom-4 right-4 z-[10000] p-3 bg-neutral-800 text-white rounded-lg shadow-xl text-xs space-y-1 max-w-sm">
+            {anyLoading && (
+                <div className="flex items-center"><Icon name="loader" size={14} className="animate-spin mr-2"/>Loading application data...</div>
+            )}
+            {errors.map((error, index) => (
+                <div key={index} className="flex items-start text-red-400"><Icon name="alert-circle" size={14} className="mr-2 mt-px flex-shrink-0"/><span>{error}</span></div>
+            ))}
+        </div>
+    );
 };
+GlobalStatusDisplay.displayName = 'GlobalStatusDisplay';
 
 
 const ProtectedRoute: React.FC = () => {
@@ -198,9 +214,10 @@ const ProtectedRoute: React.FC = () => {
     }
     return <Outlet/>;
 };
-
+ProtectedRoute.displayName = 'ProtectedRoute';
 
 const App: React.FC = () => {
+    // These calls ensure the atoms are initialized and start fetching data on app load if necessary.
     useAtomValue(currentUserAtom);
     useAtomValue(tasksAtom);
     useAtomValue(appearanceSettingsAtom);
@@ -219,7 +236,7 @@ const App: React.FC = () => {
                     <Route path="/login" element={<LoginPage/>}/>
                     <Route path="/register" element={<RegisterPage/>}/>
                     <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
-                    <Route path="/reset-password/:token" element={<ResetPasswordPage/>}/> {/* For unique reset links */}
+                    {/* The /reset-password/:token route is removed as the flow is now handled by forgot-password */}
 
                     <Route element={<ProtectedRoute/>}>
                         <Route path="/" element={<MainLayout/>}>
@@ -236,12 +253,10 @@ const App: React.FC = () => {
                                 <Route path="list/" element={<Navigate to="/list/Inbox" replace/>}/>
                                 <Route path="tag/:tagName" element={<TagPageWrapper/>}/>
                                 <Route path="tag/" element={<Navigate to="/all" replace/>}/>
-                                <Route path="*"
-                                       element={<Navigate to="/all" replace/>}/> {/* Default for authenticated users */}
+                                <Route path="*" element={<Navigate to="/all" replace/>}/>
                             </Route>
                         </Route>
                     </Route>
-                    {/* A final catch-all if no other routes match, useful if not already handled by protected logic */}
                     <Route path="*" element={<Navigate to="/login" replace/>}/>
                 </Routes>
             </Suspense>

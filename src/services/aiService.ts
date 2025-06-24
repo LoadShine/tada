@@ -1,31 +1,25 @@
 // src/services/aiService.ts
-import {Subtask, Task} from '@/types';
-import { apiStreamAiSummary, apiAnalyzeTaskInput } from './apiService'; // Added apiAnalyzeTaskInput
+import { Task } from '@/types';
+import { apiStreamSummary, apiSuggestTask } from './apiService';
+import { AiTaskSuggestion } from "@/types/api";
 
-// Interface for AI analysis of a single task input
-export interface AiTaskAnalysis {
-    title: string; // The AI might refine the title
-    content: string;
-    subtasks: Array<
-        Omit<Subtask, 'id' | 'parentId' | 'createdAt' | 'updatedAt' | 'completedAt' | 'completed' | 'order' | 'dueDate'> &
-        { title: string; dueDate?: number | Date | string | null }
-    >;
-    tags: string[];
-    priority?: number | null; // AI might suggest a priority
-    dueDate?: number | null; // AI might parse a due date
-}
+// This type now directly reflects the structure returned by the AI suggestion endpoint
+export type AiTaskAnalysis = AiTaskSuggestion['suggestion'];
 
-// Function for analyzing a single task input sentence (Request-Response)
-export const analyzeTaskInputWithAI = async (sentence: string, currentTaskDueDate: Date | null): Promise<AiTaskAnalysis> => {
-    // This will call the backend endpoint dedicated to analyzing a single task string
-    return apiAnalyzeTaskInput(sentence, currentTaskDueDate);
+// Updated to call the real API for suggesting a task from a prompt
+export const analyzeTaskInputWithAI = async (prompt: string): Promise<AiTaskAnalysis> => {
+    const response = await apiSuggestTask(prompt);
+    if (response.success && response.data) {
+        return response.data.suggestion;
+    }
+    throw new Error(response.error || 'Failed to analyze task with AI');
 };
 
-// Function for streaming an AI-generated summary (SSE) - Remains for SummaryView
+// Updated to call the real API for streaming a summary
 export const streamAiGeneratedSummary = (
-    tasks: Task[],
-    selectedFields: string[],
-    fieldLabelsMap: { [id: string]: string }
+    taskIds: string[],
+    periodKey: string,
+    listKey: string
 ): EventSource => {
-    return apiStreamAiSummary(tasks, selectedFields, fieldLabelsMap);
+    return apiStreamSummary(taskIds, periodKey, listKey);
 };

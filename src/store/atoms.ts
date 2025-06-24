@@ -13,10 +13,7 @@ import {
 } from '@/types';
 import {
     addDays,
-    endOfDay,
-    endOfMonth,
-    endOfWeek,
-    isAfter,
+    endOfDay, endOfMonth, endOfWeek, isAfter,
     isBefore,
     isSameDay,
     isValid,
@@ -29,161 +26,19 @@ import {
     subMonths,
     subWeeks
 } from '@/utils/dateUtils';
-import {APP_THEMES, PREDEFINED_BACKGROUND_IMAGES} from "@/config/themes";
-import * as service from '@/services/apiService'; // Renamed to avoid conflict
+import * as service from '@/services/apiService';
+import {TaskCreate, TaskUpdate} from "@/types/api";
 
-// --- Helper type for async data atoms ---
-// TData is the type of the data itself (e.g., Task[], AppearanceSettings)
-// TUpdate is the type of the update argument for the write function (e.g., Task[] | ((prev: Task[]) => Task[]))
-type AsyncDataAtom<TData, TUpdate = TData | ((prev: TData) => TData) | typeof RESET> = WritableAtom<
-    TData | null, // Read value can be null during loading/error
-    [TUpdate],    // Write value (update argument)
-    Promise<void> // Write result (async)
+type AsyncDataAtom<TData, TUpdate = TData | ((prev: TData | null) => TData) | typeof RESET> = WritableAtom<
+    TData | null,
+    [TUpdate],
+    Promise<void>
 >;
 
-
-// --- Initial Data Structure Simulators (Exported for apiService simulation) ---
-const createInitialRawTasks = (): Omit<Task, 'groupCategory' | 'completed' | 'completedAt'>[] => [
-    {
-        id: '11',
-        title: '体检预约',
-        completionPercentage: 60,
-        dueDate: subDays(startOfDay(new Date()), 2).setHours(10, 0, 0, 0),
-        list: 'Personal',
-        content: 'Called the clinic, waiting for callback.\n\n- Follow up on Friday if no response.\n- Check fasting requirements.',
-        order: 7,
-        createdAt: subDays(new Date(), 4).getTime(),
-        updatedAt: subDays(new Date(), 1).getTime(),
-        priority: 1,
-        tags: ['health', 'appointment'],
-        subtasks: [
-            {
-                id: 'sub11-1',
-                parentId: '11',
-                title: 'Call Dr. Smith\'s office',
-                completed: true,
-                completedAt: subDays(new Date(), 3).getTime(),
-                order: 0,
-                createdAt: subDays(new Date(), 4).getTime(),
-                updatedAt: subDays(new Date(), 3).getTime(),
-                dueDate: subDays(startOfDay(new Date()), 3).setHours(9, 0, 0, 0),
-            },
-            {
-                id: 'sub11-2',
-                parentId: '11',
-                title: 'Confirm insurance coverage for annual check-up and blood work',
-                completed: false,
-                completedAt: null,
-                order: 1,
-                createdAt: subDays(new Date(), 4).getTime(),
-                updatedAt: subDays(new Date(), 1).getTime(),
-                dueDate: subDays(startOfDay(new Date()), 2).setHours(14, 0, 0, 0),
-            },
-        ]
-    },
-    {
-        id: '1',
-        title: '施工组织设计评审表',
-        completionPercentage: 60,
-        dueDate: new Date().setHours(14, 0, 0, 0),
-        list: 'Work',
-        content: 'Review the construction plan details. Focus on safety section.\n\nKey points to check:\n- Emergency evacuation plan\n- PPE requirements\n- Hazard identification',
-        order: 0,
-        createdAt: subDays(new Date(), 3).getTime(),
-        updatedAt: subDays(new Date(), 3).getTime(),
-        priority: 1,
-        tags: ['review', 'urgent'],
-        subtasks: [
-            {
-                id: 'sub1-1',
-                parentId: '1',
-                title: 'Check safety compliance checklist (Sections A-C)',
-                completed: true,
-                completedAt: new Date().getTime(),
-                order: 0,
-                createdAt: subDays(new Date(), 1).getTime(),
-                updatedAt: new Date().getTime(),
-                dueDate: new Date().setHours(10, 0, 0, 0)
-            },
-            {
-                id: 'sub1-2',
-                parentId: '1',
-                title: 'Verify material specifications against approved list',
-                completed: false,
-                completedAt: null,
-                order: 1,
-                createdAt: subDays(new Date(), 1).getTime(),
-                updatedAt: subDays(new Date(), 1).getTime(),
-                dueDate: new Date().setHours(11, 30, 0, 0)
-            },
-            {
-                id: 'sub1-3',
-                parentId: '1',
-                title: 'Write feedback summary for presentation',
-                completed: false,
-                completedAt: null,
-                order: 2,
-                createdAt: subDays(new Date(), 1).getTime(),
-                updatedAt: subDays(new Date(), 1).getTime(),
-            },
-        ]
-    },
-    {
-        id: '8',
-        title: '准备明天会议材料 (已完成)',
-        completionPercentage: 100,
-        dueDate: new Date().setHours(18, 0, 0, 0),
-        list: 'Work',
-        content: 'Finalize slides, add Q&A section. Print 5 copies.',
-        order: 1,
-        createdAt: subDays(new Date(), 1).getTime(),
-        updatedAt: new Date().getTime(),
-        priority: 1,
-        tags: ['meeting', 'preparation'],
-    },
-    {
-        id: '2',
-        title: '开发框架讲解',
-        completionPercentage: 30,
-        dueDate: addDays(startOfDay(new Date()), 1).setHours(10, 30, 0, 0),
-        list: 'Work',
-        content: 'Prepare slides for the team meeting. Outline done.\n\nInclude:\n- Core concepts\n- Best practices\n- Common pitfalls',
-        order: 2,
-        createdAt: subDays(new Date(), 1).getTime(),
-        updatedAt: new Date().getTime(),
-        priority: 2,
-        tags: ['development', 'presentation', 'tada', 'tjweather', 'atmos']
-    },
-    {
-        id: '10',
-        title: '研究 CodeMirror Themes',
-        completionPercentage: 60,
-        dueDate: null,
-        list: 'Dev',
-        content: 'Found a few potential themes, need to test compatibility with current setup.\n\nConsiderations:\n- Light/Dark mode support\n- Readability\n- Performance',
-        order: 5,
-        createdAt: subDays(new Date(), 2).getTime(),
-        updatedAt: new Date().getTime(),
-        priority: 3,
-        tags: ['codemirror', 'frontend', 'research']
-    },
-    {
-        id: '13',
-        title: '欢迎加入Tada',
-        completionPercentage: 0,
-        dueDate: null,
-        list: 'Inbox',
-        content: 'Try creating your first task! You can add subtasks too, and set precise due dates with times.',
-        order: 12,
-        createdAt: subDays(new Date(), 1).getTime(),
-        updatedAt: subDays(new Date(), 1).getTime(),
-        priority: null,
-        tags: ['welcome']
-    },
-];
-
+// --- Helper Functions ---
 export const getTaskGroupCategory = (task: Omit<Task, 'groupCategory'> | Task): TaskGroupCategory => {
-    if (task.completed || task.list === 'Trash') {
+    // This is a client-side only concept for UI grouping
+    if (task.completed || task.listName === 'Trash') {
         return 'nodate';
     }
     if (task.dueDate != null) {
@@ -201,54 +56,15 @@ export const getTaskGroupCategory = (task: Omit<Task, 'groupCategory'> | Task): 
     return 'nodate';
 };
 
-export const initialTasksForApi = (): Task[] => { // Renamed from initialTasks to initialTasksForApi for clarity
-    return createInitialRawTasks()
-        .map(taskRaw => {
-            const now = Date.now();
-            const percentage = taskRaw.completionPercentage === 0 ? null : taskRaw.completionPercentage ?? null;
-            const isCompleted = percentage === 100;
-            let dueDateTimestamp: number | null = null;
-            if (taskRaw.dueDate !== null && taskRaw.dueDate !== undefined) {
-                const parsedDate = safeParseDate(taskRaw.dueDate);
-                if (parsedDate && isValid(parsedDate)) dueDateTimestamp = parsedDate.getTime();
-            }
-            const subtasks = (taskRaw.subtasks || []).map(subRaw => ({
-                ...subRaw,
-                createdAt: subRaw.createdAt || now,
-                updatedAt: subRaw.updatedAt || now,
-                completedAt: subRaw.completed ? (subRaw.completedAt || subRaw.updatedAt || now) : null,
-                dueDate: subRaw.dueDate ? safeParseDate(subRaw.dueDate)?.getTime() ?? null : null,
-            })).sort((a, b) => a.order - b.order);
-
-            const taskPartial: Omit<Task, 'groupCategory'> = {
-                id: taskRaw.id, title: taskRaw.title, completed: isCompleted, completionPercentage: percentage,
-                dueDate: dueDateTimestamp, list: taskRaw.list, content: taskRaw.content ?? '', order: taskRaw.order,
-                createdAt: taskRaw.createdAt, updatedAt: taskRaw.updatedAt ?? now,
-                completedAt: isCompleted ? (taskRaw.updatedAt ?? now) : null,
-                tags: taskRaw.tags?.map(tag => tag.trim()).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).sort() ?? [],
-                priority: taskRaw.priority ?? null, subtasks: subtasks,
-            };
-            return {...taskPartial, groupCategory: getTaskGroupCategory(taskPartial)};
-        })
-        .sort((a, b) => (a.order - b.order) || (a.createdAt - b.createdAt));
-};
+// --- Default Settings for Fallback ---
 export const defaultAppearanceSettingsForApi = (): AppearanceSettings => ({
-    themeId: APP_THEMES[0].id,
-    darkMode: 'system',
-    backgroundImageUrl: PREDEFINED_BACKGROUND_IMAGES[0].url,
-    backgroundImageBlur: 0,
-    backgroundImageBrightness: 100,
-    interfaceDensity: 'default',
+    themeId: 'default-coral', darkMode: 'system', backgroundImageUrl: 'none', backgroundImageBlur: 0,
+    backgroundImageBrightness: 100, interfaceDensity: 'default',
 });
 export const defaultPreferencesSettingsForApi = (): PreferencesSettings => ({
-    language: 'en',
-    defaultNewTaskDueDate: null,
-    defaultNewTaskPriority: null,
-    defaultNewTaskList: 'Inbox',
-    confirmDeletions: true,
+    language: 'en', defaultNewTaskDueDate: null, defaultNewTaskPriority: null,
+    defaultNewTaskList: 'Inbox', confirmDeletions: true,
 });
-export const initialUserListsForApi = (): string[] => ['Work', 'Planning', 'Dev', 'Personal'];
-
 
 // --- User & Auth Atoms ---
 const baseCurrentUserAtom = atom<User | null>(null);
@@ -258,221 +74,189 @@ export const currentUserErrorAtom = atom<string | null>(null);
 export const currentUserAtom: AsyncDataAtom<User, User | null | typeof RESET | 'logout' | undefined> = atom(
     (get) => get(baseCurrentUserAtom),
     async (get, set, update) => {
-        if (update === 'logout') {
-            set(currentUserLoadingAtom, true);
-            await service.apiLogout();
-            set(baseCurrentUserAtom, null);
-            set(currentUserLoadingAtom, false);
-            // Clear other user-specific persisted data by resetting their atoms
+        const resetAllUserData = () => {
             set(tasksAtom, RESET);
             set(appearanceSettingsAtom, RESET);
             set(preferencesSettingsAtom, RESET);
-            set(userDefinedListsAtom, RESET);
             set(storedSummariesAtom, RESET);
-            // summarySelectedFieldsAtom might also need reset if user-specific
-            // set(summarySelectedFieldsAtom, RESET);
+            set(baseCurrentUserAtom, null);
+        };
+
+        if (update === 'logout') {
+            set(currentUserLoadingAtom, true);
+            await service.apiLogout();
+            resetAllUserData();
+            set(currentUserLoadingAtom, false);
             return;
         }
-        if (update === RESET || update === undefined) { // Initial load or explicit reset
+
+        if (update === RESET || update === undefined) {
             set(currentUserLoadingAtom, true);
             set(currentUserErrorAtom, null);
-            try {
-                const {success, user, error} = await service.apiFetchCurrentUser();
-                if (success && user) {
-                    set(baseCurrentUserAtom, user);
-                } else {
-                    set(baseCurrentUserAtom, null);
-                    if (error) set(currentUserErrorAtom, error);
-                }
-            } catch (e: any) {
-                set(currentUserErrorAtom, e.message || 'Failed to fetch user');
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                set(currentUserLoadingAtom, false);
                 set(baseCurrentUserAtom, null);
+                return;
+            }
+
+            try {
+                const user = await service.apiFetchCurrentUser();
+                set(baseCurrentUserAtom, user);
+                // After fetching user, trigger fetch for other data
+                set(tasksAtom, RESET);
+                set(appearanceSettingsAtom, RESET);
+                set(preferencesSettingsAtom, RESET);
+                set(storedSummariesAtom, RESET);
+            } catch (e: any) {
+                set(currentUserErrorAtom, e.message || 'Not authenticated');
+                resetAllUserData();
+                // If token is invalid, log out
+                if (e.message.includes('403') || e.message.includes('401')) {
+                    await service.apiLogout();
+                }
             } finally {
                 set(currentUserLoadingAtom, false);
             }
             return;
         }
-        // If update is a User object (e.g., from login or profile update response)
+
         if (update !== null && typeof update === 'object' && 'id' in update) {
             set(baseCurrentUserAtom, update as User);
-            // Persisting the user object itself usually happens at login/profile update,
-            // not by directly setting this atom unless that's the intended flow.
-        } else if (update === null) { // Explicitly setting to null (e.g. after a failed auth action)
+        } else if (update === null) {
             set(baseCurrentUserAtom, null);
         }
     }
 );
 currentUserAtom.onMount = (setSelf) => {
-    setSelf(undefined); // Trigger initial fetch
+    setSelf(undefined);
 };
 
-
 // --- Task Atoms ---
-const baseTasksDataAtom = atom<Task[] | null>(null); // Can be null initially
+const baseTasksDataAtom = atom<Task[] | null>(null);
 export const tasksLoadingAtom = atom<boolean>(true);
 export const tasksErrorAtom = atom<string | null>(null);
 
-export const tasksAtom: AsyncDataAtom<Task[], Task[] | ((prev: Task[]) => Task[]) | typeof RESET> = atom(
-    (get) => get(baseTasksDataAtom), // Getter returns Task[] | null
+const findTaskChanges = (prevTasks: Task[], nextTasks: Task[]) => {
+    const prevMap = new Map(prevTasks.map(t => [t.id, t]));
+    const nextMap = new Map(nextTasks.map(t => [t.id, t]));
+
+    const created: Task[] = [];
+    const updated: {id: string, changes: TaskUpdate}[] = [];
+    const deleted: string[] = [];
+
+    // Detect created and updated
+    for (const nextTask of nextTasks) {
+        const prevTask = prevMap.get(nextTask.id);
+        if (!prevTask) {
+            if (!nextTask.id.startsWith('task-')) { // Ignore local-only tasks if they still exist somehow
+                created.push(nextTask);
+            }
+        } else {
+            let changes: TaskUpdate = {};
+            if(nextTask.title !== prevTask.title) changes.title = nextTask.title;
+            if(nextTask.content !== prevTask.content) changes.content = nextTask.content;
+            if(nextTask.completed !== prevTask.completed) changes.completed = nextTask.completed;
+            if(nextTask.completePercentage !== prevTask.completePercentage) changes.completePercentage = nextTask.completePercentage;
+            if(nextTask.dueDate !== prevTask.dueDate) changes.dueDate = nextTask.dueDate ? new Date(nextTask.dueDate).toISOString() : null;
+            if(nextTask.priority !== prevTask.priority) changes.priority = nextTask.priority;
+            if(nextTask.listName !== prevTask.listName) changes.listName = nextTask.listName;
+            if(nextTask.order !== prevTask.order) changes.order = nextTask.order;
+            if(JSON.stringify(nextTask.tags?.sort()) !== JSON.stringify(prevTask.tags?.sort())) changes.tags = nextTask.tags;
+
+            if (Object.keys(changes).length > 0) {
+                updated.push({ id: nextTask.id, changes });
+            }
+        }
+    }
+
+    // Detect deleted
+    for (const prevTask of prevTasks) {
+        if (!nextMap.has(prevTask.id)) {
+            deleted.push(prevTask.id);
+        }
+    }
+
+    return { created, updated, deleted };
+};
+
+export const tasksAtom: AsyncDataAtom<Task[]> = atom(
+    (get) => get(baseTasksDataAtom),
     async (get, set, update) => {
+        const currentUser = get(currentUserAtom);
         if (update === RESET) {
+            if (!currentUser) {
+                set(baseTasksDataAtom, []);
+                set(tasksLoadingAtom, false);
+                return;
+            }
             set(tasksLoadingAtom, true);
             set(tasksErrorAtom, null);
             try {
                 const fetchedTasks = await service.apiFetchTasks();
-                set(baseTasksDataAtom, fetchedTasks);
+                const tasksWithCategory = fetchedTasks.map(t => ({...t, groupCategory: getTaskGroupCategory(t)}));
+                set(baseTasksDataAtom, tasksWithCategory.sort((a,b) => (a.order ?? 0) - (b.order ?? 0)));
             } catch (e: any) {
                 set(tasksErrorAtom, e.message || 'Failed to fetch tasks');
-                set(baseTasksDataAtom, []); // Fallback to empty array on fetch error
+                set(baseTasksDataAtom, []);
             } finally {
                 set(tasksLoadingAtom, false);
             }
             return;
         }
 
-        const previousTasks = get(baseTasksDataAtom) ?? []; // Handle null case for previousTasks
-        const nextTasksRaw = typeof update === 'function' ? (update as (prev: Task[]) => Task[])(previousTasks) : update;
-        const now = Date.now();
+        if (!currentUser) return;
 
-        const nextTasksProcessed = nextTasksRaw.map(task => {
-            const previousTaskState = previousTasks.find(p => p.id === task.id);
-            let updatedTask = {...task};
+        const previousTasks = get(baseTasksDataAtom) ?? [];
+        const nextTasksUnprocessed = typeof update === 'function' ? (update as (prev: Task[] | null) => Task[])(previousTasks) : update;
 
-            if (updatedTask.subtasks) {
-                updatedTask.subtasks = updatedTask.subtasks.map(sub => {
-                    const prevSub = previousTaskState?.subtasks?.find(ps => ps.id === sub.id);
-                    let subChanged = !prevSub ||
-                        sub.title !== prevSub.title ||
-                        sub.completed !== prevSub.completed ||
-                        sub.dueDate !== prevSub.dueDate ||
-                        sub.order !== prevSub.order;
-                    return {
-                        ...sub,
-                        parentId: updatedTask.id,
-                        createdAt: sub.createdAt || now,
-                        updatedAt: subChanged ? now : (sub.updatedAt || now),
-                        completedAt: sub.completed ? (sub.completedAt || (subChanged ? now : sub.updatedAt) || now) : null,
-                    };
-                }).sort((a, b) => a.order - b.order);
-            } else {
-                updatedTask.subtasks = [];
-            }
+        const nextTasksWithCategory = nextTasksUnprocessed.map(task => ({
+            ...task,
+            groupCategory: getTaskGroupCategory(task),
+        }));
 
-            if (updatedTask.list !== 'Trash') {
-                const allSubtasksCompleted = updatedTask.subtasks.length > 0 && updatedTask.subtasks.every(s => s.completed);
-                const anySubtaskIncomplete = updatedTask.subtasks.some(s => !s.completed);
+        set(baseTasksDataAtom, nextTasksWithCategory);
 
-                if (allSubtasksCompleted) {
-                    if (!updatedTask.completed || updatedTask.completionPercentage !== 100) {
-                        updatedTask.completed = true;
-                        updatedTask.completionPercentage = 100;
-                        updatedTask.completedAt = updatedTask.completedAt || now;
-                    }
-                } else if (anySubtaskIncomplete) {
-                    if (updatedTask.completed && updatedTask.completionPercentage === 100) {
-                        updatedTask.completed = false;
-                        updatedTask.completionPercentage = null;
-                        updatedTask.completedAt = null;
-                    }
-                }
-                if (updatedTask.completed && updatedTask.completionPercentage === 100) {
-                    updatedTask.subtasks = updatedTask.subtasks.map(s => s.completed ? s : {
-                        ...s,
-                        completed: true,
-                        completedAt: s.completedAt || now,
-                        updatedAt: now
-                    });
-                }
-            }
+        // Optimistically create new tasks with temporary local IDs
+        const newLocalTasks = nextTasksWithCategory.filter(t => t.id.startsWith('task-'));
+        const existingTasks = nextTasksWithCategory.filter(t => !t.id.startsWith('task-'));
 
-            let currentPercentage = updatedTask.completionPercentage ?? null;
-            let isCompleted = updatedTask.completed;
-
-            if (updatedTask.list === 'Trash') {
-                currentPercentage = null;
-                isCompleted = false;
-            } else {
-                if (previousTaskState && updatedTask.completionPercentage !== previousTaskState.completionPercentage && updatedTask.completionPercentage !== undefined) {
-                    currentPercentage = updatedTask.completionPercentage === 0 ? null : updatedTask.completionPercentage;
-                    isCompleted = currentPercentage === 100;
-                } else if (updatedTask.completed !== undefined && updatedTask.completed !== previousTaskState?.completed) {
-                    isCompleted = updatedTask.completed;
-                    const prevPercentage = previousTaskState?.completionPercentage;
-                    currentPercentage = isCompleted ? 100 : (prevPercentage === 100 ? null : (prevPercentage ?? null));
-                }
-                if (currentPercentage === 100 && !isCompleted) isCompleted = true;
-                else if (currentPercentage !== 100 && isCompleted) currentPercentage = 100;
-            }
-
-            const newCompletedAt = isCompleted ? (updatedTask.completedAt ?? previousTaskState?.completedAt ?? updatedTask.updatedAt ?? now) : null;
-
-            const validatedTask: Omit<Task, 'groupCategory'> = {
-                ...updatedTask,
-                content: updatedTask.content ?? '',
-                tags: updatedTask.tags?.map(tag => tag.trim()).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).sort() ?? [],
-                priority: updatedTask.priority ?? null,
-                completionPercentage: currentPercentage,
-                completed: isCompleted,
-                completedAt: newCompletedAt,
-                updatedAt: updatedTask.updatedAt ?? (previousTaskState?.updatedAt ?? updatedTask.createdAt),
-                subtasks: updatedTask.subtasks,
+        // Handle creations first to get real IDs
+        const creationPromises = newLocalTasks.map(async (taskToCreate) => {
+            const createPayload: TaskCreate = {
+                title: taskToCreate.title, content: taskToCreate.content, listName: taskToCreate.listName,
+                priority: taskToCreate.priority, tags: taskToCreate.tags,
+                dueDate: taskToCreate.dueDate ? new Date(taskToCreate.dueDate).toISOString() : null,
+                order: taskToCreate.order, completed: taskToCreate.completed, completePercentage: taskToCreate.completePercentage ?? 0,
             };
-
-            const newCategory = getTaskGroupCategory(validatedTask);
-            const finalTask = {...validatedTask, groupCategory: newCategory};
-
-            let changed = false;
-            if (!previousTaskState) {
-                changed = true;
-            } else {
-                const relevantFields: (keyof Task)[] = ['title', 'completionPercentage', 'completed', 'dueDate', 'list', 'content', 'order', 'priority', 'groupCategory'];
-                for (const field of relevantFields) {
-                    if (JSON.stringify(finalTask[field]) !== JSON.stringify(previousTaskState[field])) {
-                        changed = true;
-                        break;
-                    }
-                }
-                if (!changed && JSON.stringify(finalTask.tags?.sort()) !== JSON.stringify(previousTaskState.tags?.sort())) changed = true;
-                if (!changed) {
-                    const prevSubs = previousTaskState.subtasks || [];
-                    const finalSubs = finalTask.subtasks || [];
-                    if (prevSubs.length !== finalSubs.length) {
-                        changed = true;
-                    } else {
-                        for (let i = 0; i < finalSubs.length; i++) {
-                            if (JSON.stringify(finalSubs[i]) !== JSON.stringify(prevSubs[i])) {
-                                changed = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            return changed ? {...finalTask, updatedAt: now} : {...finalTask, updatedAt: previousTaskState!.updatedAt};
+            return service.apiCreateTask(createPayload);
         });
 
-        set(baseTasksDataAtom, nextTasksProcessed); // Optimistic update
-
         try {
-            const response = await service.apiUpdateTasks(nextTasksProcessed);
-            if (response.success && response.tasks) {
-                // set(baseTasksDataAtom, response.tasks); // Update with potentially server-modified tasks
-            } else {
-                console.error('[TasksAtom] Backend update failed:', response.error);
-                set(baseTasksDataAtom, previousTasks); // Revert
-                set(tasksErrorAtom, response.error || 'Failed to update tasks on server');
-            }
+            const createdTasks = await Promise.all(creationPromises);
+            const finalTaskList = [...existingTasks, ...createdTasks.map(t => ({...t, groupCategory: getTaskGroupCategory(t)}))];
+
+            // Now diff the server-acknowledged state
+            const { updated, deleted } = findTaskChanges(previousTasks, finalTaskList);
+
+            const updatePromises = updated.map(({ id, changes }) => service.apiUpdateTask(id, changes));
+            const deletePromises = deleted.map(id => service.apiDeleteTask(id));
+
+            await Promise.all([...updatePromises, ...deletePromises]);
+
+            // Re-fetch to ensure consistency after all operations
+            set(tasksAtom, RESET);
+
         } catch (e: any) {
-            console.error('[TasksAtom] API call failed:', e);
+            console.error('[TasksAtom] Backend update failed, reverting:', e);
+            set(tasksErrorAtom, e.message || 'Failed to sync tasks with server.');
             set(baseTasksDataAtom, previousTasks);
-            set(tasksErrorAtom, e.message || 'API call failed during task update');
         }
     }
 );
 tasksAtom.onMount = (setSelf) => {
-    setSelf(RESET); // Trigger initial fetch
+    setSelf(RESET);
 };
-
 
 // --- UI State Atoms ---
 export const selectedTaskIdAtom = atom<string | null>(null);
@@ -492,12 +276,18 @@ export const appearanceSettingsErrorAtom = atom<string | null>(null);
 export const appearanceSettingsAtom: AsyncDataAtom<AppearanceSettings> = atom(
     (get) => get(baseAppearanceSettingsAtom),
     async (get, set, newSettingsParam) => {
+        const currentUser = get(currentUserAtom);
         if (newSettingsParam === RESET) {
+            if (!currentUser) {
+                set(baseAppearanceSettingsAtom, defaultAppearanceSettingsForApi());
+                set(appearanceSettingsLoadingAtom, false);
+                return;
+            }
             set(appearanceSettingsLoadingAtom, true);
             set(appearanceSettingsErrorAtom, null);
             try {
-                const fetched = await service.apiFetchAppearanceSettings();
-                set(baseAppearanceSettingsAtom, fetched);
+                const settings = await service.apiFetchSettings();
+                set(baseAppearanceSettingsAtom, settings.appearance);
             } catch (e: any) {
                 set(appearanceSettingsErrorAtom, e.message || 'Failed to load appearance settings');
                 set(baseAppearanceSettingsAtom, defaultAppearanceSettingsForApi());
@@ -506,32 +296,20 @@ export const appearanceSettingsAtom: AsyncDataAtom<AppearanceSettings> = atom(
             }
             return;
         }
+        if (!currentUser) return;
         const currentSettings = get(baseAppearanceSettingsAtom) ?? defaultAppearanceSettingsForApi();
         const updatedSettings = typeof newSettingsParam === 'function' ? (newSettingsParam as (prev: AppearanceSettings) => AppearanceSettings)(currentSettings) : newSettingsParam;
-
         set(baseAppearanceSettingsAtom, updatedSettings);
         try {
-            const {
-                success,
-                settings: savedSettings,
-                error
-            } = await service.apiUpdateAppearanceSettings(updatedSettings);
-            if (!success) {
-                set(baseAppearanceSettingsAtom, currentSettings);
-                set(appearanceSettingsErrorAtom, error || 'Failed to save appearance settings');
-            } else if (savedSettings) {
-                set(baseAppearanceSettingsAtom, savedSettings); // Update with server response if different
-            }
+            const savedSettings = await service.apiUpdateAppearanceSettings(updatedSettings);
+            set(baseAppearanceSettingsAtom, savedSettings);
         } catch (e: any) {
             set(baseAppearanceSettingsAtom, currentSettings);
             set(appearanceSettingsErrorAtom, e.message || 'API error saving appearance settings');
         }
     }
 );
-appearanceSettingsAtom.onMount = (setSelf) => {
-    setSelf(RESET);
-};
-
+appearanceSettingsAtom.onMount = (setSelf) => { setSelf(RESET); };
 
 export type DefaultNewTaskDueDate = null | 'today' | 'tomorrow';
 
@@ -542,12 +320,18 @@ export const preferencesSettingsErrorAtom = atom<string | null>(null);
 export const preferencesSettingsAtom: AsyncDataAtom<PreferencesSettings> = atom(
     (get) => get(basePreferencesSettingsAtom),
     async (get, set, newSettingsParam) => {
+        const currentUser = get(currentUserAtom);
         if (newSettingsParam === RESET) {
+            if (!currentUser) {
+                set(basePreferencesSettingsAtom, defaultPreferencesSettingsForApi());
+                set(preferencesSettingsLoadingAtom, false);
+                return;
+            }
             set(preferencesSettingsLoadingAtom, true);
             set(preferencesSettingsErrorAtom, null);
             try {
-                const fetched = await service.apiFetchPreferencesSettings();
-                set(basePreferencesSettingsAtom, fetched);
+                const settings = await service.apiFetchSettings();
+                set(basePreferencesSettingsAtom, settings.preferences);
             } catch (e: any) {
                 set(preferencesSettingsErrorAtom, e.message || 'Failed to load preferences');
                 set(basePreferencesSettingsAtom, defaultPreferencesSettingsForApi());
@@ -556,95 +340,36 @@ export const preferencesSettingsAtom: AsyncDataAtom<PreferencesSettings> = atom(
             }
             return;
         }
+        if (!currentUser) return;
         const currentSettings = get(basePreferencesSettingsAtom) ?? defaultPreferencesSettingsForApi();
         const updatedSettings = typeof newSettingsParam === 'function' ? (newSettingsParam as (prev: PreferencesSettings) => PreferencesSettings)(currentSettings) : newSettingsParam;
-
         set(basePreferencesSettingsAtom, updatedSettings);
         try {
-            const {
-                success,
-                settings: savedSettings,
-                error
-            } = await service.apiUpdatePreferencesSettings(updatedSettings);
-            if (!success) {
-                set(basePreferencesSettingsAtom, currentSettings);
-                set(preferencesSettingsErrorAtom, error || 'Failed to save preferences');
-            } else if (savedSettings) {
-                set(basePreferencesSettingsAtom, savedSettings);
-            }
+            const savedSettings = await service.apiUpdatePreferencesSettings(updatedSettings);
+            set(basePreferencesSettingsAtom, savedSettings);
         } catch (e: any) {
             set(basePreferencesSettingsAtom, currentSettings);
             set(preferencesSettingsErrorAtom, e.message || 'API error saving preferences');
         }
     }
 );
-preferencesSettingsAtom.onMount = (setSelf) => {
-    setSelf(RESET);
-};
+preferencesSettingsAtom.onMount = (setSelf) => { setSelf(RESET); };
 
-
-export type PremiumSettings = {
-    tier: 'free' | 'pro';
-    subscribedUntil: number | null;
-};
-export const premiumSettingsAtom = atom(
-    (get): PremiumSettings => {
-        const user = get(currentUserAtom);
-        if (user?.isPremium) {
-            const subEndDate = user.id === '1' ? addDays(new Date(), 365).getTime() : null; // Example logic
-            return {tier: 'pro', subscribedUntil: subEndDate};
-        }
-        return {tier: 'free', subscribedUntil: null};
-    }
-);
-
+export type PremiumSettings = { tier: 'free' | 'pro'; subscribedUntil: number | null; };
+export const premiumSettingsAtom = atom((get): PremiumSettings => {
+    const user = get(currentUserAtom);
+    return user?.isPremium ? { tier: 'pro', subscribedUntil: null } : { tier: 'free', subscribedUntil: null };
+});
 
 // --- User Lists ---
-const baseUserDefinedListsAtom = atom<string[] | null>(null);
-export const userDefinedListsLoadingAtom = atom<boolean>(true);
-export const userDefinedListsErrorAtom = atom<string | null>(null);
+export const userDefinedListsAtom = atom<string[]>((get) => {
+    const tasks = get(tasksAtom) ?? [];
+    const listsFromTasks = new Set<string>();
+    tasks.forEach(task => { if (task.listName && task.listName !== 'Inbox' && task.listName !== 'Trash') { listsFromTasks.add(task.listName); } });
+    return Array.from(listsFromTasks).sort();
+});
 
-export const userDefinedListsAtom: AsyncDataAtom<string[], string[] | ((prev: string[]) => string[]) | typeof RESET> = atom(
-    (get) => get(baseUserDefinedListsAtom),
-    async (get, set, newListsParam) => {
-        if (newListsParam === RESET) {
-            set(userDefinedListsLoadingAtom, true);
-            set(userDefinedListsErrorAtom, null);
-            try {
-                const fetched = await service.apiFetchUserLists();
-                set(baseUserDefinedListsAtom, fetched);
-            } catch (e: any) {
-                set(userDefinedListsErrorAtom, e.message || 'Failed to load user lists');
-                set(baseUserDefinedListsAtom, initialUserListsForApi());
-            } finally {
-                set(userDefinedListsLoadingAtom, false);
-            }
-            return;
-        }
-        const currentLists = get(baseUserDefinedListsAtom) ?? initialUserListsForApi();
-        const updatedLists = typeof newListsParam === 'function' ? (newListsParam as (prev: string[]) => string[])(currentLists) : newListsParam;
-
-        set(baseUserDefinedListsAtom, updatedLists);
-        try {
-            const {success, lists: savedLists, error} = await service.apiUpdateUserLists(updatedLists);
-            if (!success) {
-                set(baseUserDefinedListsAtom, currentLists);
-                set(userDefinedListsErrorAtom, error || 'Failed to save user lists');
-            } else if (savedLists) {
-                set(baseUserDefinedListsAtom, savedLists);
-            }
-        } catch (e: any) {
-            set(baseUserDefinedListsAtom, currentLists);
-            set(userDefinedListsErrorAtom, e.message || 'API error saving user lists');
-        }
-    }
-);
-userDefinedListsAtom.onMount = (setSelf) => {
-    setSelf(RESET);
-};
-
-
-// --- Summary View Atoms ---
+// --- Summary Atoms ---
 export type SummaryPeriodKey = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth';
 export type SummaryPeriodOption = SummaryPeriodKey | { start: number; end: number };
 export const summaryPeriodFilterAtom = atom<SummaryPeriodOption>('thisWeek');
@@ -658,11 +383,17 @@ export const storedSummariesErrorAtom = atom<string | null>(null);
 export const storedSummariesAtom: AsyncDataAtom<StoredSummary[], StoredSummary[] | ((prev: StoredSummary[]) => StoredSummary[]) | typeof RESET> = atom(
     (get) => get(baseStoredSummariesAtom),
     async (get, set, update) => {
+        const currentUser = get(currentUserAtom);
         if (update === RESET) {
+            if (!currentUser) {
+                set(baseStoredSummariesAtom, []);
+                set(storedSummariesLoadingAtom, false);
+                return;
+            }
             set(storedSummariesLoadingAtom, true);
             set(storedSummariesErrorAtom, null);
             try {
-                const fetched = await service.apiFetchStoredSummaries();
+                const fetched = await service.apiFetchSummaries();
                 set(baseStoredSummariesAtom, fetched);
             } catch (e: any) {
                 set(storedSummariesErrorAtom, e.message || 'Failed to load summaries');
@@ -673,115 +404,32 @@ export const storedSummariesAtom: AsyncDataAtom<StoredSummary[], StoredSummary[]
             return;
         }
 
-        const currentSummaries = get(baseStoredSummariesAtom) ?? [];
-        let updatedSummaries = typeof update === 'function' ? (update as (prev: StoredSummary[]) => StoredSummary[])(currentSummaries) : update;
-
-        const isAddingNew = Array.isArray(updatedSummaries) && updatedSummaries.length > 0 &&
-            updatedSummaries.length > currentSummaries.length &&
-            !currentSummaries.find(cs => cs.id === updatedSummaries[0].id);
-
-        if (isAddingNew) {
-            const newSummary = updatedSummaries[0];
-            set(baseStoredSummariesAtom, updatedSummaries); // Optimistic
-            try {
-                const {success, summary: savedSummary, error} = await service.apiSaveSummary(newSummary);
-                if (!success || !savedSummary) {
-                    set(baseStoredSummariesAtom, currentSummaries); // Revert
-                    set(storedSummariesErrorAtom, error || 'Failed to save new summary');
-                } else {
-                    // Update with server response, important if ID or timestamps changed
-                    set(baseStoredSummariesAtom, current => [savedSummary, ...(current?.filter(s => s.id !== savedSummary.id) ?? [])]);
-                }
-            } catch (e: any) {
-                set(baseStoredSummariesAtom, currentSummaries); // Revert
-                set(storedSummariesErrorAtom, e.message || 'API error saving new summary');
-            }
-        } else if (Array.isArray(updatedSummaries)) {
-            let changedSummary: StoredSummary | undefined;
-            for (const us of updatedSummaries) {
-                const cs = currentSummaries.find(s => s.id === us.id);
-                if (cs && (us.summaryText !== cs.summaryText || us.updatedAt !== cs.updatedAt)) {
-                    changedSummary = us;
-                    break;
-                }
-            }
-            if (changedSummary && changedSummary.updatedAt && changedSummary.updatedAt > (currentSummaries.find(s => s.id === changedSummary!.id)?.updatedAt || 0)) {
-                set(baseStoredSummariesAtom, updatedSummaries); // Optimistic
-                try {
-                    const {
-                        success,
-                        summary: savedSummary,
-                        error
-                    } = await service.apiUpdateSummary(changedSummary.id, changedSummary.summaryText);
-                    if (!success) {
-                        set(baseStoredSummariesAtom, currentSummaries);
-                        set(storedSummariesErrorAtom, error || `Failed to update summary ${changedSummary.id}`);
-                    } else if (savedSummary) {
-                        set(baseStoredSummariesAtom, prev => prev!.map(s => s.id === savedSummary.id ? savedSummary : s));
-                    }
-                } catch (e: any) {
-                    set(baseStoredSummariesAtom, currentSummaries);
-                    set(storedSummariesErrorAtom, e.message || `API error updating summary ${changedSummary.id}`);
-                }
-            } else {
-                set(baseStoredSummariesAtom, updatedSummaries);
-            }
-        }
+        if (!currentUser) return;
+        const updatedSummaries = typeof update === 'function' ? (update as (prev: StoredSummary[]) => StoredSummary[])(get(baseStoredSummariesAtom) ?? []) : update;
+        set(baseStoredSummariesAtom, updatedSummaries);
     }
 );
-storedSummariesAtom.onMount = (setSelf) => {
-    setSelf(RESET);
-};
-
+storedSummariesAtom.onMount = (setSelf) => { setSelf(RESET); };
 
 export const currentSummaryIndexAtom = atom<number>(0);
 export const isGeneratingSummaryAtom = atom<boolean>(false);
-
-export const SUMMARY_FIELD_OPTIONS: { id: string; label: string }[] = [
-    {id: 'accomplishments', label: '今日工作总结'},
-    {id: 'tomorrowPlan', label: '明日工作计划'},
-    {id: 'challenges', label: '遇到的问题与困难'},
-    {id: 'teamCommunication', label: '团队沟通情况'},
-    {id: 'learnings', label: '学习与成长收获'},
-    {id: 'blockers', label: '当前主要瓶颈'},
-];
-const defaultSelectedSummaryFields = [SUMMARY_FIELD_OPTIONS[0].id, SUMMARY_FIELD_OPTIONS[1].id];
-
-// Persisting summarySelectedFieldsAtom (simplified, assuming it's part of user preferences)
-const baseSummarySelectedFieldsAtom = atom<string[]>(defaultSelectedSummaryFields);
-export const summarySelectedFieldsAtom: WritableAtom<string[], [string[] | ((prev: string[]) => string[])], Promise<void>> = atom(
-    (get) => get(baseSummarySelectedFieldsAtom),
-    async (get, set, newFieldsParam) => {
-        const currentFields = get(baseSummarySelectedFieldsAtom);
-        const updatedFields = typeof newFieldsParam === 'function' ? newFieldsParam(currentFields) : newFieldsParam;
-        set(baseSummarySelectedFieldsAtom, updatedFields);
-        // This would ideally be part of a larger preferences update or a dedicated API
-        console.log("[Store] Simulating update of summary selected fields to backend:", updatedFields);
-        // try {
-        //    await service.apiUpdateUserPreferences({ summaryFields: updatedFields }); // Example
-        // } catch (e) {
-        //    set(baseSummarySelectedFieldsAtom, currentFields); // Revert
-        // }
-    }
-);
-// summarySelectedFieldsAtom.onMount = (setSelf) => { /* Potentially fetch if stored separately */ };
-
+export const SUMMARY_FIELD_OPTIONS: { id: string; label: string }[] = [ {id: 'accomplishments', label: '今日工作总结'}, {id: 'tomorrowPlan', label: '明日工作计划'}, {id: 'challenges', label: '遇到的问题与困难'}, {id: 'teamCommunication', label: '团队沟通情况'}, {id: 'learnings', label: '学习与成长收获'}, {id: 'blockers', label: '当前主要瓶颈'}, ];
+export const summarySelectedFieldsAtom = atom<string[]>([ SUMMARY_FIELD_OPTIONS[0].id, SUMMARY_FIELD_OPTIONS[1].id ]);
 
 // --- Derived Atoms ---
 export const selectedTaskAtom = atom((get) => {
     const tasks = get(tasksAtom);
     const selectedId = get(selectedTaskIdAtom);
-    if (!tasks) return null; // Handle tasks being null during initial load
+    if (!tasks) return null;
     return selectedId ? tasks.find(task => task.id === selectedId) ?? null : null;
 });
 
 export const userListNamesAtom = atom((get) => {
     const tasks = get(tasksAtom) ?? [];
-    const userListsFromSettings = get(userDefinedListsAtom) ?? [];
-    const listsFromTasks = new Set<string>(tasks.filter(t => t.list !== 'Trash' && t.list).map(t => t.list!));
-    const combinedLists = new Set(['Inbox', ...userListsFromSettings, ...Array.from(listsFromTasks)]);
-    combinedLists.delete('Trash');
-    return Array.from(combinedLists).sort((a, b) => a === 'Inbox' ? -1 : b === 'Inbox' ? 1 : a.localeCompare(b));
+    const listsFromTasks = new Set<string>();
+    tasks.forEach(task => { if(task.listName && task.listName !== 'Trash') { listsFromTasks.add(task.listName); } });
+    if (!listsFromTasks.has('Inbox')) { listsFromTasks.add('Inbox'); }
+    return Array.from(listsFromTasks).sort((a, b) => a === 'Inbox' ? -1 : b === 'Inbox' ? 1 : a.localeCompare(b));
 });
 
 export const userTagNamesAtom = atom((get) => {
@@ -795,15 +443,11 @@ export const taskCountsAtom = atom((get) => {
     const tasks = get(tasksAtom) ?? [];
     const allUserListNames = get(userListNamesAtom);
     const allUserTagNames = get(userTagNamesAtom);
-    const activeTasks = tasks.filter(task => task.list !== 'Trash');
+    const activeTasks = tasks.filter(task => task.listName !== 'Trash');
     const trashedTasksCount = tasks.length - activeTasks.length;
 
     const counts = {
-        all: 0,
-        today: 0,
-        next7days: 0,
-        completed: 0,
-        trash: trashedTasksCount,
+        all: 0, today: 0, next7days: 0, completed: 0, trash: trashedTasksCount,
         lists: Object.fromEntries(allUserListNames.map(name => [name, 0])),
         tags: Object.fromEntries(allUserTagNames.map(name => [name, 0])),
     };
@@ -815,34 +459,24 @@ export const taskCountsAtom = atom((get) => {
             counts.all++;
             const taskGroup = getTaskGroupCategory(task);
             if (taskGroup === 'today') counts.today++;
-            if (taskGroup === 'next7days') counts.next7days++;
+            if (taskGroup === 'next7days' || taskGroup === 'today') counts.next7days++;
 
-            if (task.list && Object.prototype.hasOwnProperty.call(counts.lists, task.list)) {
-                counts.lists[task.list]++;
+            if (task.listName && Object.prototype.hasOwnProperty.call(counts.lists, task.listName)) {
+                counts.lists[task.listName]++;
             }
-            task.tags?.forEach(tag => {
-                if (Object.prototype.hasOwnProperty.call(counts.tags, tag)) {
-                    counts.tags[tag]++;
-                }
-            });
+            task.tags?.forEach(tag => { if (Object.prototype.hasOwnProperty.call(counts.tags, tag)) { counts.tags[tag]++; } });
         }
     });
     return counts;
 });
 
 export const groupedAllTasksAtom = atom((get): Record<TaskGroupCategory, Task[]> => {
-    const tasksToGroup = (get(tasksAtom) ?? []).filter(t => t.list !== 'Trash' && !t.completed)
+    const tasksToGroup = (get(tasksAtom) ?? []).filter(t => t.listName !== 'Trash' && !t.completed)
         .sort((a, b) => (a.order - b.order) || (a.createdAt - b.createdAt));
-    const groups: Record<TaskGroupCategory, Task[]> = {
-        overdue: [], today: [], next7days: [], later: [], nodate: []
-    };
+    const groups: Record<TaskGroupCategory, Task[]> = { overdue: [], today: [], next7days: [], later: [], nodate: [] };
     tasksToGroup.forEach(task => {
         const category = task.groupCategory;
-        if (Object.prototype.hasOwnProperty.call(groups, category)) {
-            groups[category].push(task);
-        } else {
-            groups.nodate.push(task);
-        }
+        if (Object.prototype.hasOwnProperty.call(groups, category)) { groups[category].push(task); } else { groups.nodate.push(task); }
     });
     return groups;
 });
@@ -852,19 +486,18 @@ export const rawSearchResultsAtom = atom<Task[]>((get) => {
     if (!search) return [];
     const allTasks = get(tasksAtom) ?? [];
     const searchWords = search.split(' ').filter(Boolean);
-
     return allTasks.filter(task => {
         return searchWords.every(word => {
             const titleMatch = task.title.toLowerCase().includes(word);
             const contentMatch = task.content && task.content.toLowerCase().includes(word);
             const tagsMatch = task.tags && task.tags.some(tag => tag.toLowerCase().includes(word));
-            const listMatch = task.list.toLowerCase().includes(word);
+            const listMatch = task.listName.toLowerCase().includes(word);
             const subtasksMatch = task.subtasks && task.subtasks.some(sub => sub.title.toLowerCase().includes(word));
             return titleMatch || contentMatch || tagsMatch || listMatch || subtasksMatch;
         });
     }).sort((a, b) => {
-        const aIsActive = a.list !== 'Trash' && !a.completed;
-        const bIsActive = b.list !== 'Trash' && !b.completed;
+        const aIsActive = a.listName !== 'Trash' && !a.completed;
+        const bIsActive = b.listName !== 'Trash' && !b.completed;
         if (aIsActive !== bIsActive) return aIsActive ? -1 : 1;
         return (a.order ?? 0) - (b.order ?? 0) || (a.createdAt - b.createdAt);
     });
@@ -874,14 +507,8 @@ export const currentSummaryFilterKeyAtom = atom<string>((get) => {
     const period = get(summaryPeriodFilterAtom);
     const list = get(summaryListFilterAtom);
     let periodStr = '';
-    if (typeof period === 'string') {
-        periodStr = period;
-    } else if (period && typeof period === 'object' && period.start && period.end) {
-        periodStr = `custom_${startOfDay(new Date(period.start)).getTime()}_${endOfDay(new Date(period.end)).getTime()}`;
-    } else {
-        periodStr = 'invalid_period';
-    }
-    const listStr = list === 'all' ? 'all' : `list-${list}`;
+    if (typeof period === 'string') { periodStr = period; } else if (period && typeof period === 'object' && period.start && period.end) { periodStr = `custom_${startOfDay(new Date(period.start)).getTime()}_${endOfDay(new Date(period.end)).getTime()}`; } else { periodStr = 'invalid_period'; }
+    const listStr = list;
     return `${periodStr}__${listStr}`;
 });
 
@@ -891,57 +518,23 @@ export const filteredTasksForSummaryAtom = atom<Task[]>((get) => {
     const listFilter = get(summaryListFilterAtom);
     const todayStart = startOfDay(new Date());
     let startDateNum: number | null = null, endDateNum: number | null = null;
-
     switch (period) {
-        case 'today':
-            startDateNum = todayStart.getTime();
-            endDateNum = endOfDay(new Date()).getTime();
-            break;
-        case 'yesterday':
-            startDateNum = startOfDay(subDays(todayStart, 1)).getTime();
-            endDateNum = endOfDay(new Date(startDateNum)).getTime();
-            break;
-        case 'thisWeek':
-            startDateNum = startOfWeek(todayStart).getTime();
-            endDateNum = endOfWeek(todayStart).getTime();
-            break;
-        case 'lastWeek':
-            startDateNum = startOfWeek(subWeeks(todayStart, 1)).getTime();
-            endDateNum = endOfWeek(new Date(startDateNum)).getTime();
-            break;
-        case 'thisMonth':
-            startDateNum = startOfMonth(todayStart).getTime();
-            endDateNum = endOfMonth(todayStart).getTime();
-            break;
-        case 'lastMonth':
-            startDateNum = startOfMonth(subMonths(todayStart, 1)).getTime();
-            endDateNum = endOfMonth(new Date(startDateNum)).getTime();
-            break;
-        default:
-            if (typeof period === 'object' && period.start && period.end) {
-                startDateNum = startOfDay(new Date(period.start)).getTime();
-                endDateNum = endOfDay(new Date(period.end)).getTime();
-            }
-            break;
+        case 'today': startDateNum = todayStart.getTime(); endDateNum = endOfDay(new Date()).getTime(); break;
+        case 'yesterday': startDateNum = startOfDay(subDays(todayStart, 1)).getTime(); endDateNum = endOfDay(new Date(startDateNum)).getTime(); break;
+        case 'thisWeek': startDateNum = startOfWeek(todayStart).getTime(); endDateNum = endOfWeek(todayStart).getTime(); break;
+        case 'lastWeek': startDateNum = startOfWeek(subWeeks(todayStart, 1)).getTime(); endDateNum = endOfWeek(new Date(startDateNum)).getTime(); break;
+        case 'thisMonth': startDateNum = startOfMonth(todayStart).getTime(); endDateNum = endOfMonth(todayStart).getTime(); break;
+        case 'lastMonth': startDateNum = startOfMonth(subMonths(todayStart, 1)).getTime(); endDateNum = endOfMonth(new Date(startDateNum)).getTime(); break;
+        default: if (typeof period === 'object' && period.start && period.end) { startDateNum = startOfDay(new Date(period.start)).getTime(); endDateNum = endOfDay(new Date(period.end)).getTime(); } break;
     }
     if (!startDateNum || !endDateNum) return [];
-    const startDateObj = new Date(startDateNum);
-    const endDateObj = new Date(endDateNum);
+    const startDateObj = new Date(startDateNum); const endDateObj = new Date(endDateNum);
     if (!isValid(startDateObj) || !isValid(endDateObj)) return [];
-
     return allTasks.filter(task => {
-        if (task.list === 'Trash') return false;
-        if (listFilter !== 'all' && task.list !== listFilter) return false;
+        if (task.listName === 'Trash') return false;
+        if (listFilter !== 'all' && task.listName !== listFilter) return false;
         let relevantDateTimestamp: number | null = null;
-        if (task.completed && task.completedAt) {
-            relevantDateTimestamp = task.completedAt;
-        } else if (!task.completed && task.dueDate) { // Only consider due date if not completed
-            relevantDateTimestamp = task.dueDate;
-        } else if (task.completed && !task.completedAt) { // Completed but no completedAt, use updatedAt as proxy
-            relevantDateTimestamp = task.updatedAt;
-        } else if (!relevantDateTimestamp) { // If neither completedAt nor dueDate, might use updatedAt for activity
-            relevantDateTimestamp = task.updatedAt;
-        }
+        if (task.completed && task.completedAt) { relevantDateTimestamp = task.completedAt; } else if (!task.completed && task.dueDate) { relevantDateTimestamp = task.dueDate; } else { relevantDateTimestamp = task.updatedAt; }
         if (!relevantDateTimestamp) return false;
         const relevantDate = safeParseDate(relevantDateTimestamp);
         if (!relevantDate || !isValid(relevantDate)) return false;
@@ -961,7 +554,7 @@ export const relevantStoredSummariesAtom = atom<StoredSummary[]>((get) => {
 export const currentDisplayedSummaryAtom = atom<StoredSummary | null>((get) => {
     const summaries = get(relevantStoredSummariesAtom);
     const index = get(currentSummaryIndexAtom);
-    if (index === -1) return null; // For when a new summary is being generated but not yet saved
+    if (index === -1) return null;
     return summaries[index] ?? null;
 });
 

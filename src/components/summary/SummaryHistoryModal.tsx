@@ -55,7 +55,7 @@ const ReferencedTaskItem: React.FC<ReferencedTaskItemProps> = React.memo(({task}
     const iconName: IconName = task.completed ? "check-square" : "square";
     const iconColor = task.completed ? "text-success" : "text-grey-medium";
     const textColor = task.completed ? "text-grey-medium dark:text-neutral-400" : "text-grey-dark dark:text-neutral-100";
-    const showPercentage = !task.completed && task.completionPercentage && task.completionPercentage > 0;
+    const showPercentage = !task.completed && task.completePercentage && task.completePercentage > 0;
 
     return (
         <li className="flex items-center py-1.5 px-1 rounded-base transition-colors duration-150 ease-out group"
@@ -68,7 +68,7 @@ const ReferencedTaskItem: React.FC<ReferencedTaskItemProps> = React.memo(({task}
                     {task.title || <span className="italic">Untitled Task</span>}
                 </span>
                 {showPercentage && (<span
-                    className="ml-1.5 text-[10px] text-primary dark:text-primary-light font-normal select-none flex-shrink-0">[{task.completionPercentage}%]</span>)}
+                    className="ml-1.5 text-[10px] text-primary dark:text-primary-light font-normal select-none flex-shrink-0">[{task.completePercentage}%]</span>)}
             </div>
         </li>
     );

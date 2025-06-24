@@ -13,7 +13,7 @@ import {
     searchTermAtom,
     selectedTaskIdAtom,
     taskCountsAtom,
-    userDefinedListsAtom,
+    tasksAtom,
     userListNamesAtom,
     userTagNamesAtom
 } from '@/store/atoms';
@@ -25,7 +25,6 @@ import {IconName} from "@/components/common/IconMap";
 import Highlighter from "react-highlight-words";
 import {AnimatePresence, motion} from 'framer-motion';
 
-// useDebounce and generateContentSnippet remain the same
 function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = useState<T>(value);
     useEffect(() => {
@@ -59,7 +58,6 @@ function generateContentSnippet(content: string, term: string, length: number = 
     if (end < content.length) snippet = snippet + '...';
     return snippet;
 }
-
 
 const SidebarItem: React.FC<{
     to: string; filter: TaskFilter; icon: IconName; label: string;
@@ -153,43 +151,56 @@ const Sidebar: React.FC = () => {
     const searchResults = useAtomValue(rawSearchResultsAtom);
     const [searchTerm, setSearchTerm] = useAtom(searchTermAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
-    const setUserDefinedLists = useSetAtom(userDefinedListsAtom);
+    const setTasks = useSetAtom(tasksAtom);
     const [, setIsAddListModalOpen] = useAtom(isAddListModalOpenAtom);
 
     const preferencesData = useAtomValue(preferencesSettingsAtom);
     const isLoadingPreferences = useAtomValue(preferencesSettingsLoadingAtom);
-    // Provide a default if preferences are null (during loading or error)
     const preferences = useMemo(() => preferencesData ?? defaultPreferencesSettingsForApi(), [preferencesData]);
-
 
     const navigate = useNavigate();
     const searchInputRef = useRef<HTMLInputElement>(null);
     const debouncedSearchTerm = useDebounce(searchTerm, 250);
     const isSearching = useMemo(() => debouncedSearchTerm.trim().length > 0, [debouncedSearchTerm]);
+
     const handleAddNewListClick = useCallback(() => {
         setIsAddListModalOpen(true);
     }, [setIsAddListModalOpen]);
+
     const handleListAdded = useCallback((newListName: string) => {
         const trimmedName = newListName.trim();
         if (!trimmedName) return;
-        setUserDefinedLists((prevListsValue = []) => { // Handle prevListsValue being null
-            const prevLists = prevListsValue ?? [];
-            const newListSet = new Set(prevLists);
-            newListSet.add(trimmedName);
-            return Array.from(newListSet).sort((a, b) => a.localeCompare(b));
-        });
+        // Create a placeholder task in the new list to ensure the list is created on the backend
+        const now = Date.now();
+        const placeholderTask: Task = {
+            id: `task-${now}`,
+            title: `Welcome to ${trimmedName}`,
+            listName: trimmedName,
+            order: now,
+            completed: false,
+            completedAt: null,
+            completePercentage: null,
+            createdAt: now,
+            updatedAt: now,
+            groupCategory: 'nodate',
+        };
+        setTasks(prev => [...(prev ?? []), placeholderTask]);
         navigate(`/list/${encodeURIComponent(trimmedName)}`);
-    }, [setUserDefinedLists, navigate]);
+    }, [setTasks, navigate]);
+
     const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
     }, [setSearchTerm]);
+
     const handleClearSearch = useCallback(() => {
         setSearchTerm('');
         searchInputRef.current?.focus();
     }, [setSearchTerm]);
+
     const handleSearchResultClick = useCallback((task: Task) => {
         setSelectedTaskId(task.id);
     }, [setSelectedTaskId]);
+
     const myListsToDisplay = useMemo(() => userLists.filter(list => list !== 'Inbox'), [userLists]);
     const tagsToDisplay = useMemo(() => userTags, [userTags]);
 
@@ -210,7 +221,7 @@ const Sidebar: React.FC = () => {
 
     const searchResultButtonClassName = "flex items-start w-full px-2 py-1.5 text-left rounded-base hover:bg-grey-ultra-light dark:hover:bg-grey-deep text-[13px] group transition-colors duration-100 ease-in-out focus:outline-none focus-visible:ring-1 focus-visible:ring-primary";
 
-    if (isLoadingPreferences) { // Or a combined loading state for all necessary sidebar data
+    if (isLoadingPreferences) {
         return (
             <aside className={twMerge(
                 "w-full h-full flex flex-col shrink-0 z-10 pt-2.5 pb-2 px-2",
@@ -265,14 +276,14 @@ const Sidebar: React.FC = () => {
                                                     className={searchResultButtonClassName}
                                                     aria-label={`Search result: ${task.title || 'Untitled Task'}`}>
                                                 <Icon
-                                                    name={task.list === 'Inbox' ? 'inbox' : (task.list === 'Trash' ? 'trash' : 'list')}
+                                                    name={task.listName === 'Inbox' ? 'inbox' : (task.listName === 'Trash' ? 'trash' : 'list')}
                                                     size={15} strokeWidth={1}
                                                     className="mr-2 mt-[2px] flex-shrink-0 text-grey-medium dark:text-neutral-400 opacity-80"
                                                     aria-hidden="true"/>
                                                 <div className="flex-1 overflow-hidden">
                                                     <Highlighter {...highlighterProps}
                                                                  textToHighlight={task.title || 'Untitled Task'}
-                                                                 className={twMerge("block truncate font-normal text-grey-dark dark:text-neutral-100", task.completed && task.list !== 'Trash' && "line-through text-grey-medium dark:text-neutral-400", task.list === 'Trash' && "italic text-grey-medium dark:text-neutral-400")}/>
+                                                                 className={twMerge("block truncate font-normal text-grey-dark dark:text-neutral-100", task.completed && task.listName !== 'Trash' && "line-through text-grey-medium dark:text-neutral-400", task.listName === 'Trash' && "italic text-grey-medium dark:text-neutral-400")}/>
                                                     {task.content && generateContentSnippet(task.content, debouncedSearchTerm) && (
                                                         <Highlighter {...highlighterProps}
                                                                      textToHighlight={generateContentSnippet(task.content, debouncedSearchTerm)}

@@ -173,171 +173,124 @@ BackgroundImagePreview.displayName = 'BackgroundImagePreview';
 const AccountSettings: React.FC = memo(() => {
     const [currentUser, setCurrentUserGlobally] = useAtom(currentUserAtom);
     const [isEditingName, setIsEditingName] = useState(false);
-    const [newName, setNewName] = useState(currentUser?.name || '');
-    const [isLoading, setIsLoading] = useState(false); // Local loading state for operations
+    const [newName, setNewName] = useState(currentUser?.username || '');
+    const [isLoading, setIsLoading] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (currentUser) {
-            setNewName(currentUser.name || '');
+            setNewName(currentUser.username || '');
         }
     }, [currentUser]);
 
     const handleEditName = () => setIsEditingName(true);
     const handleCancelEditName = () => {
         setIsEditingName(false);
-        setNewName(currentUser?.name || '');
+        setNewName(currentUser?.username || '');
     };
     const handleSaveName = async () => {
-        if (!currentUser || newName.trim() === currentUser.name || !newName.trim()) {
+        if (!currentUser || newName.trim() === currentUser.username || !newName.trim()) {
             setIsEditingName(false);
-            if (!newName.trim()) setNewName(currentUser?.name || ''); // Revert if empty
+            if (!newName.trim()) setNewName(currentUser?.username || '');
             return;
         }
         setIsLoading(true);
-        const response = await apiService.apiUpdateUserProfile(currentUser.id, { name: newName.trim() });
-        setIsLoading(false);
-        if (response.success && response.user) {
-            setCurrentUserGlobally(response.user);
+        try {
+            const updatedUser = await apiService.apiUpdateUser({ username: newName.trim() });
+            setCurrentUserGlobally(updatedUser);
             setIsEditingName(false);
-        } else {
-            alert(`Error updating name: ${response.error || 'Unknown error'}`);
+        } catch (e: any) {
+            alert(`Error updating name: ${e.message}`);
         }
+        setIsLoading(false);
     };
 
     const handleChangePassword = async () => {
-        const oldPassword = prompt("Enter current password:");
-        if (!oldPassword) return;
-        const newPassword = prompt("Enter new password:");
+        const currentPassword = prompt("Enter current password:");
+        if (!currentPassword) return;
+        const newPassword = prompt("Enter new password (min. 8 characters):");
         if (!newPassword) return;
-        const confirmNewPassword = prompt("Confirm new password:");
-        if (newPassword !== confirmNewPassword) {
-            alert("New passwords do not match.");
+        if (newPassword.length < 8) {
+            alert("New password must be at least 8 characters long.");
             return;
         }
-        if (!currentUser) return;
-
         setIsLoading(true);
-        const response = await apiService.apiChangePassword(currentUser.id, oldPassword, newPassword);
-        setIsLoading(false);
-        if (response.success) {
-            alert("Password changed successfully.");
-        } else {
-            alert(`Error changing password: ${response.error || 'Unknown error'}`);
+        try {
+            const response = await apiService.apiChangePassword(currentPassword, newPassword);
+            alert(response.message);
+        } catch (e: any) {
+            alert(`Error changing password: ${e.message}`);
         }
+        setIsLoading(false);
     };
 
-    const handleSocialLink = async (provider: 'google' | 'apple') => {
+    const handleAvatarUploadClick = () => avatarInputRef.current?.click();
+
+    const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
         setIsLoading(true);
-        const response = await apiService.apiLinkSocialAccount(provider);
-        setIsLoading(false);
-        if (response.success) {
-            alert(`${provider} account linking process would start here (simulated).`);
-            if (response.user) setCurrentUserGlobally(response.user); // Update if backend returns updated user
-            else setCurrentUserGlobally(undefined); // Trigger re-fetch if user object not returned
-        } else {
-            alert(`Error linking ${provider} account: ${response.error || 'Unknown error'}`);
+        try {
+            const updatedUser = await apiService.apiUploadAvatar(file);
+            setCurrentUserGlobally(updatedUser);
+        } catch (e: any) {
+            alert(`Error uploading avatar: ${e.message}`);
         }
-    };
-    const handleSocialUnlink = async (provider: 'google' | 'apple') => {
-        setIsLoading(true);
-        const response = await apiService.apiUnlinkSocialAccount(provider);
         setIsLoading(false);
-        if (response.success) {
-            alert(`${provider} account unlinked (simulated).`);
-            if (response.user) setCurrentUserGlobally(response.user);
-            else setCurrentUserGlobally(undefined);
-        } else {
-            alert(`Error unlinking ${provider} account: ${response.error || 'Unknown error'}`);
-        }
+        if (event.target) event.target.value = '';
     };
 
-    const handleBackup = async () => {
-        if (!currentUser) return;
-        setIsLoading(true);
-        const response = await apiService.apiBackupData(currentUser.id);
-        setIsLoading(false);
-        if (response.success && response.data) {
-            const jsonData = JSON.stringify(response.data, null, 2);
-            const blob = new Blob([jsonData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `tada-backup-${currentUser.id}-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } else {
-            alert(`Backup failed: ${response.error || 'Unknown error'}`);
-        }
-    };
-
-    const importInputRef = useRef<HTMLInputElement>(null);
-    const handleImportClick = () => importInputRef.current?.click();
-    const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (!currentUser || !event.target.files || event.target.files.length === 0) return;
-        const file = event.target.files[0];
-        setIsLoading(true);
-        const response = await apiService.apiImportData(currentUser.id, file);
-        setIsLoading(false);
-        if (response.success) {
-            alert("Data import successful. Application data will refresh.");
-            // Trigger full app data refresh by resetting key atoms
-            setCurrentUserGlobally(undefined); // Re-fetch user
-            // Example: setTasks(RESET); setAppearanceSettings(RESET); etc. based on what import affects
-        } else {
-            alert(`Import failed: ${response.error || 'Unknown error'}`);
-        }
-        if(event.target) event.target.value = ''; // Reset file input
-    };
-
-    const handleDeleteAccount = async () => {
-        if (!currentUser) return;
-        if (confirm(`Are you sure you want to request deletion for account: ${currentUser.email}? This is irreversible.`)) {
+    const handleDeleteAvatar = async () => {
+        if (!currentUser?.avatarUrl) return;
+        if (confirm("Are you sure you want to delete your avatar?")) {
             setIsLoading(true);
-            const response = await apiService.apiRequestAccountDeletion(currentUser.id);
-            setIsLoading(false);
-            if (response.success) {
-                alert("Account deletion requested. You will be logged out.");
-                setCurrentUserGlobally('logout');
-            } else {
-                alert(`Account deletion request failed: ${response.error || 'Unknown error'}`);
+            try {
+                const updatedUser = await apiService.apiDeleteAvatar();
+                setCurrentUserGlobally(updatedUser);
+            } catch (e: any) {
+                alert(`Error deleting avatar: ${e.message}`);
             }
+            setIsLoading(false);
         }
     };
 
     const handleLogout = async () => {
         setIsLoading(true);
-        await setCurrentUserGlobally('logout'); // Atom setter handles API call
-        // No need to manually set isLoading to false if component unmounts or view changes due to logout.
+        await setCurrentUserGlobally('logout');
     };
 
-    const userName = useMemo(() => currentUser?.name ?? 'Guest User', [currentUser]);
+    const userName = useMemo(() => currentUser?.username ?? 'Guest User', [currentUser]);
     const userEmail = useMemo(() => currentUser?.email ?? 'No email provided', [currentUser]);
+    const userPhone = useMemo(() => currentUser?.phone ?? 'No phone provided', [currentUser]);
     const isPremium = useMemo(() => currentUser?.isPremium ?? false, [currentUser]);
-    const avatarSrc = useMemo(() => currentUser?.avatar, [currentUser]);
-    const avatarInitial = useMemo(() => currentUser?.name?.charAt(0).toUpperCase() || '', [currentUser]);
-
-    // Simulated: check if specific keys exist on user object, if backend modifies it.
-    const isGoogleLinked = !!(currentUser && (currentUser as any).googleLinked);
-    const isAppleLinked = !!(currentUser && (currentUser as any).appleLinked);
-
+    const avatarSrc = useMemo(() => currentUser?.avatarUrl, [currentUser]);
+    const avatarInitial = useMemo(() => currentUser?.username?.charAt(0).toUpperCase() || '', [currentUser]);
+    const displayIdentifier = userEmail || userPhone;
 
     return (<div className="space-y-6">
         {isLoading && <div className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10"><Icon name="loader" className="animate-spin text-primary" size={24}/></div>}
+
         <div className="flex items-center space-x-4 mb-4">
-            <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-grey-ultra-light dark:bg-neutral-700">
-                {avatarSrc ? (
-                    <img src={avatarSrc} alt={userName} className="w-full h-full object-cover"/>
-                ) : (
-                    <div className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-400 text-2xl font-normal">
-                        {avatarInitial || <Icon name="user" size={24} strokeWidth={1}/>}
-                    </div>
-                )}
+            <div className="relative group/avatar">
+                <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-grey-ultra-light dark:bg-neutral-700">
+                    {avatarSrc ? (
+                        <img src={avatarSrc} alt={userName} className="w-full h-full object-cover"/>
+                    ) : (
+                        <div className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-400 text-2xl font-normal">
+                            {avatarInitial || <Icon name="user" size={24} strokeWidth={1}/>}
+                        </div>
+                    )}
+                </div>
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                    <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*" hidden/>
+                    <Button variant="ghost" size="icon" icon="upload" onClick={handleAvatarUploadClick} className="text-white hover:bg-white/20" title="Upload new avatar"/>
+                    {avatarSrc && <Button variant="ghost" size="icon" icon="trash" onClick={handleDeleteAvatar} className="text-white hover:bg-white/20" title="Delete avatar"/>}
+                </div>
             </div>
             <div>
                 <h3 className="text-[18px] font-normal text-grey-dark dark:text-neutral-100">{userName}</h3>
-                <p className="text-[13px] text-grey-medium dark:text-neutral-300 font-light">{userEmail}</p>
+                <p className="text-[13px] text-grey-medium dark:text-neutral-300 font-light">{displayIdentifier}</p>
                 {isPremium && (
                     <div className="text-[11px] text-primary dark:text-primary-light flex items-center mt-1.5 font-normal bg-primary-light dark:bg-primary-dark/30 px-2 py-0.5 rounded-full w-fit">
                         <Icon name="crown" size={12} className="mr-1 text-primary dark:text-primary-light" strokeWidth={1.5}/>
@@ -346,9 +299,10 @@ const AccountSettings: React.FC = memo(() => {
                 )}
             </div>
         </div>
+
         <div className="space-y-0">
             {isEditingName ? (
-                <SettingsRow label="Name">
+                <SettingsRow label="Username">
                     <input
                         type="text"
                         value={newName}
@@ -360,43 +314,16 @@ const AccountSettings: React.FC = memo(() => {
                     <Button variant="ghost" size="sm" onClick={handleCancelEditName} className="ml-1" disabled={isLoading}>Cancel</Button>
                 </SettingsRow>
             ) : (
-                <SettingsRow label="Name" value={userName}
+                <SettingsRow label="Username" value={userName}
                              action={<Button variant="link" size="sm" onClick={handleEditName} disabled={isLoading}>Edit</Button>}/>
             )}
             <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <SettingsRow label="Email Address" value={userEmail} description="Used for login and notifications."/>
+            {userEmail && <SettingsRow label="Email Address" value={userEmail} description="Used for login and notifications."/> }
+            {userPhone && <SettingsRow label="Phone Number" value={userPhone} description="Used for login and notifications."/> }
             <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
             <SettingsRow label="Password" action={<Button variant="link" size="sm" onClick={handleChangePassword} disabled={isLoading}>Change Password</Button>}/>
         </div>
-        <div className="space-y-0">
-            <h4 className="text-[11px] font-normal text-grey-medium dark:text-neutral-400 uppercase tracking-[0.5px] mb-2 mt-4">Connected
-                Accounts</h4>
-            <SettingsRow label="Google Account" value={isGoogleLinked ? "Linked" : "Not Linked"}
-                         action={
-                             isGoogleLinked ?
-                                 <Button variant="link" size="sm" className="text-grey-medium dark:text-neutral-400 hover:text-error dark:hover:text-red-400" onClick={() => handleSocialUnlink('google')} disabled={isLoading}>Unlink</Button> :
-                                 <Button variant="link" size="sm" onClick={() => handleSocialLink('google')} disabled={isLoading}>Link Google</Button>
-                         }/>
-            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <SettingsRow label="Apple ID" value={isAppleLinked ? "Linked" : "Not Linked"}
-                         action={
-                             isAppleLinked ?
-                                 <Button variant="link" size="sm" className="text-grey-medium dark:text-neutral-400 hover:text-error dark:hover:text-red-400" onClick={() => handleSocialUnlink('apple')} disabled={isLoading}>Unlink</Button> :
-                                 <Button variant="link" size="sm" onClick={() => handleSocialLink('apple')} disabled={isLoading}>Link Apple ID</Button>
-                         }/>
-        </div>
-        <div className="space-y-0">
-            <h4 className="text-[11px] font-normal text-grey-medium dark:text-neutral-400 uppercase tracking-[0.5px] mb-2 mt-4">Data
-                Management</h4>
-            <SettingsRow label="Backup & Restore" description="Save or load your task data.">
-                <Button variant="secondary" size="sm" icon="download" onClick={handleBackup} disabled={isLoading}>Backup</Button>
-                <input type="file" ref={importInputRef} onChange={handleImportFile} accept=".json" style={{ display: 'none' }} />
-                <Button variant="secondary" size="sm" icon="upload" onClick={handleImportClick} disabled={isLoading}>Import</Button>
-            </SettingsRow>
-            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <SettingsRow label="Delete Account" description="Permanently delete your account and data."
-                         action={<Button variant="danger" size="sm" onClick={handleDeleteAccount} disabled={isLoading}>Request Deletion</Button>}/>
-        </div>
+
         <div className="mt-8">
             <Button variant="secondary" size="md" icon="logout" onClick={handleLogout}
                     className="w-full sm:w-auto" disabled={isLoading}>Logout</Button>
@@ -405,7 +332,7 @@ const AccountSettings: React.FC = memo(() => {
 });
 AccountSettings.displayName = 'AccountSettings';
 
-const defaultAppearanceSettingsFromAtoms = defaultAppearanceSettingsForApi(); // Get default from atoms.ts
+const defaultAppearanceSettingsFromAtoms = defaultAppearanceSettingsForApi();
 
 const AppearanceSettings: React.FC = memo(() => {
     const [appearance, setAppearance] = useAtom(appearanceSettingsAtom);
@@ -539,11 +466,11 @@ const AppearanceSettings: React.FC = memo(() => {
 });
 AppearanceSettings.displayName = 'AppearanceSettings';
 
-const defaultPreferencesFromAtoms = defaultPreferencesSettingsForApi(); // Get default from atoms.ts
+const defaultPreferencesFromAtoms = defaultPreferencesSettingsForApi();
 
 const PreferencesSettings: React.FC = memo(() => {
     const [preferences, setPreferences] = useAtom(preferencesSettingsAtom);
-    const userLists = useAtomValue(userListNamesAtom) ?? []; // Handle null during loading
+    const userLists = useAtomValue(userListNamesAtom) ?? [];
 
     if (!preferences) {
         return <div className="p-4 text-center text-grey-medium">Loading preferences...</div>;
@@ -576,8 +503,7 @@ const PreferencesSettings: React.FC = memo(() => {
         {value: '3', label: 'Low (P3)'},
     ];
     const listOptions = useMemo(() => {
-        const validUserLists = userLists.filter(l => l !== 'Trash');
-        return ['Inbox', ...validUserLists.filter(l => l !== 'Inbox')].map(l => ({
+        return userLists.map(l => ({
             value: l,
             label: l
         }));
@@ -680,14 +606,16 @@ const PremiumSettings: React.FC = memo(() => {
             return;
         }
         setIsLoading(true);
-        const response = await apiService.apiUpgradeToPro(currentUser.id, tierId);
+        // This would call a real backend endpoint to get a checkout URL
+        // const response = await apiService.apiUpgradeToPro(currentUser.id, tierId);
+        await new Promise(res => setTimeout(res, 1000)); // Simulate network
         setIsLoading(false);
-        if (response.success && response.checkoutUrl) {
-            alert(`Redirecting to upgrade page (simulated): ${response.checkoutUrl}`);
-            window.open(response.checkoutUrl, '_blank');
-        } else {
-            alert(`Upgrade failed: ${response.error || 'Could not initiate upgrade process.'}`);
-        }
+        // if (response.success && response.checkoutUrl) {
+        alert(`Simulating redirect to upgrade page for tier ${tierId}.`);
+        // window.open(response.checkoutUrl, '_blank');
+        // } else {
+        //     alert(`Upgrade failed: ${response.error || 'Could not initiate upgrade process.'}`);
+        // }
     };
 
     const handleManageSubscription = async () => {
@@ -696,16 +624,17 @@ const PremiumSettings: React.FC = memo(() => {
             return;
         }
         setIsLoading(true);
-        const response = await apiService.apiManageSubscription(currentUser.id);
+        // This would call a real backend endpoint to get a portal URL
+        // const response = await apiService.apiManageSubscription(currentUser.id);
+        await new Promise(res => setTimeout(res, 1000)); // Simulate network
         setIsLoading(false);
-        if (response.success && response.portalUrl) {
-            alert(`Redirecting to subscription management (simulated): ${response.portalUrl}`);
-            window.open(response.portalUrl, '_blank');
-        } else {
-            alert(`Could not open subscription portal: ${response.error || 'Unknown error.'}`);
-        }
+        // if (response.success && response.portalUrl) {
+        alert(`Simulating redirect to subscription management portal.`);
+        // window.open(response.portalUrl, '_blank');
+        // } else {
+        //     alert(`Could not open subscription portal: ${response.error || 'Unknown error.'}`);
+        // }
     };
-
 
     const premiumTiers = [
         {

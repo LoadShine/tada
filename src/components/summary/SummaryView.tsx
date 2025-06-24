@@ -44,16 +44,16 @@ import SummaryHistoryModal from './SummaryHistoryModal';
 import {AnimatePresence, motion} from 'framer-motion';
 import {streamAiGeneratedSummary} from '@/services/aiService';
 
+// ... (getSummaryMenuRadioItemStyle remains unchanged) ...
 const getSummaryMenuRadioItemStyle = (checked?: boolean) => twMerge(
     "relative flex cursor-pointer select-none items-center rounded-base px-2.5 py-1.5 text-[12px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-7",
     "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light",
     "dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700",
     checked
         ? "bg-grey-ultra-light text-primary dark:bg-primary-dark/30 dark:text-primary-light"
-        : "text-grey-dark data-[highlighted]:text-grey-dark dark:text-neutral-300 dark:data-[highlighted]:text-neutral-100",
+        : "text-grey-dark data-[highlighted]:text-grey-dark dark:text-neutral-200 dark:data-[highlighted]:text-neutral-100",
     "data-[disabled]:opacity-50"
 );
-
 
 const SummaryView: React.FC = () => {
     const [period, setPeriod] = useAtom(summaryPeriodFilterAtom);
@@ -63,7 +63,7 @@ const SummaryView: React.FC = () => {
     const [selectedTaskIds, setSelectedTaskIds] = useAtom(summarySelectedTaskIdsAtom);
     const relevantSummaries = useAtomValue(relevantStoredSummariesAtom);
     const allStoredSummariesData = useAtomValue(storedSummariesAtom);
-    const allStoredSummaries = useMemo(() => allStoredSummariesData ?? [], [allStoredSummariesData]); // Handle null during load
+    const allStoredSummaries = useMemo(() => allStoredSummariesData ?? [], [allStoredSummariesData]);
 
     const [currentIndex, setCurrentIndex] = useAtom(currentSummaryIndexAtom);
     const currentSummary = useAtomValue(currentDisplayedSummaryAtom);
@@ -72,7 +72,7 @@ const SummaryView: React.FC = () => {
     const [isGenerating, setIsGenerating] = useAtom(isGeneratingSummaryAtom);
     const referencedTasks = useAtomValue(referencedTasksForSummaryAtom);
     const allTasksData = useAtomValue(tasksAtom);
-    const allTasks = useMemo(() => allTasksData ?? [], [allTasksData]); // Handle null during load
+    const allTasks = useMemo(() => allTasksData ?? [], [allTasksData]);
 
     const [selectedFields, setSelectedFields] = useAtom(summarySelectedFieldsAtom);
 
@@ -98,27 +98,22 @@ const SummaryView: React.FC = () => {
 
     useEffect(() => {
         if (eventSourceRef.current && (currentSummary?.summaryText !== summaryEditorContent || isGenerating)) {
-            // If we are generating a new summary, or if the displayed summary changed while a stream was active
-            // (e.g. user navigated history), close the old stream.
             if (isGenerating && eventSourceRef.current) {
-                // This condition specifically handles interrupting an active generation.
-                // For simple navigation, it's handled by the next block.
+                // Let the generation complete or error out naturally
             } else if (currentSummary?.summaryText !== summaryEditorContent) {
                 eventSourceRef.current.close();
                 eventSourceRef.current = null;
                 if (isGenerating) setIsGenerating(false);
             }
         }
-
         const summaryToLoad = currentSummary;
         const summaryTextToDisplay = isGenerating ? summaryEditorContent : (summaryToLoad?.summaryText ?? '');
-
         const currentEditorDoc = editorRef.current?.getView()?.state.doc.toString();
         if (summaryTextToDisplay !== currentEditorDoc) {
             isInternalEditorUpdate.current = true;
-            setSummaryEditorContent(summaryTextToDisplay); // This updates the editor content
+            setSummaryEditorContent(summaryTextToDisplay);
         }
-        if (!isGenerating) { // Only reset unsaved changes if not actively generating
+        if (!isGenerating) {
             hasUnsavedChangesRef.current = false;
         }
         setIsRefTasksDropdownOpen(false);
@@ -149,6 +144,91 @@ const SummaryView: React.FC = () => {
         }
     }, [currentSummary, setStoredSummaries, summaryEditorContent, isGenerating]);
 
+    const handleGenerateClick = useCallback(async () => {
+        forceSaveCurrentSummary();
+        setIsGenerating(true);
+        isInternalEditorUpdate.current = true;
+        setSummaryEditorContent('');
+        setCurrentIndex(-1);
+
+        const tasksToSummarize = allTasks.filter(t => selectedTaskIds.has(t.id));
+        const taskIdsToSummarize = tasksToSummarize.map(t => t.id);
+        const [periodKey, listKey] = filterKey.split('__');
+
+        if (eventSourceRef.current) eventSourceRef.current.close();
+
+        try {
+            const source = streamAiGeneratedSummary(taskIdsToSummarize, periodKey, listKey);
+            eventSourceRef.current = source;
+            let accumulatedSummary = '';
+
+            source.onmessage = (event) => {
+                try {
+                    const parsed = JSON.parse(event.data);
+                    if (parsed.event === 'message') {
+                        accumulatedSummary += parsed.data;
+                        isInternalEditorUpdate.current = true;
+                        setSummaryEditorContent(prev => prev + parsed.data);
+                    } else if (parsed.event === 'end') {
+                        const finalSummaryData = parsed.data;
+                        const newSummaryEntry: StoredSummary = {
+                            id: finalSummaryData.id,
+                            createdAt: finalSummaryData.createdAt * 1000,
+                            updatedAt: finalSummaryData.updatedAt * 1000,
+                            periodKey: finalSummaryData.periodKey,
+                            listKey: finalSummaryData.listKey,
+                            taskIds: finalSummaryData.taskIds,
+                            summaryText: finalSummaryData.summaryText,
+                        };
+                        setStoredSummaries(prev => [newSummaryEntry, ...(prev ?? []).filter(s => s.id !== newSummaryEntry.id)]);
+                        setTimeout(() => setCurrentIndex(0), 100);
+                        hasUnsavedChangesRef.current = false;
+                        source.close();
+                        eventSourceRef.current = null;
+                        setIsGenerating(false);
+                    } else if (parsed.event === 'error') {
+                        setSummaryEditorContent(prev => prev + `\n\n[Error: ${parsed.data}]`);
+                        source.close();
+                        eventSourceRef.current = null;
+                        setIsGenerating(false);
+                    }
+                } catch (e) {
+                    // Non-JSON data is ignored
+                }
+            };
+
+            source.onerror = (error) => {
+                console.error("EventSource failed:", error);
+                if (eventSourceRef.current) {
+                    setSummaryEditorContent(prev => prev + "\n\n[Error: Connection to summary service failed.]");
+                    source.close();
+                    eventSourceRef.current = null;
+                }
+                setIsGenerating(false);
+            };
+
+        } catch (error) {
+            console.error("Error initiating summary stream:", error);
+            isInternalEditorUpdate.current = true;
+            setSummaryEditorContent(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            setIsGenerating(false);
+        }
+    }, [forceSaveCurrentSummary, setIsGenerating, allTasks, selectedTaskIds, filterKey, setStoredSummaries, setCurrentIndex]);
+
+    useEffect(() => {
+        return () => {
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+        };
+    }, []);
+
+    // Remaining functions and JSX are unchanged as their logic is still sound.
+    // ...
+    // The rest of the component remains the same
+    // ...
+
     const handlePeriodValueChange = useCallback((selectedValue: string) => {
         forceSaveCurrentSummary();
         if (selectedValue === 'custom') {
@@ -177,7 +257,7 @@ const SummaryView: React.FC = () => {
     }, [setSelectedTaskIds]);
 
     const handleSelectAllTasks = useCallback(() => {
-        const nonTrashedTaskIds = filteredTasks.filter(t => t.list !== 'Trash').map(t => t.id);
+        const nonTrashedTaskIds = filteredTasks.filter(t => t.listName !== 'Trash').map(t => t.id);
         setSelectedTaskIds(new Set(nonTrashedTaskIds));
     }, [filteredTasks, setSelectedTaskIds]);
 
@@ -188,103 +268,6 @@ const SummaryView: React.FC = () => {
     const handleSelectAllToggle = useCallback((isChecked: boolean | 'indeterminate') => {
         if (isChecked === true) handleSelectAllTasks(); else handleDeselectAllTasks();
     }, [handleSelectAllTasks, handleDeselectAllTasks]);
-
-    const fieldLabelsMap = useMemo(() => Object.fromEntries(SUMMARY_FIELD_OPTIONS.map(f => [f.id, f.label])), []);
-
-    const handleGenerateClick = useCallback(async () => {
-        forceSaveCurrentSummary();
-        setIsGenerating(true);
-        isInternalEditorUpdate.current = true;
-        setSummaryEditorContent('');
-        setCurrentIndex(-1);
-
-        const tasksToSummarize = allTasks.filter(t => selectedTaskIds.has(t.id) && t.list !== 'Trash');
-
-        if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-        }
-
-        try {
-            const source = streamAiGeneratedSummary(tasksToSummarize, selectedFields, fieldLabelsMap);
-            eventSourceRef.current = source;
-            let accumulatedSummary = '';
-
-            source.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'chunk') {
-                        accumulatedSummary += data.content;
-                        isInternalEditorUpdate.current = true;
-                        setSummaryEditorContent(prev => prev + data.content);
-                    } else if (data.type === 'error') {
-                        console.error("SSE Error:", data.message);
-                        isInternalEditorUpdate.current = true;
-                        setSummaryEditorContent(prev => prev + `\n\n[Error: ${data.message}]`);
-                        source.close(); // Close on error message from server
-                        eventSourceRef.current = null;
-                        setIsGenerating(false);
-                    } else if (data.type === 'done') {
-                        console.log("SSE Stream finished.");
-                        source.close();
-                        eventSourceRef.current = null;
-                        setIsGenerating(false);
-
-                        const [periodKey, listKey] = filterKey.split('__');
-                        const newSummaryEntry: StoredSummary = {
-                            id: `summary-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                            createdAt: Date.now(),
-                            periodKey,
-                            listKey,
-                            taskIds: tasksToSummarize.map(t => t.id),
-                            summaryText: accumulatedSummary,
-                        };
-                        setStoredSummaries(prev => [newSummaryEntry, ...(prev ?? [])]);
-                        setTimeout(() => setCurrentIndex(0), 0);
-                        hasUnsavedChangesRef.current = false;
-                    }
-                } catch (e) {
-                    console.error("Error parsing SSE message data:", e, "Raw data:", event.data);
-                    // Handle non-JSON or malformed JSON data if necessary
-                    // Potentially append raw data if it's just plain text
-                    if (typeof event.data === 'string') {
-                        accumulatedSummary += event.data; // Assuming it might be a plain text chunk
-                        isInternalEditorUpdate.current = true;
-                        setSummaryEditorContent(prev => prev + event.data);
-                    }
-                }
-            };
-
-            source.onerror = (error) => {
-                console.error("EventSource failed:", error);
-                isInternalEditorUpdate.current = true;
-                // Check if it's already been closed, to avoid appending error multiple times
-                if (eventSourceRef.current) { // Check if it's still our active source
-                    setSummaryEditorContent(prev => prev + "\n\n[Error connecting to summary service or stream interrupted.]");
-                    source.close();
-                    eventSourceRef.current = null;
-                }
-                setIsGenerating(false); // Ensure this is always set on error
-            };
-
-        } catch (error) {
-            console.error("Error initiating summary stream:", error);
-            isInternalEditorUpdate.current = true;
-            setSummaryEditorContent(`Error initiating summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            setIsGenerating(false);
-        }
-    }, [
-        forceSaveCurrentSummary, setIsGenerating, allTasks, selectedTaskIds,
-        filterKey, setStoredSummaries, setCurrentIndex, selectedFields, fieldLabelsMap
-    ]);
-
-    useEffect(() => {
-        return () => {
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                eventSourceRef.current = null;
-            }
-        };
-    }, []);
 
     const handleEditorChange = useCallback((newValue: string) => {
         if (isInternalEditorUpdate.current) {
@@ -308,6 +291,8 @@ const SummaryView: React.FC = () => {
         forceSaveCurrentSummary();
         setCurrentIndex(prev => Math.max(prev - 1, 0));
     }, [setCurrentIndex, forceSaveCurrentSummary, isGenerating]);
+
+    // ... rest of component logic and JSX are unchanged ...
 
     const handleRangeApply = useCallback((startDate: Date, endDate: Date) => {
         forceSaveCurrentSummary();
@@ -367,12 +352,12 @@ const SummaryView: React.FC = () => {
         if (isGenerating) return true;
         if (selectedTaskIds.size === 0) return true;
         const tasksForSummary = allTasks.filter(t => selectedTaskIds.has(t.id));
-        return !tasksForSummary.some(t => t.list !== 'Trash');
+        return !tasksForSummary.some(t => t.listName !== 'Trash');
     }, [isGenerating, selectedTaskIds, allTasks]);
 
     const tasksUsedCount = useMemo(() => currentSummary?.taskIds.length ?? 0, [currentSummary]);
     const summaryTimestamp = useMemo(() => currentSummary ? formatDateTime(currentSummary.createdAt) : null, [currentSummary]);
-    const selectableTasks = useMemo(() => filteredTasks.filter(t => t.list !== 'Trash'), [filteredTasks]);
+    const selectableTasks = useMemo(() => filteredTasks.filter(t => t.listName !== 'Trash'), [filteredTasks]);
     const allSelectableTasksSelected = useMemo(() => selectableTasks.length > 0 && selectableTasks.every(task => selectedTaskIds.has(task.id)), [selectableTasks, selectedTaskIds]);
     const someSelectableTasksSelected = useMemo(() => selectableTasks.some(task => selectedTaskIds.has(task.id)) && !allSelectableTasksSelected, [selectedTaskIds, allSelectableTasksSelected, selectableTasks]);
 
@@ -431,25 +416,25 @@ const SummaryView: React.FC = () => {
                     className="flex items-start p-1.5 rounded-base hover:bg-grey-ultra-light dark:hover:bg-neutral-700 transition-colors"
                     title={task.title}>
                     <div
-                        className={twMerge("flex-shrink-0 w-3.5 h-3.5 rounded-full border mt-[1px] mr-2 flex items-center justify-center", task.completed ? "bg-primary border-primary" : task.completionPercentage && task.completionPercentage > 0 ? "border-primary/70 dark:border-primary-light/70" : "bg-white dark:bg-neutral-750 border-grey-light dark:border-neutral-600")}> {task.completed &&
+                        className={twMerge("flex-shrink-0 w-3.5 h-3.5 rounded-full border mt-[1px] mr-2 flex items-center justify-center", task.completed ? "bg-primary border-primary" : task.completePercentage && task.completePercentage > 0 ? "border-primary/70 dark:border-primary-light/70" : "bg-white dark:bg-neutral-750 border-grey-light dark:border-neutral-600")}> {task.completed &&
                         <Icon name="check" size={8} strokeWidth={2}
-                              className="text-white"/>} {task.completionPercentage && task.completionPercentage > 0 && !task.completed && (
+                              className="text-white"/>} {task.completePercentage && task.completePercentage > 0 && !task.completed && (
                         <div className="w-1.5 h-1.5 bg-primary/80 dark:bg-primary-light/80 rounded-full"></div>)} </div>
                     <div className="flex-1 overflow-hidden"><p
                         className={twMerge("text-[12px] font-normal text-grey-dark dark:text-neutral-100 leading-snug truncate", task.completed && "line-through text-grey-medium dark:text-neutral-400 font-light")}>{task.title || "Untitled"}</p>
                         <div
-                            className="flex items-center space-x-2 mt-0.5 text-[10px] text-grey-medium dark:text-neutral-400 font-light"> {task.completionPercentage && !task.completed && (
+                            className="flex items-center space-x-2 mt-0.5 text-[10px] text-grey-medium dark:text-neutral-400 font-light"> {task.completePercentage && !task.completed && (
                             <span
-                                className="font-normal text-primary dark:text-primary-light">[{task.completionPercentage}%]</span>)} {task.dueDate && isValid(safeParseDate(task.dueDate)) && (
+                                className="font-normal text-primary dark:text-primary-light">[{task.completePercentage}%]</span>)} {task.dueDate && isValid(safeParseDate(task.dueDate)) && (
                             <span className="flex items-center whitespace-nowrap"><Icon name="calendar" size={10}
                                                                                         strokeWidth={1}
-                                                                                        className="mr-0.5 opacity-80"/>{formatRelativeDate(task.dueDate, false)}</span>)} {task.list && task.list !== 'Inbox' && (
+                                                                                        className="mr-0.5 opacity-80"/>{formatRelativeDate(task.dueDate, false)}</span>)} {task.listName && task.listName !== 'Inbox' && (
                             <span
                                 className="flex items-center bg-grey-ultra-light dark:bg-neutral-700 px-1 py-0 rounded-sm max-w-[70px] truncate"
-                                title={task.list}><Icon name={task.list === 'Trash' ? 'trash' : 'list'} size={9}
-                                                        strokeWidth={1}
-                                                        className="mr-0.5 opacity-80 flex-shrink-0"/><span
-                                className="truncate">{task.list}</span></span>)} </div>
+                                title={task.listName}><Icon name={task.listName === 'Trash' ? 'trash' : 'list'} size={9}
+                                                            strokeWidth={1}
+                                                            className="mr-0.5 opacity-80 flex-shrink-0"/><span
+                                className="truncate">{task.listName}</span></span>)} </div>
                     </div>
                 </li>))}</ul>) : (
                 <p className="text-[12px] text-grey-medium dark:text-neutral-400 italic p-4 text-center font-light">No
@@ -465,7 +450,7 @@ const SummaryView: React.FC = () => {
         const parsedDueDate = useMemo(() => safeParseDate(task.dueDate), [task.dueDate]);
         const overdue = useMemo(() => parsedDueDate != null && isValid(parsedDueDate) && isBefore(startOfDay(parsedDueDate), startOfDay(new Date())) && !task.completed, [parsedDueDate, task.completed]);
         const uniqueId = `summary-task-${task.id}`;
-        const isDisabled = task.list === 'Trash';
+        const isDisabled = task.listName === 'Trash';
         const INITIAL_VISIBLE_SUBTASKS = 1;
 
         const handleLabelClick = (e: React.MouseEvent<HTMLLabelElement>) => {
@@ -513,18 +498,18 @@ const SummaryView: React.FC = () => {
                     className={twMerge("text-[13px] font-normal text-grey-dark dark:text-neutral-100 block truncate", task.completed && !isDisabled && "line-through text-grey-medium dark:text-neutral-400 font-light", isDisabled && "text-grey-medium dark:text-neutral-400 font-light")}>{task.title ||
                     <span className="italic">Untitled Task</span>}</span>
                     <div
-                        className="text-[11px] font-light text-grey-medium dark:text-neutral-400 flex items-center space-x-2 mt-0.5 flex-wrap gap-y-0.5"> {task.completionPercentage && task.completionPercentage < 100 && !isDisabled && (
+                        className="text-[11px] font-light text-grey-medium dark:text-neutral-400 flex items-center space-x-2 mt-0.5 flex-wrap gap-y-0.5"> {task.completePercentage && task.completePercentage < 100 && !isDisabled && (
                         <span
-                            className="text-primary dark:text-primary-light font-normal">[{task.completionPercentage}%]</span>)} {parsedDueDate && isValid(parsedDueDate) && (
+                            className="text-primary dark:text-primary-light font-normal">[{task.completePercentage}%]</span>)} {parsedDueDate && isValid(parsedDueDate) && (
                         <span
                             className={twMerge("flex items-center whitespace-nowrap", overdue && !task.completed && !isDisabled && "text-error dark:text-red-400 font-normal", task.completed && !isDisabled && "line-through")}><Icon
                             name="calendar" size={10} strokeWidth={1}
-                            className="mr-0.5 opacity-80"/>{formatRelativeDate(parsedDueDate, false)}</span>)} {task.list && task.list !== 'Inbox' && (
+                            className="mr-0.5 opacity-80"/>{formatRelativeDate(parsedDueDate, false)}</span>)} {task.listName && task.listName !== 'Inbox' && (
                         <span
                             className="flex items-center bg-grey-ultra-light dark:bg-neutral-700 px-1 rounded-sm text-[10px] max-w-[70px] truncate"
-                            title={task.list}><Icon name={task.list === 'Trash' ? 'trash' : 'list'} size={10}
-                                                    strokeWidth={1} className="mr-0.5 opacity-80 flex-shrink-0"/><span
-                            className="truncate">{task.list}</span></span>)} {task.tags && task.tags.length > 0 && (
+                            title={task.listName}><Icon name={task.listName === 'Trash' ? 'trash' : 'list'} size={10}
+                                                        strokeWidth={1} className="mr-0.5 opacity-80 flex-shrink-0"/><span
+                            className="truncate">{task.listName}</span></span>)} {task.tags && task.tags.length > 0 && (
                         <span className="flex items-center space-x-1">{task.tags.slice(0, 1).map(tag => (<span key={tag}
                                                                                                                className="bg-grey-ultra-light dark:bg-neutral-700 px-1 rounded-sm text-[10px] max-w-[60px] truncate">#{tag}</span>))}{task.tags.length > 1 &&
                             <span
@@ -580,7 +565,6 @@ const SummaryView: React.FC = () => {
 
     return (
         <div className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden">
-            {/* Header */}
             <div
                 className="px-6 py-0 h-[56px] border-b border-grey-light dark:border-neutral-700 flex justify-between items-center flex-shrink-0 bg-white dark:bg-neutral-800 z-10">
                 <div className="w-1/3 flex items-center space-x-2">
@@ -713,9 +697,7 @@ const SummaryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main Content Area */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-3 md:p-4 gap-3 md:gap-4 min-h-0">
-                {/* Left Panel: Task List */}
                 <div
                     className="w-full md:w-[360px] h-1/2 md:h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden flex-shrink-0">
                     <div
@@ -742,8 +724,9 @@ const SummaryView: React.FC = () => {
                                       className="mb-3 text-grey-light dark:text-neutral-500 opacity-80"/>
                                 <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-200">No relevant
                                     tasks found</p>
-                                <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">Adjust
-                                    filters or check task status/progress.</p>
+                                <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">
+                                    Adjust filters or check task status/progress.
+                                </p>
                             </div>
                         ) : (
                             filteredTasks.map(task => (
@@ -760,7 +743,6 @@ const SummaryView: React.FC = () => {
 
                 <div className="hidden md:block w-px bg-grey-light dark:bg-neutral-700 self-stretch my-0"></div>
 
-                {/* Right Panel: Summary Editor */}
                 <div className="flex-1 h-1/2 md:h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden">
                     <div
                         className="px-4 py-3 h-12 border-b border-grey-light dark:border-neutral-700 flex justify-between items-center flex-shrink-0">
@@ -812,52 +794,8 @@ const SummaryView: React.FC = () => {
                                             iconProps={{size: 14, strokeWidth: 1}} aria-label="Newer summary"/>
                                 </>
                             )}
-                            <DropdownMenu.Root open={isFieldsDropdownOpen} onOpenChange={setIsFieldsDropdownOpen}>
-                                <DropdownMenu.Trigger asChild disabled={isGenerating}>
-                                    <Button
-                                        variant="ghost" size="sm" icon="list-checks"
-                                        className="text-grey-medium dark:text-neutral-400 !h-7 px-2 hover:bg-grey-ultra-light dark:hover:bg-neutral-700"
-                                        aria-label="Customize summary fields"
-                                        aria-haspopup="true"
-                                        aria-expanded={isFieldsDropdownOpen}
-                                    />
-                                </DropdownMenu.Trigger>
-                                <DropdownMenu.Portal>
-                                    <DropdownMenu.Content
-                                        className={twMerge(dropdownContentBaseClasses, "min-w-[240px] p-1.5")}
-                                        sideOffset={5} align="end"
-                                        onCloseAutoFocus={e => e.preventDefault()}
-                                    >
-                                        <div
-                                            className="px-2 pb-1.5 pt-0.5 text-[11px] font-normal text-grey-medium dark:text-neutral-400 border-b border-grey-light dark:border-neutral-700 mb-1">
-                                            Select Summary Sections
-                                        </div>
-                                        {SUMMARY_FIELD_OPTIONS.map(field => {
-                                            const isSelected = selectedFields.includes(field.id);
-                                            return (
-                                                <DropdownMenu.Item
-                                                    key={field.id}
-                                                    className={summaryFieldItemStyle(isSelected)}
-                                                    onSelect={(event) => {
-                                                        event.preventDefault();
-                                                        handleFieldSelectionChange(field.id);
-                                                    }}
-                                                    textValue={field.label}
-                                                >
-                                                    <div
-                                                        className="w-5 h-5 flex items-center justify-center mr-2 flex-shrink-0">
-                                                        {isSelected && (
-                                                            <Icon name="check" size={15} strokeWidth={2.5}
-                                                                  className="text-primary dark:text-primary-light"/>
-                                                        )}
-                                                    </div>
-                                                    {field.label}
-                                                </DropdownMenu.Item>
-                                            );
-                                        })}
-                                    </DropdownMenu.Content>
-                                </DropdownMenu.Portal>
-                            </DropdownMenu.Root>
+                            {/* This functionality is not in the backend, so we comment it out. */}
+                            {/* ... Fields Dropdown ... */}
                         </div>
                     </div>
                     <div className="flex-1 min-h-0 p-4">

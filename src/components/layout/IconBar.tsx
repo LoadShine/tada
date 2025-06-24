@@ -107,13 +107,13 @@ const IconBar: React.FC = memo(() => {
                         <Button onClick={handleAvatarClick} variant="ghost" size="icon"
                                 className="w-9 h-9 rounded-full overflow-hidden p-0 hover:bg-grey-ultra-light dark:hover:bg-grey-deep focus-visible:ring-offset-white dark:focus-visible:ring-offset-grey-deep"
                                 aria-label="Account Settings">
-                            {currentUser?.avatar ? (
-                                <img src={currentUser.avatar} alt={currentUser.name || 'User Avatar'}
+                            {currentUser?.avatarUrl ? (
+                                <img src={currentUser.avatarUrl} alt={currentUser.username || 'User Avatar'}
                                      className="w-full h-full object-cover"/>
                             ) : (
                                 <div
                                     className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-300 font-normal text-sm">
-                                    {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() :
+                                    {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() :
                                         <Icon name="user" size={16} strokeWidth={1}/>}
                                 </div>
                             )}

@@ -374,7 +374,7 @@ const TaskDetail: React.FC = () => {
 
 
     const handleListChange = useCallback((newList: string) => {
-        updateTask({list: newList});
+        updateTask({listName: newList});
         setIsMoreActionsOpen(false);
     }, [updateTask]);
 
@@ -383,21 +383,21 @@ const TaskDetail: React.FC = () => {
     }, [updateTask]);
 
     const handleProgressChange = useCallback((newPercentage: number | null) => {
-        updateTask({completionPercentage: newPercentage});
+        updateTask({completePercentage: newPercentage});
     }, [updateTask]);
 
     const cycleCompletionPercentage = useCallback(() => {
-        if (!selectedTask || selectedTask.list === 'Trash') return;
-        const currentPercentage = selectedTask.completionPercentage ?? 0;
+        if (!selectedTask || selectedTask.listName === 'Trash') return;
+        const currentPercentage = selectedTask.completePercentage ?? 0;
         let nextPercentage: number | null = currentPercentage === 100 ? null : 100;
-        updateTask({completionPercentage: nextPercentage});
+        updateTask({completePercentage: nextPercentage});
     }, [selectedTask, updateTask]);
 
     const closeDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(false), []);
 
     const confirmDelete = useCallback(() => {
         if (!selectedTask) return;
-        updateTask({list: 'Trash', completionPercentage: null});
+        updateTask({listName: 'Trash', completePercentage: null});
         setSelectedTaskId(null);
         closeDeleteConfirm();
         setIsMoreActionsOpen(false);
@@ -414,8 +414,8 @@ const TaskDetail: React.FC = () => {
 
 
     const handleRestore = useCallback(() => {
-        if (!selectedTask || selectedTask.list !== 'Trash') return;
-        updateTask({list: 'Inbox'}); // Default restore to Inbox, or could be previous list
+        if (!selectedTask || selectedTask.listName !== 'Trash') return;
+        updateTask({listName: 'Inbox'}); // Default restore to Inbox, or could be previous list
     }, [selectedTask, updateTask]);
 
     const handleDuplicateTask = useCallback(() => {
@@ -449,7 +449,7 @@ const TaskDetail: React.FC = () => {
             updatedAt: now,
             completed: false, // Duplicated task is not completed
             completedAt: null,
-            completionPercentage: taskToDuplicate.completionPercentage === 100 ? null : taskToDuplicate.completionPercentage, // Reset if 100%
+            completePercentage: taskToDuplicate.completePercentage === 100 ? null : taskToDuplicate.completePercentage, // Reset if 100%
             subtasks: duplicatedSubtasks,
         };
         delete newTaskData.groupCategory; // groupCategory will be re-derived by tasksAtom setter
@@ -485,8 +485,8 @@ const TaskDetail: React.FC = () => {
         }
     }, [selectedTask, localTitle, localDueDate, savePendingChanges]);
 
-    const isTrash = useMemo(() => selectedTask?.list === 'Trash', [selectedTask?.list]);
-    const isCompleted = useMemo(() => (selectedTask?.completionPercentage ?? 0) === 100 && !isTrash, [selectedTask?.completionPercentage, isTrash]);
+    const isTrash = useMemo(() => selectedTask?.listName === 'Trash', [selectedTask?.listName]);
+    const isCompleted = useMemo(() => (selectedTask?.completePercentage ?? 0) === 100 && !isTrash, [selectedTask?.completePercentage, isTrash]);
     const isInteractiveDisabled = useMemo(() => isTrash || isCompleted, [isTrash, isCompleted]);
 
     const handleAddSubtask = useCallback(() => {
@@ -733,7 +733,7 @@ const TaskDetail: React.FC = () => {
                 <div className={headerClass}>
                     <div className="flex items-center flex-1 min-w-0 gap-x-2.5 mr-3">
                         <ProgressIndicator
-                            percentage={selectedTask.completionPercentage}
+                            percentage={selectedTask.completePercentage}
                             isTrash={isTrash}
                             onClick={cycleCompletionPercentage}
                             size={22}
@@ -822,7 +822,7 @@ const TaskDetail: React.FC = () => {
                                     </div>
                                     <div className="flex justify-around items-center px-1.5 py-1">
                                         {progressMenuItems.map(item => {
-                                            const isSelected = (selectedTask.completionPercentage ?? null) === item.value;
+                                            const isSelected = (selectedTask.completePercentage ?? null) === item.value;
                                             return (
                                                 <button
                                                     key={item.label}
@@ -997,14 +997,14 @@ const TaskDetail: React.FC = () => {
                                                 className={twMerge(dropdownContentClasses, "max-h-48 overflow-y-auto styled-scrollbar-thin")}
                                                 sideOffset={2} alignOffset={-5}>
                                                 <DropdownMenu.RadioGroup
-                                                    value={selectedTask.list}
+                                                    value={selectedTask.listName}
                                                     onValueChange={handleListChange}
                                                 >
                                                     {availableLists.map(list => (
                                                         <DropdownMenu.RadioItem
                                                             key={list}
                                                             value={list}
-                                                            className={getRadioItemClasses(selectedTask.list === list)}
+                                                            className={getRadioItemClasses(selectedTask.listName === list)}
                                                             disabled={isTrash}
                                                         >
                                                             <Icon name={list === 'Inbox' ? 'inbox' : 'list'}

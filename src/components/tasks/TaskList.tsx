@@ -50,7 +50,7 @@ import {
 import {twMerge} from 'tailwind-merge';
 import {TaskItemMenuProvider} from '@/context/TaskItemMenuContext';
 import {IconName} from '../common/IconMap';
-import {analyzeTaskInputWithAI} from '@/services/aiService'; // Corrected import for single task analysis
+import {analyzeTaskInputWithAI} from '@/services/aiService';
 
 const priorityMap: Record<number, {
     label: string;
@@ -187,7 +187,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
     const [isAiTaskInputVisible, setIsAiTaskInputVisible] = useState(false);
     const [isAiProcessing, setIsAiProcessing] = useState(false);
-    // Removed aiGeneratedContent and aiEventSourceRef as they are for SSE in SummaryView
 
 
     const availableListsForNewTask = useMemo(() => userLists.filter(l => l !== 'Trash'), [userLists]);
@@ -226,61 +225,44 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
     const {tasksToDisplay, isGroupedView, isSearching} = useMemo(() => {
         const searching = searchTerm.trim().length > 0;
-        let displayData: Task[] | Record<TaskGroupCategory, Task[]> = [];
-        let grouped = false;
-
         if (searching) {
-            displayData = rawSearchResults;
-            grouped = false;
-        } else if (currentFilterGlobal === 'all') {
-            displayData = groupedTasks;
-            grouped = true;
-        } else {
-            let filtered: Task[] = [];
-            const activeTasks = allTasks.filter((task: Task) => task.list !== 'Trash');
-            const trashedTasks = allTasks.filter((task: Task) => task.list === 'Trash');
-
-            switch (currentFilterGlobal) {
-                case 'today':
-                    filtered = activeTasks.filter((task: Task) => !task.completed && task.dueDate != null && isToday(task.dueDate));
-                    break;
-                case 'next7days':
-                    filtered = activeTasks.filter((task: Task) => {
-                        if (task.completed || task.dueDate == null) return false;
-                        const date = safeParseDate(task.dueDate);
-                        return date && isValid(date) && !isBefore(startOfDay(date), startOfDay(new Date())) && isWithinNext7Days(date);
-                    });
-                    break;
-                case 'completed':
-                    filtered = activeTasks.filter((task: Task) => task.completed).sort((a: Task, b: Task) =>
-                        (b.completedAt ?? b.updatedAt ?? 0) - (a.completedAt ?? a.updatedAt ?? 0)
-                    );
-                    break;
-                case 'trash':
-                    filtered = trashedTasks.sort((a: Task, b: Task) => (b.updatedAt || 0) - (a.updatedAt || 0));
-                    break;
-                default:
-                    if (currentFilterGlobal.startsWith('list-')) {
-                        const listName = currentFilterGlobal.substring(5);
-                        filtered = activeTasks.filter((task: Task) => !task.completed && task.list === listName);
-                    } else if (currentFilterGlobal.startsWith('tag-')) {
-                        const tagName = currentFilterGlobal.substring(4);
-                        filtered = activeTasks.filter((task: Task) => !task.completed && task.tags?.includes(tagName));
-                    } else {
-                        displayData = groupedTasks;
-                        grouped = true;
-                        filtered = [];
-                    }
-                    break;
-            }
-            if (!grouped && currentFilterGlobal !== 'completed' && currentFilterGlobal !== 'trash') {
-                filtered.sort((a: Task, b: Task) => (a.order - b.order) || (a.createdAt - b.createdAt));
-            }
-            if (!grouped) {
-                displayData = filtered;
-            }
+            return {tasksToDisplay: rawSearchResults, isGroupedView: false, isSearching: true};
         }
-        return {tasksToDisplay: displayData, isGroupedView: grouped, isSearching: searching};
+        if (currentFilterGlobal === 'all') {
+            return {tasksToDisplay: groupedTasks, isGroupedView: true, isSearching: false};
+        }
+
+        const activeTasks = allTasks.filter(task => task.listName !== 'Trash');
+        const trashedTasks = allTasks.filter(task => task.listName === 'Trash');
+        let filtered: Task[] = [];
+
+        switch (currentFilterGlobal) {
+            case 'today':
+                filtered = activeTasks.filter(task => !task.completed && task.dueDate != null && isToday(task.dueDate));
+                break;
+            case 'next7days':
+                filtered = activeTasks.filter(task => !task.completed && task.dueDate != null && isWithinNext7Days(task.dueDate));
+                break;
+            case 'completed':
+                filtered = activeTasks.filter(task => task.completed).sort((a, b) => (b.completedAt ?? b.updatedAt ?? 0) - (a.completedAt ?? a.updatedAt ?? 0));
+                break;
+            case 'trash':
+                filtered = trashedTasks.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                break;
+            default:
+                if (currentFilterGlobal.startsWith('list-')) {
+                    const listName = currentFilterGlobal.substring(5);
+                    filtered = activeTasks.filter(task => !task.completed && task.listName === listName);
+                } else if (currentFilterGlobal.startsWith('tag-')) {
+                    const tagName = currentFilterGlobal.substring(4);
+                    filtered = activeTasks.filter(task => !task.completed && task.tags?.includes(tagName));
+                }
+                break;
+        }
+        if (currentFilterGlobal !== 'completed' && currentFilterGlobal !== 'trash') {
+            filtered.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        }
+        return {tasksToDisplay: filtered, isGroupedView: false, isSearching: false};
     }, [searchTerm, currentFilterGlobal, groupedTasks, rawSearchResults, allTasks]);
 
     const sortableItems: UniqueIdentifier[] = useMemo(() => {
@@ -305,7 +287,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
             : (tasksToDisplay as Task[]);
         const activeTask = allVisibleTasks.find((task: Task) => task.id === active.id) ?? allTasks.find((task: Task) => task.id === active.id);
 
-        if (activeTask && !activeTask.completed && activeTask.list !== 'Trash') {
+        if (activeTask && !activeTask.completed && activeTask.listName !== 'Trash') {
             setDraggingTask(activeTask);
             setSelectedTaskId(activeTask.id);
         } else {
@@ -340,7 +322,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                 return currentTasks;
             }
 
-            const currentVisualOrderIds = sortableItems;
+            const currentVisualOrderIds = sortableItems as string[];
             const activeVisualIndex = currentVisualOrderIds.indexOf(activeId);
             const overVisualIndex = currentVisualOrderIds.indexOf(overId);
 
@@ -436,27 +418,19 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         if (!titleToSave) return;
 
         const now = Date.now();
-        let newOrder: number;
-        const currentAllTasks = allTasks ?? [];
-        const topTaskOrder = currentAllTasks
-            .filter(t => !t.completed && t.list !== 'Trash')
-            .sort((a, b) => a.order - b.order)[0]?.order;
+        const topTask = (allTasks ?? [])
+            .filter(t => !t.completed && t.listName !== 'Trash')
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
 
-        if (typeof topTaskOrder === 'number' && isFinite(topTaskOrder)) {
-            newOrder = topTaskOrder - 1000;
-        } else {
-            newOrder = Date.now() - 1000;
-        }
-        if (!isFinite(newOrder)) {
-            newOrder = Date.now();
-        }
+        const newOrder = topTask?.order ? topTask.order - 1000 : Date.now();
 
-        const taskToAdd: Omit<Task, 'groupCategory' | 'completed'> = {
+        const taskToAdd: Task = {
             id: `task-${now}-${Math.random().toString(16).slice(2)}`,
             title: titleToSave,
+            completed: false,
             completedAt: null,
-            list: newTaskListState,
-            completionPercentage: null,
+            listName: newTaskListState,
+            completePercentage: null,
             dueDate: newTaskDueDate ? newTaskDueDate.getTime() : null,
             priority: newTaskPriority,
             order: newOrder,
@@ -464,9 +438,12 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
             updatedAt: now,
             content: '',
             tags: [],
+            groupCategory: 'nodate', // Will be re-calculated by atom
+            subtasks: []
         };
 
-        setTasks(prev => [(taskToAdd as Task), ...(prev ?? [])].sort((a, b) => a.order - b.order));
+        setTasks(prev => [(taskToAdd), ...(prev ?? [])]);
+
         setNewTaskTitle('');
         let defaultDate: Date | null = null;
         if (preferences.defaultNewTaskDueDate === 'today') {
@@ -531,35 +508,22 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         setIsAiProcessing(true);
 
         try {
-            // Call the restored analyzeTaskInputWithAI from aiService
-            const aiAnalysis = await analyzeTaskInputWithAI(sentence, newTaskDueDate);
+            const aiAnalysis = await analyzeTaskInputWithAI(sentence);
 
             const now = Date.now();
-            let newOrder: number;
-            const currentAllTasks = allTasks ?? [];
-            const topTaskOrder = currentAllTasks
-                .filter(t => !t.completed && t.list !== 'Trash')
-                .sort((a, b) => a.order - b.order)[0]?.order;
-
-            if (typeof topTaskOrder === 'number' && isFinite(topTaskOrder)) {
-                newOrder = topTaskOrder - 1000;
-            } else {
-                newOrder = Date.now() - 1000;
-            }
-            if (!isFinite(newOrder)) {
-                newOrder = Date.now();
-            }
-
+            const topTask = (allTasks ?? []).filter(t => !t.completed && t.listName !== 'Trash').sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+            const newOrder = topTask?.order ? topTask.order - 1000 : Date.now();
             const taskId = `task-${now}-${Math.random().toString(16).slice(2)}`;
 
-            const taskToAdd: Omit<Task, 'groupCategory' | 'completed'> = {
+            const taskToAdd: Task = {
                 id: taskId,
-                title: aiAnalysis.title || sentence, // Use AI title if provided
+                title: aiAnalysis.title || sentence,
+                completed: false,
                 completedAt: null,
-                list: newTaskListState, // Keep list from current UI state
-                completionPercentage: null,
-                dueDate: aiAnalysis.dueDate !== undefined ? aiAnalysis.dueDate : (newTaskDueDate ? newTaskDueDate.getTime() : null),
-                priority: aiAnalysis.priority !== undefined ? aiAnalysis.priority : newTaskPriority,
+                listName: newTaskListState,
+                completePercentage: null,
+                dueDate: aiAnalysis.dueDate ? new Date(aiAnalysis.dueDate).getTime() : (newTaskDueDate ? newTaskDueDate.getTime() : null),
+                priority: aiAnalysis.priority,
                 order: newOrder,
                 createdAt: now,
                 updatedAt: now,
@@ -572,14 +536,14 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                     completed: false,
                     completedAt: null,
                     dueDate: sub.dueDate ? (safeParseDate(sub.dueDate)?.getTime() ?? null) : null,
-                    order: index * 100, // Simple ordering for AI subtasks
+                    order: index * 1000,
                     createdAt: now,
                     updatedAt: now,
                 })),
+                groupCategory: 'nodate'
             };
 
-            setTasks(prev => [(taskToAdd as Task), ...(prev ?? [])].sort((a, b) => a.order - b.order));
-            // Reset inputs
+            setTasks(prev => [taskToAdd, ...(prev ?? [])]);
             setNewTaskTitle('');
             let defaultDate: Date | null = null;
             if (preferences.defaultNewTaskDueDate === 'today') defaultDate = startOfDay(new Date());
@@ -589,13 +553,11 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
             setNewTaskListState(preferences.defaultNewTaskList);
 
         } catch (error) {
-            console.error("AI Task creation analysis failed:", error);
-            // Handle error, e.g., show a notification to the user
             alert(`AI Task creation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         } finally {
             setIsAiProcessing(false);
-            setIsAiTaskInputVisible(false); // Close AI input mode after attempt
-            if (isRegularNewTaskModeAllowed) { // If regular mode is now active
+            setIsAiTaskInputVisible(false);
+            if (isRegularNewTaskModeAllowed) {
                 setTimeout(() => newTaskTitleInputRef.current?.focus(), 0);
             }
         }
@@ -616,7 +578,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
             const currentTasks = currentTasksValue ?? [];
             return currentTasks.map((task: Task) => {
                 const isTaskOverdue = !task.completed &&
-                    task.list !== 'Trash' &&
+                    task.listName !== 'Trash' &&
                     task.dueDate != null &&
                     isValid(task.dueDate) &&
                     isBefore(startOfDay(safeParseDate(task.dueDate)!), startOfDay(new Date()));
@@ -658,7 +620,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         if (isSearching) return `No results for "${searchTerm}"`;
         if (currentFilterGlobal === 'trash') return 'Trash is empty';
         if (currentFilterGlobal === 'completed') return 'No completed tasks yet';
-        if (currentFilterGlobal.startsWith('list-') || currentFilterGlobal.startsWith('tag-')) {
+        if (currentFilterGlobal.startsWith('list-')) {
             return `No active tasks in "${pageTitle}"`;
         }
         return `No tasks for "${pageTitle}"`;

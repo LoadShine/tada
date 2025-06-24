@@ -26,8 +26,9 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
                 className={twMerge(
                     "h-full",
                     isLg ? "w-1/2 flex-shrink-0" : "w-full flex-shrink-0",
-                    "bg-white",
-                    "border-r border-grey-light"
+                    // 修复: 添加暗黑模式背景色和边框色
+                    "bg-white dark:bg-neutral-800",
+                    "border-r border-grey-light dark:border-neutral-700/50"
                 )}
             >
                 <TaskList title={title}/>
@@ -35,7 +36,9 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
 
             {isLg ? (
                 <div className={twMerge(
-                    "h-full flex-1 flex-shrink-0 relative overflow-hidden bg-white"
+                    "h-full flex-1 flex-shrink-0 relative overflow-hidden",
+                    // 修复: 添加暗黑模式背景色
+                    "bg-white dark:bg-neutral-800"
                 )}>
                     {!selectedTaskId && <TaskDetailPlaceholder/>}
                     <AnimatePresence initial={false}>
@@ -70,7 +73,7 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
                                 key="drawer-task-detail"
                                 className={twMerge(
                                     "fixed top-0 right-0 h-full w-[90%] max-w-md shadow-2xl z-40 flex flex-col",
-                                    "bg-white dark:bg-neutral-850" // Drawer background is white
+                                    "bg-white dark:bg-neutral-850"
                                 )}
                                 initial={{x: '100%'}}
                                 animate={{x: 0}}

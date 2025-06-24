@@ -35,11 +35,11 @@ export const ProgressIndicator: React.FC<{
     ariaLabelledby?: string;
 }> = React.memo(({percentage, isTrash, size = 16, className, onClick, onKeyDown, ariaLabelledby}) => {
     const normalizedPercentage = percentage ?? 0;
-    const radius = size / 2 - 1;
+    const radius = size / 2 - 1.5;
     const circumference = 2 * Math.PI * radius;
-    const strokeWidth = 1;
+    const strokeWidth = 1.5;
     const offset = circumference - (normalizedPercentage / 100) * circumference;
-    const checkPath = `M ${size * 0.32} ${size * 0.5} L ${size * 0.45} ${size * 0.65} L ${size * 0.7} ${size * 0.4}`;
+    const checkPath = `M ${size * 0.3} ${size * 0.5} L ${size * 0.45} ${size * 0.65} L ${size * 0.75} ${size * 0.35}`;
 
     const indicatorClasses = useMemo(() => twMerge(
         "relative flex-shrink-0 rounded-full transition-all duration-200 ease-in-out focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
@@ -90,7 +90,6 @@ export const ProgressIndicator: React.FC<{
 });
 ProgressIndicator.displayName = 'ProgressIndicator';
 
-// generateContentSnippet remains the same
 function generateContentSnippet(content: string, term: string, length: number = 35): string {
     if (!content || !term) return '';
     const lowerContent = content.toLowerCase();
@@ -243,8 +242,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     const dateDisplayRef = useRef<HTMLButtonElement>(null);
     const taskItemRef = useRef<HTMLDivElement>(null);
 
-    const isTrashItem = useMemo(() => task.list === 'Trash', [task.list]);
-    const isCompleted = useMemo(() => (task.completionPercentage ?? 0) === 100 && !isTrashItem, [task.completionPercentage, isTrashItem]);
+    const isTrashItem = useMemo(() => task.listName === 'Trash', [task.listName]);
+    const isCompleted = useMemo(() => task.completed && !isTrashItem, [task.completed, isTrashItem]);
     const isSortable = useMemo(() => !isCompleted && !isTrashItem && !isOverlay, [isCompleted, isTrashItem, isOverlay]);
     const isInteractive = useMemo(() => !isOverlay && !isCompleted && !isTrashItem, [isOverlay, isCompleted, isTrashItem]);
 
@@ -312,21 +311,19 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         setOpenItemId(null);
     }, [setSelectedTaskId, task.id, isDragging, setOpenItemId]);
 
-    const updateTask = useCallback((updates: Partial<Omit<Task, 'groupCategory' | 'completedAt' | 'completed' | 'subtasks' | 'id' | 'createdAt'>>) => {
+    const updateTask = useCallback((updates: Partial<Task>) => {
         setTasks(prevTasksValue => {
             const prevTasks = prevTasksValue ?? [];
-            return prevTasks.map(t => (t.id === task.id ? {...t, ...updates, updatedAt: Date.now()} : t))
+            return prevTasks.map(t => (t.id === task.id ? {...t, ...updates} : t))
         });
     }, [setTasks, task.id]);
 
     const cycleCompletionPercentage = useCallback((event?: React.MouseEvent<HTMLButtonElement>) => {
         event?.stopPropagation();
-        const currentPercentage = task.completionPercentage ?? 0;
-        let nextPercentage: number | null = currentPercentage === 100 ? null : 100;
-        updateTask({completionPercentage: nextPercentage});
-        if (nextPercentage === 100 && isSelected) setSelectedTaskId(null);
+        updateTask({completed: !task.completed});
+        if (!task.completed && isSelected) setSelectedTaskId(null);
         setOpenItemId(null);
-    }, [task.completionPercentage, updateTask, isSelected, setSelectedTaskId, setOpenItemId]);
+    }, [task.completed, updateTask, isSelected, setSelectedTaskId, setOpenItemId]);
 
     const handleProgressIndicatorKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -336,15 +333,14 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     }, [cycleCompletionPercentage]);
 
     const handleProgressChange = useCallback((newPercentage: number | null) => {
-        updateTask({completionPercentage: newPercentage});
+        updateTask({completePercentage: newPercentage, completed: newPercentage === 100});
         if (newPercentage === 100 && isSelected) setSelectedTaskId(null);
         setIsMoreActionsOpen(false);
         setOpenItemId(null);
     }, [updateTask, isSelected, setSelectedTaskId, setOpenItemId]);
 
     const handleDateSelect = useCallback((dateWithTime: Date | undefined) => {
-        const newDueDate = dateWithTime ? dateWithTime.getTime() : null;
-        updateTask({dueDate: newDueDate});
+        updateTask({dueDate: dateWithTime ? dateWithTime.getTime() : null});
     }, [updateTask]);
 
     const handleTagsApply = useCallback((newTags: string[]) => {
@@ -359,7 +355,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             setIsTagsPopoverOpen(false);
             setIsDateClickPickerOpen(false);
         } else {
-            // Only set openItemId to null if ALL popovers controlled by this menu are closed
             if (!isDatePickerPopoverOpen && !isTagsPopoverOpen && !isDateClickPickerOpen) {
                 setOpenItemId(null);
             }
@@ -381,8 +376,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         } else {
             if (type === 'date') setIsDatePickerPopoverOpen(false);
             if (type === 'tags') setIsTagsPopoverOpen(false);
-            // If the main menu is not being kept open by another sub-popover, and this was the last one, then it can close.
-            // The useEffect for openItemId will handle setting it to null if all are closed.
         }
     }, [task.id, setOpenItemId]);
 
@@ -395,7 +388,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             setIsDatePickerPopoverOpen(false);
             setIsTagsPopoverOpen(false);
         }
-        // useEffect will handle setOpenItemId(null)
     }, [task.id, setOpenItemId]);
 
     const closeMenuDatePickerPopover = useCallback(() => {
@@ -418,52 +410,41 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     }, [updateTask, setOpenItemId]);
 
     const handleListChange = useCallback((newList: string) => {
-        updateTask({list: newList});
+        updateTask({listName: newList});
         setIsMoreActionsOpen(false);
         setOpenItemId(null);
     }, [updateTask, setOpenItemId]);
 
     const handleDuplicateTask = useCallback(() => {
         const now = Date.now();
-        const newParentTaskId = `task-${now}-${Math.random().toString(16).slice(2)}`;
-        const duplicatedSubtasks = (task.subtasks || []).map(sub => ({
-            ...sub,
-            id: `subtask-${now}-${Math.random().toString(16).slice(2)}`,
-            parentId: newParentTaskId,
-            createdAt: now,
-            updatedAt: now,
-            completedAt: sub.completed ? now : null,
-        }));
-        const newTaskData: Omit<Task, 'groupCategory' | 'completed'> = {
-            id: newParentTaskId,
+        const newTask: Task = {
+            ...task,
+            id: `task-${now}-${Math.random().toString(16).slice(2)}`,
             title: `${task.title} (Copy)`,
-            dueDate: task.dueDate,
-            order: task.order + 0.01,
+            order: (task.order ?? 0) + 0.01,
             createdAt: now,
             updatedAt: now,
-            completionPercentage: task.completionPercentage === 100 ? null : task.completionPercentage,
+            completed: false,
             completedAt: null,
-            list: task.list,
-            priority: task.priority,
-            content: task.content,
-            tags: [...(task.tags || [])],
-            subtasks: duplicatedSubtasks,
+            completePercentage: null,
+            subtasks: (task.subtasks || []).map(sub => ({
+                ...sub,
+                id: `subtask-${now}-${Math.random().toString(16).slice(2)}`,
+                parentId: `task-${now}-${Math.random().toString(16).slice(2)}`,
+                completed: false,
+                completedAt: null,
+            })),
+            groupCategory: 'nodate' // It will be recalculated
         };
-        setTasks(prevValue => {
-            const prev = prevValue ?? [];
-            const index = prev.findIndex(t => t.id === task.id);
-            const newTasks = [...prev];
-            newTasks.splice(index !== -1 ? index + 1 : prev.length, 0, newTaskData as Task);
-            return newTasks.sort((a, b) => a.order - b.order);
-        });
-        setSelectedTaskId(newParentTaskId);
+        setTasks(prevValue => [...(prevValue ?? []), newTask]);
+        setSelectedTaskId(newTask.id);
         setIsMoreActionsOpen(false);
         setOpenItemId(null);
     }, [task, setTasks, setSelectedTaskId, setOpenItemId]);
 
     const closeDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(false), []);
     const confirmDeleteTask = useCallback(() => {
-        updateTask({list: 'Trash', completionPercentage: null});
+        updateTask({listName: 'Trash', completed: false, completePercentage: null});
         if (isSelected) setSelectedTaskId(null);
         closeDeleteConfirm();
         setIsMoreActionsOpen(false);
@@ -471,7 +452,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     }, [updateTask, isSelected, setSelectedTaskId, closeDeleteConfirm, setOpenItemId]);
 
     const handleDeleteTask = useCallback(() => {
-        if (isLoadingPreferences) return; // Guard against preferences not loaded
+        if (isLoadingPreferences) return;
         if (preferences.confirmDeletions) {
             setIsDeleteDialogOpen(true);
         } else {
@@ -545,7 +526,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         (isCompleted || isTrashItem) && "line-through text-grey-medium dark:text-neutral-400 font-light"
     ), [isCompleted, isTrashItem]);
 
-    const listIcon: IconName = useMemo(() => task.list === 'Inbox' ? 'inbox' : (task.list === 'Trash' ? 'trash' : 'list'), [task.list]);
+    const listIcon: IconName = useMemo(() => task.listName === 'Inbox' ? 'inbox' : (task.listName === 'Trash' ? 'trash' : 'list'), [task.listName]);
     const availableLists = useMemo(() => (userLists ?? []).filter(l => l !== 'Trash'), [userLists]);
 
     const actionsMenuContentClasses = useMemo(() => twMerge(
@@ -594,7 +575,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         return 'No Priority';
     }, [task.priority]);
 
-    if (isLoadingPreferences) { // Simple loading guard
+    if (isLoadingPreferences) {
         return (
             <div className={twMerge(baseClasses, "opacity-50 items-center justify-center")}>
                 <Icon name="loader" size={16} className="animate-spin text-primary"/>
@@ -629,7 +610,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                  aria-selected={isSelected} aria-labelledby={`task-title-${task.id}`}>
 
                 <div className="flex-shrink-0 mr-3">
-                    <ProgressIndicator percentage={task.completionPercentage} isTrash={isTrashItem}
+                    <ProgressIndicator percentage={task.completePercentage} isTrash={isTrashItem}
                                        onClick={cycleCompletionPercentage} onKeyDown={handleProgressIndicatorKeyDown}
                                        ariaLabelledby={`task-title-${task.id}`} size={16}/>
                 </div>
@@ -668,12 +649,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                          <Icon name={listIcon} size={12} strokeWidth={1.5}
                                                className="mr-0.5 opacity-80 flex-shrink-0"/>
                                         <span
-                                            className={clsx((isCompleted || isTrashItem) && 'line-through')}>{task.list}</span>
+                                            className={clsx((isCompleted || isTrashItem) && 'line-through')}>{task.listName}</span>
                                     </span>
                                 </Tooltip.Trigger>
                                 <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="bottom"
                                                                  align="start" sideOffset={4}>
-                                    List: {task.list} <Tooltip.Arrow
+                                    List: {task.listName} <Tooltip.Arrow
                                     className="fill-grey-dark dark:fill-neutral-900/95"/>
                                 </Tooltip.Content></Tooltip.Portal>
                             </Tooltip.Root></Tooltip.Provider>
@@ -830,7 +811,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                     </div>
                                     <div className="flex justify-around items-center px-1.5 py-1">
                                         {progressMenuItems.map(item => {
-                                            const isCurrentlySelected = (task.completionPercentage ?? null) === item.value;
+                                            const isCurrentlySelected = (task.completePercentage ?? null) === item.value;
                                             return (
                                                 <button
                                                     key={item.label}
@@ -1008,11 +989,11 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                 className={twMerge(actionsMenuContentClasses, "max-h-48 overflow-y-auto styled-scrollbar-thin")}
                                                 sideOffset={2} alignOffset={-5}
                                             >
-                                                <DropdownMenu.RadioGroup value={task.list}
+                                                <DropdownMenu.RadioGroup value={task.listName}
                                                                          onValueChange={handleListChange}>
                                                     {availableLists.map(list => (
                                                         <DropdownMenu.RadioItem key={list} value={list}
-                                                                                className={getTaskItemMenuRadioItemStyle(task.list === list)}
+                                                                                className={getTaskItemMenuRadioItemStyle(task.listName === list)}
                                                                                 disabled={!isInteractive || isTrashItem}>
                                                             <Icon name={list === 'Inbox' ? 'inbox' : 'list'}
                                                                   size={14} strokeWidth={1.5}

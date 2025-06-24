@@ -211,7 +211,7 @@ const CalendarView: React.FC = () => {
     const tasksByDueDate = useMemo(() => {
         const grouped: Record<string, Task[]> = {};
         tasks.forEach(task => {
-            if (task.dueDate && task.list !== 'Trash') {
+            if (task.dueDate && task.listName !== 'Trash') {
                 const parsedDate = safeParseDate(task.dueDate);
                 if (parsedDate && isValid(parsedDate)) {
                     const dateKey = format(parsedDate, 'yyyy-MM-dd');
