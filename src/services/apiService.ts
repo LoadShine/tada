@@ -256,31 +256,23 @@ export const apiDeleteList = (listId: string): Promise<{ message: string }> => a
 
 
 const transformTaskFromApi = (apiTask: any): Task => {
-    // Helper to convert seconds-based timestamp from API to JS milliseconds
-    const toMs = (seconds: number | null | undefined): number | null => {
-        if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) {
-            return null;
-        }
-        return Math.round(seconds * 1000);
-    };
-
     const {list, subtasks, ...rest} = apiTask;
 
     const transformedSubtasks = (subtasks || []).map((sub: any) => ({
         ...sub,
         dueDate: sub.dueDate ? new Date(sub.dueDate).getTime() : null,
-        completedAt: toMs(sub.completedAt),
-        createdAt: toMs(sub.createdAt),
-        updatedAt: toMs(sub.updatedAt),
+        completedAt: sub.completedAt ? new Date(sub.completedAt).getTime() : null,
+        createdAt: sub.createdAt ? new Date(sub.createdAt).getTime() : null,
+        updatedAt: sub.updatedAt ? new Date(sub.updatedAt).getTime() : null,
     }));
 
     return {
         ...rest,
         listName: list,
         dueDate: apiTask.dueDate ? new Date(apiTask.dueDate).getTime() : null,
-        completedAt: toMs(apiTask.completedAt),
-        createdAt: toMs(apiTask.createdAt),
-        updatedAt: toMs(apiTask.updatedAt),
+        completedAt: apiTask.completedAt ? new Date(apiTask.completedAt).getTime() : null,
+        createdAt: apiTask.createdAt ? new Date(apiTask.createdAt).getTime() : null,
+        updatedAt: apiTask.updatedAt ? new Date(apiTask.updatedAt).getTime() : null,
         subtasks: transformedSubtasks,
     } as Task;
 };
