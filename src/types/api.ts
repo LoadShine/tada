@@ -37,6 +37,9 @@ export interface TaskCreate {
     order: number;
     completed?: boolean;
     completePercentage?: number;
+    subtasks?: {
+        title: string;
+    }[] | null;
 }
 
 export interface TaskUpdate {

@@ -1,5 +1,5 @@
 // src/services/apiService.ts
-import {AppearanceSettings, List, PreferencesSettings, StoredSummary, Task, User} from '@/types';
+import {AppearanceSettings, List, PreferencesSettings, StoredSummary, Subtask, Task, User} from '@/types';
 import {
     AiTaskSuggestion,
     AuthResponse as ApiAuthResponse,
@@ -303,6 +303,22 @@ export const apiUpdateTask = async (taskId: string, taskData: TaskUpdate): Promi
         body: taskData,
     });
     return transformTaskFromApi(apiTask);
+};
+
+export const apiCreateSubtask = async (taskId: string, subtaskData: { title: string }): Promise<Subtask> => {
+    // 后端返回的 Subtask DTO 结构与前端的 Subtask 类型基本一致，但日期是字符串
+    const apiSubtask = await apiFetch<any>(`/tasks/${taskId}/subtasks`, {
+        method: 'POST',
+        body: subtaskData,
+    });
+    // 将后端返回的日期字符串转换为前端需要的时间戳数字
+    return {
+        ...apiSubtask,
+        dueDate: apiSubtask.dueDate ? new Date(apiSubtask.dueDate).getTime() : null,
+        completedAt: apiSubtask.completedAt ? new Date(apiSubtask.completedAt).getTime() : null,
+        createdAt: apiSubtask.createdAt ? new Date(apiSubtask.createdAt).getTime() : null,
+        updatedAt: apiSubtask.updatedAt ? new Date(apiSubtask.updatedAt).getTime() : null,
+    } as Subtask;
 };
 
 export const apiDeleteTask = (taskId: string): Promise<void> => {

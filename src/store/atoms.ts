@@ -218,18 +218,37 @@ export const tasksAtom: AsyncDataAtom<Task[]> = atom(
 
         // Handle creations first to get real IDs
         const creationPromises = newLocalTasks.map(async (taskToCreate) => {
+            // 1. 分离出子任务数据
+            const { subtasks: localSubtasks, ...mainTaskData } = taskToCreate;
+
+            // 2. 准备创建主任务的载荷（不含子任务）
             const createPayload: TaskCreate = {
-                title: taskToCreate.title,
-                content: taskToCreate.content,
-                listId: taskToCreate.listId,
-                priority: taskToCreate.priority,
-                tags: taskToCreate.tags,
-                dueDate: taskToCreate.dueDate ? new Date(taskToCreate.dueDate).toISOString() : null,
-                order: taskToCreate.order,
-                completed: taskToCreate.completed,
-                completePercentage: taskToCreate.completePercentage ?? 0,
+                title: mainTaskData.title,
+                content: mainTaskData.content,
+                listId: mainTaskData.listId,
+                priority: mainTaskData.priority,
+                tags: mainTaskData.tags,
+                dueDate: mainTaskData.dueDate ? new Date(mainTaskData.dueDate).toISOString() : null,
+                order: mainTaskData.order,
+                completed: mainTaskData.completed,
+                completePercentage: mainTaskData.completePercentage ?? 0,
             };
-            return service.apiCreateTask(createPayload);
+
+            // 3. 第一步：创建主任务
+            const createdTask = await service.apiCreateTask(createPayload);
+
+            // 4. 第二步：如果存在子任务，则循环调用创建子任务的接口
+            if (localSubtasks && localSubtasks.length > 0) {
+                const subtaskCreationPromises = localSubtasks.map(sub =>
+                    service.apiCreateSubtask(createdTask.id, { title: sub.title })
+                );
+                // 等待所有子任务创建完成
+                const createdSubtasks = await Promise.all(subtaskCreationPromises);
+                // 将创建好的子任务附加到返回的任务对象上
+                createdTask.subtasks = createdSubtasks;
+            }
+
+            return createdTask;
         });
 
         try {
