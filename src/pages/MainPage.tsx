@@ -26,7 +26,6 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
                 className={twMerge(
                     "h-full",
                     isLg ? "w-1/2 flex-shrink-0" : "w-full flex-shrink-0",
-                    // 修复: 添加暗黑模式背景色和边框色
                     "bg-white dark:bg-neutral-800",
                     "border-r border-grey-light dark:border-neutral-700/50"
                 )}
@@ -37,8 +36,7 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
             {isLg ? (
                 <div className={twMerge(
                     "h-full flex-1 flex-shrink-0 relative overflow-hidden",
-                    // 修复: 添加暗黑模式背景色
-                    "bg-white dark:bg-neutral-800"
+                    "bg-white dark:bg-neutral-850"
                 )}>
                     {!selectedTaskId && <TaskDetailPlaceholder/>}
                     <AnimatePresence initial={false}>

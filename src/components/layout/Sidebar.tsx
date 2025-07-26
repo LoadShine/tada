@@ -407,7 +407,6 @@ const Sidebar: React.FC = () => {
                                             <div key={list.id}
                                                  className="group/listitem relative pr-7 flex items-center h-8 mb-0.5">
                                                 {isEditing ? (
-                                                    // FIX 1: Add background color and rounding during edit state
                                                     <div
                                                         className="flex items-center w-full px-2 py-0 h-full rounded-base bg-grey-ultra-light dark:bg-neutral-700">
                                                         <Icon name={(list.icon as IconName) || 'list'} size={16}
@@ -457,7 +456,6 @@ const Sidebar: React.FC = () => {
                                                                 </DropdownMenu.Item>
                                                                 <DropdownMenu.Item
                                                                     className={twMerge(dropdownItemClasses, "text-error dark:text-red-400 data-[highlighted]:bg-red-500/10 dark:data-[highlighted]:bg-red-500/20")}
-                                                                    // FIX 2: Use setTimeout to prevent focus trap/race condition when opening the dialog
                                                                     onSelect={() => setTimeout(() => setListToDelete(list), 0)}>
                                                                     <Icon name="trash" size={14}
                                                                           className="mr-2 opacity-80"

@@ -201,24 +201,26 @@ const TaskDetail: React.FC = () => {
 
     useEffect(() => {
         isMountedRef.current = true;
-        const currentSelectedTaskId = selectedTask?.id; // Capture at effect setup
+        const currentSelectedTaskId = selectedTask?.id;
 
         return () => {
             isMountedRef.current = false;
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-            if (currentSelectedTaskId && hasUnsavedChangesRef.current) { // Use captured ID
+            // On unmount (e.g. route change), save any pending changes
+            if (currentSelectedTaskId && hasUnsavedChangesRef.current) {
                 savePendingChanges(currentSelectedTaskId, latestTitleRef.current, latestContentRef.current, localDueDate);
             }
         };
-    }, [selectedTask?.id, localDueDate, savePendingChanges]); // Re-run if selectedTask ID or localDueDate changes
+    }, [selectedTask?.id, localDueDate, savePendingChanges]);
 
 
     useEffect(() => {
-        const prevTaskId = selectedTask?.id; // Potentially from previous render cycle
+        const prevTaskId = selectedTask?.id;
         if (prevTaskId && hasUnsavedChangesRef.current) {
             savePendingChanges(prevTaskId, latestTitleRef.current, latestContentRef.current, localDueDate);
         }
 
+        // Reset component state when the selected task changes
         setNewSubtaskTitle('');
         setNewSubtaskDueDate(undefined);
         hasUnsavedChangesRef.current = false;
@@ -229,13 +231,14 @@ const TaskDetail: React.FC = () => {
             const taskContent = selectedTask.content || '';
             const taskDueDateObj = safeParseDate(selectedTask.dueDate);
 
-            setLocalTitle(taskTitle); // Always update from selectedTask
-            setLocalContent(taskContent); // Always update
-            setLocalDueDate(taskDueDateObj && isValid(taskDueDateObj) ? taskDueDateObj : undefined); // Always update
+            setLocalTitle(taskTitle);
+            setLocalContent(taskContent);
+            setLocalDueDate(taskDueDateObj && isValid(taskDueDateObj) ? taskDueDateObj : undefined);
 
             latestTitleRef.current = taskTitle;
             latestContentRef.current = taskContent;
 
+            // Auto-focus title if it's empty
             if (taskTitle === '' &&
                 document.activeElement !== titleInputRef.current &&
                 !editorRef.current?.getView()?.hasFocus) {
@@ -244,10 +247,10 @@ const TaskDetail: React.FC = () => {
                         titleInputRef.current.focus();
                         titleInputRef.current.select();
                     }
-                }, 350); // Delay for focus to allow UI to settle
+                }, 350);
                 return () => clearTimeout(timer);
             }
-        } else { // No task selected
+        } else { // No task selected, clear everything
             setLocalTitle('');
             latestTitleRef.current = '';
             setLocalContent('');
@@ -261,7 +264,10 @@ const TaskDetail: React.FC = () => {
             setIsHeaderMenuDatePickerOpen(false);
             setIsHeaderMenuTagsPopoverOpen(false);
         }
-    }, [selectedTask, savePendingChanges, localDueDate]); // localDueDate was missing, adding it might cause loops if not careful. It's for the cleanup logic.
+        // CORE FIX: Removed `localDueDate` from the dependency array to break the infinite render loop.
+        // This effect's purpose is to sync internal state when the `selectedTask` prop changes.
+        // It should not run when its own internal state (`localDueDate`) changes.
+    }, [selectedTask, savePendingChanges]);
 
 
     useEffect(() => {
