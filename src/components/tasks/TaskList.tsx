@@ -175,7 +175,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
     const [isBulkRescheduleOpen, setIsBulkRescheduleOpen] = useState(false);
 
     const newTaskTitleInputRef = useRef<HTMLInputElement>(null);
-    const dateDisplayRef = useRef<HTMLSpanElement>(null);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskDueDate, setNewTaskDueDate] = useState<Date | null>(null);
     const [newTaskPriority, setNewTaskPriority] = useState<number | null>(null);
@@ -183,7 +182,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
     const [isNewTaskDatePickerOpen, setIsNewTaskDatePickerOpen] = useState(false);
     const [isNewTaskMoreOptionsOpen, setIsNewTaskMoreOptionsOpen] = useState(false);
-    const [dateTextWidth, setDateTextWidth] = useState(0);
 
     const [isAiTaskInputVisible, setIsAiTaskInputVisible] = useState(false);
     const [isAiProcessing, setIsAiProcessing] = useState(false);
@@ -212,16 +210,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         }
 
     }, [preferences, availableListsForNewTask, isLoadingPreferences]);
-
-
-    useEffect(() => {
-        if (newTaskDueDate && dateDisplayRef.current) {
-            setDateTextWidth(dateDisplayRef.current.offsetWidth);
-        } else {
-            setDateTextWidth(0);
-        }
-    }, [newTaskDueDate, isNewTaskDatePickerOpen]);
-
 
     const {tasksToDisplay, isGroupedView, isSearching} = useMemo(() => {
         const searching = searchTerm.trim().length > 0;
@@ -700,14 +688,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
         }
     }, [newTaskPriority, isCurrentlyAiMode, isAiProcessing]);
 
-    const inputPaddingLeft = useMemo(() => {
-        const basePadding = 32;
-        const dateTextPadding = dateTextWidth > 0 ? dateTextWidth + 8 + 4 : 0;
-        return basePadding + dateTextPadding;
-    }, [dateTextWidth]);
-
     const newTaskInputClass = useMemo(() => {
-        const baseClasses = "w-full h-full pr-7 text-[13px] font-light outline-none border-none text-grey-dark dark:text-neutral-100 placeholder:text-grey-medium dark:placeholder:text-neutral-400/70";
+        const baseClasses = "flex-1 min-w-0 h-full pl-2 pr-8 text-[13px] font-light outline-none border-none text-grey-dark dark:text-neutral-100 placeholder:text-grey-medium dark:placeholder:text-neutral-400/70";
 
         if (isCurrentlyAiMode) {
             if (isAiProcessing) {
@@ -789,7 +771,7 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                     <div className="bg-white dark:bg-neutral-800">
                         <div className="px-4 py-2.5">
                             <div className={newTaskInputWrapperClass}>
-                                <div className="absolute left-0.5 top-1/2 -translate-y-1/2 flex items-center h-full">
+                                <div className="flex items-center h-full flex-shrink-0">
                                     <Popover.Root open={isNewTaskDatePickerOpen}
                                                   onOpenChange={setIsNewTaskDatePickerOpen}>
                                         <Popover.Trigger asChild>
@@ -833,9 +815,8 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
 
                                     {newTaskDueDate && (
                                         <div
-                                            className="flex items-center pl-1 pr-1 h-full pointer-events-none">
+                                            className="flex items-center pl-1 pr-2 h-full pointer-events-none"> {/* Adjusted padding slightly */}
                                             <span
-                                                ref={dateDisplayRef}
                                                 className="text-[12px] text-primary dark:text-primary-light whitespace-nowrap font-medium"
                                             >
                                                 {formatRelativeDate(newTaskDueDate, false)}
@@ -866,7 +847,6 @@ const TaskList: React.FC<TaskListProps> = ({title: pageTitle}) => {
                                     }}
                                     placeholder={placeholderText}
                                     className={newTaskInputClass}
-                                    style={{paddingLeft: `${inputPaddingLeft}px`}}
                                     disabled={(isCurrentlyAiMode && isAiProcessing) || isAiProcessing}
                                 />
 
