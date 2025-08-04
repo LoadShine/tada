@@ -362,21 +362,36 @@ export const apiStreamSummary = (taskIds: string[], periodKey: string, listKey: 
     queryParams.append('listKey', listKey);
 
     const controller = new AbortController();
-    const customEventSource = {
-        _listeners: {
-            message: [] as ((event: MessageEvent) => void)[],
-            error: [] as ((event: Event) => void)[],
-        },
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: Event) => void) | null,
 
-        addEventListener(type: 'message' | 'error', listener: (event: any) => void) {
+    // This is our custom object that will behave like a native EventSource
+    const customEventSource: any = {
+        _listeners: {message: [], end: [], error: []},
+        onmessage: null,
+        onend: null, // Add listener for 'end' event
+        onerror: null,
+
+        addEventListener(type: 'message' | 'end' | 'error', listener: (event: any) => void) {
+            if (!this._listeners[type]) this._listeners[type] = [];
             this._listeners[type].push(listener);
         },
+
+        // A helper to dispatch events to the correct listeners
+        dispatchEvent(event: MessageEvent) {
+            const type = event.type as 'message' | 'end' | 'error';
+            // Call direct on-handlers (e.g., onmessage)
+            if (typeof this[`on${type}`] === 'function') {
+                this[`on${type}`](event);
+            }
+            // Call listeners added via addEventListener
+            if (this._listeners[type]) {
+                this._listeners[type].forEach((l: any) => l(event));
+            }
+        },
+
         close() {
             controller.abort();
         },
-    } as any;
+    };
 
     (async () => {
         try {
@@ -384,42 +399,71 @@ export const apiStreamSummary = (taskIds: string[], periodKey: string, listKey: 
                 headers: {'Authorization': `Bearer ${getAuthToken()}`},
                 signal: controller.signal,
             });
+
             if (!response.ok || !response.body) {
-                throw new Error(`Failed to connect to SSE: ${response.statusText}`);
+                throw new Error(`Failed to connect to SSE: ${response.status} ${response.statusText}`);
             }
+
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
+
+            // This loop processes the stream, correctly parsing event blocks
             while (true) {
                 const {done, value} = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(line => line.trim() !== '');
-                for (const line of lines) {
-                    if (line.startsWith('data:')) {
-                        const data = line.substring(5).trim();
-                        const messageEvent = new MessageEvent('message', {data});
-                        if (customEventSource.onmessage) customEventSource.onmessage(messageEvent);
-                        customEventSource._listeners.message.forEach((l: any) => l(messageEvent));
+                if (done) {
+                    break;
+                }
+
+                buffer += decoder.decode(value, {stream: true});
+                // SSE events are separated by double newlines
+                let boundary = buffer.indexOf('\n\n');
+
+                while (boundary > -1) {
+                    const eventBlock = buffer.substring(0, boundary);
+                    buffer = buffer.substring(boundary + 2); // Move buffer past the processed event
+
+                    let eventType = 'message'; // Default event type
+                    const dataLines: string[] = [];
+
+                    eventBlock.split('\n').forEach(line => {
+                        if (line.startsWith('event:')) {
+                            eventType = line.substring(6).trim();
+                        } else if (line.startsWith('data:')) {
+                            dataLines.push(line.substring(5).trim());
+                        }
+                    });
+
+                    if (dataLines.length > 0) {
+                        const data = dataLines.join('\n');
+                        const messageEvent = new MessageEvent(eventType, {data});
+                        customEventSource.dispatchEvent(messageEvent);
                     }
+
+                    boundary = buffer.indexOf('\n\n');
                 }
             }
         } catch (error) {
             if ((error as any).name !== 'AbortError') {
-                const errorEvent = new Event('error');
-                if (customEventSource.onerror) customEventSource.onerror(errorEvent);
-                customEventSource._listeners.error.forEach((l: any) => l(errorEvent));
+                console.error('SSE Stream Error:', error);
+                const errorEvent = new MessageEvent('error', {data: (error as Error).message});
+                customEventSource.dispatchEvent(errorEvent);
             }
         }
     })();
+
     return customEventSource;
 };
 
+
+// Also, ensure your transformSummaryFromApi can handle ISO date strings if they ever come from this endpoint
 const transformSummaryFromApi = (apiSummary: any): StoredSummary => {
-    const toMs = (seconds: number | null | undefined): number => {
-        if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) {
-            return 0;
-        }
-        return Math.round(seconds * 1000);
+    // Helper to convert both seconds (number) and ISO date (string) to milliseconds
+    const toMs = (timestamp: number | string | null | undefined): number => {
+        if (timestamp === null || timestamp === undefined) return 0;
+        if (typeof timestamp === 'string') return new Date(timestamp).getTime();
+        if (Number.isFinite(timestamp)) return Math.round(timestamp * 1000); // Assuming seconds
+        return 0;
     };
 
     return {

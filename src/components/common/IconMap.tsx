@@ -41,6 +41,7 @@ export const iconMap = {
     'tag': LucideIcons.Tag,
     'bell': LucideIcons.Bell,
     'share': LucideIcons.Share2,
+    'pencil': LucideIcons.Pencil,
     'upload': LucideIcons.UploadCloud,
     'download': LucideIcons.Download,
     'logout': LucideIcons.LogOut,
