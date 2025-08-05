@@ -7,6 +7,7 @@ import {
     PreferencesSettings,
     SettingsTab,
     StoredSummary,
+    Subtask,
     Task,
     TaskFilter,
     TaskGroupCategory,
@@ -30,7 +31,7 @@ import {
     subWeeks
 } from '@/utils/dateUtils';
 import * as service from '@/services/apiService';
-import {TaskCreate, TaskUpdate} from "@/types/api";
+import {SubtaskUpdate, TaskCreate, TaskUpdate} from "@/types/api";
 
 type AsyncDataAtom<TData, TUpdate = TData | ((prev: TData | null) => TData) | typeof RESET> = WritableAtom<
     TData | null,
@@ -147,6 +148,80 @@ const baseTasksDataAtom = atom<Task[] | null>(null);
 export const tasksLoadingAtom = atom<boolean>(true);
 export const tasksErrorAtom = atom<string | null>(null);
 
+
+// --- 核心修复逻辑在这里 (3/3) ---
+// 增强 tasksAtom 的写入逻辑以处理子任务
+const findTaskChangesForAPI = (prevTasks: Task[], nextTasks: Task[]) => {
+    const prevMap = new Map(prevTasks.map(t => [t.id, t]));
+    const updated: { id: string, changes: TaskUpdate }[] = [];
+
+    for (const nextTask of nextTasks) {
+        if (nextTask.id.startsWith('task-')) continue; // Skip new local tasks
+        const prevTask = prevMap.get(nextTask.id);
+        if (prevTask) {
+            const changes: TaskUpdate = {};
+            if (nextTask.title !== prevTask.title) changes.title = nextTask.title;
+            if (nextTask.content !== prevTask.content) changes.content = nextTask.content;
+            if (nextTask.completed !== prevTask.completed) changes.completed = nextTask.completed;
+            if (nextTask.completePercentage !== prevTask.completePercentage) changes.completePercentage = nextTask.completePercentage;
+            if (nextTask.dueDate !== prevTask.dueDate) changes.dueDate = nextTask.dueDate ? new Date(nextTask.dueDate).toISOString() : null;
+            if (nextTask.priority !== prevTask.priority) changes.priority = nextTask.priority;
+            if (nextTask.listId !== prevTask.listId) changes.listId = nextTask.listId;
+            if (nextTask.order !== prevTask.order) changes.order = nextTask.order;
+            if (JSON.stringify(nextTask.tags?.sort()) !== JSON.stringify(prevTask.tags?.sort())) changes.tags = nextTask.tags;
+
+            if (Object.keys(changes).length > 0) {
+                updated.push({id: nextTask.id, changes});
+            }
+        }
+    }
+    return {updated};
+};
+
+const findSubtaskChangesForAPI = (prevTasks: Task[], nextTasks: Task[]) => {
+    const created: { parentTaskId: string, subtask: { title: string } }[] = [];
+    const updated: { id: string, changes: SubtaskUpdate }[] = [];
+    const deleted: string[] = [];
+    const nextTasksMap = new Map(nextTasks.map(t => [t.id, t]));
+
+    for (const prevTask of prevTasks) {
+        const nextTask = nextTasksMap.get(prevTask.id);
+        if (!nextTask) continue; // Task was deleted, handled elsewhere
+
+        const prevSubtasks = prevTask.subtasks ?? [];
+        const nextSubtasks = nextTask.subtasks ?? [];
+        const prevSubtaskMap = new Map(prevSubtasks.map(s => [s.id, s]));
+        const nextSubtaskMap = new Map(nextSubtasks.map(s => [s.id, s]));
+
+        // Find created subtasks
+        for (const nextSub of nextSubtasks) {
+            if (nextSub.id.startsWith('subtask-')) {
+                created.push({parentTaskId: nextTask.id, subtask: {title: nextSub.title}});
+            }
+        }
+
+        // Find updated and deleted subtasks
+        for (const prevSub of prevSubtasks) {
+            const nextSub = nextSubtaskMap.get(prevSub.id);
+            if (!nextSub) {
+                deleted.push(prevSub.id);
+            } else {
+                const changes: SubtaskUpdate = {};
+                if (prevSub.title !== nextSub.title) changes.title = nextSub.title;
+                if (prevSub.completed !== nextSub.completed) changes.completed = nextSub.completed;
+                if (prevSub.order !== nextSub.order) changes.order = nextSub.order;
+                // 注意：后端当前不支持更新dueDate，但我们保留此逻辑以便未来扩展
+                if (prevSub.dueDate !== nextSub.dueDate) changes.dueDate = nextSub.dueDate ? new Date(nextSub.dueDate).toISOString() : null;
+
+                if (Object.keys(changes).length > 0) {
+                    updated.push({id: prevSub.id, changes});
+                }
+            }
+        }
+    }
+    return {created, updated, deleted};
+};
+
 export const tasksAtom: AsyncDataAtom<Task[]> = atom(
     (get) => get(baseTasksDataAtom),
     async (get, set, update) => {
@@ -184,88 +259,51 @@ export const tasksAtom: AsyncDataAtom<Task[]> = atom(
 
         set(baseTasksDataAtom, nextTasksWithCategory);
 
-        // Optimistically create new tasks with temporary local IDs
-        const newLocalTasks = nextTasksWithCategory.filter(t => t.id.startsWith('task-'));
-        const existingTasks = nextTasksWithCategory.filter(t => !t.id.startsWith('task-'));
-
-        const findTaskChangesForAPI = (prevTasks: Task[], nextTasks: Task[]) => {
-            const prevMap = new Map(prevTasks.map(t => [t.id, t]));
-            const updated: { id: string, changes: TaskUpdate }[] = [];
-            const deleted: string[] = prevTasks.filter(p => !nextTasks.some(n => n.id === p.id)).map(t => t.id);
-
-            for (const nextTask of nextTasks) {
-                const prevTask = prevMap.get(nextTask.id);
-                if (prevTask) {
-                    let changes: TaskUpdate = {};
-                    if (nextTask.title !== prevTask.title) changes.title = nextTask.title;
-                    if (nextTask.content !== prevTask.content) changes.content = nextTask.content;
-                    if (nextTask.completed !== prevTask.completed) changes.completed = nextTask.completed;
-                    if (nextTask.completePercentage !== prevTask.completePercentage) changes.completePercentage = nextTask.completePercentage;
-                    if (nextTask.dueDate !== prevTask.dueDate) changes.dueDate = nextTask.dueDate ? new Date(nextTask.dueDate).toISOString() : null;
-                    if (nextTask.priority !== prevTask.priority) changes.priority = nextTask.priority;
-                    if (nextTask.listId !== prevTask.listId) changes.listId = nextTask.listId;
-                    if (nextTask.order !== prevTask.order) changes.order = nextTask.order;
-                    if (JSON.stringify(nextTask.tags?.sort()) !== JSON.stringify(prevTask.tags?.sort())) changes.tags = nextTask.tags;
-
-                    if (Object.keys(changes).length > 0) {
-                        updated.push({id: nextTask.id, changes});
-                    }
-                }
-            }
-            return {updated, deleted};
-        };
-
-
-        // Handle creations first to get real IDs
-        const creationPromises = newLocalTasks.map(async (taskToCreate) => {
-            // 1. 分离出子任务数据
-            const { subtasks: localSubtasks, ...mainTaskData } = taskToCreate;
-
-            // 2. 准备创建主任务的载荷（不含子任务）
-            const createPayload: TaskCreate = {
-                title: mainTaskData.title,
-                content: mainTaskData.content,
-                listId: mainTaskData.listId,
-                priority: mainTaskData.priority,
-                tags: mainTaskData.tags,
-                dueDate: mainTaskData.dueDate ? new Date(mainTaskData.dueDate).toISOString() : null,
-                order: mainTaskData.order,
-                completed: mainTaskData.completed,
-                completePercentage: mainTaskData.completePercentage ?? 0,
-            };
-
-            // 3. 第一步：创建主任务
-            const createdTask = await service.apiCreateTask(createPayload);
-
-            // 4. 第二步：如果存在子任务，则循环调用创建子任务的接口
-            if (localSubtasks && localSubtasks.length > 0) {
-                const subtaskCreationPromises = localSubtasks.map(sub =>
-                    service.apiCreateSubtask(createdTask.id, { title: sub.title })
-                );
-                // 等待所有子任务创建完成
-                const createdSubtasks = await Promise.all(subtaskCreationPromises);
-                // 将创建好的子任务附加到返回的任务对象上
-                createdTask.subtasks = createdSubtasks;
-            }
-
-            return createdTask;
-        });
-
         try {
-            const createdTasks = await Promise.all(creationPromises);
-            const finalTaskList = [...existingTasks, ...createdTasks.map(t => ({
-                ...t,
-                groupCategory: getTaskGroupCategory(t)
-            }))];
+            // Find changes between previous and next states
+            const {updated: updatedTasks} = findTaskChangesForAPI(previousTasks, nextTasksWithCategory);
+            const {
+                created: createdSubtasks,
+                updated: updatedSubtasks,
+                deleted: deletedSubtasks
+            } = findSubtaskChangesForAPI(previousTasks, nextTasksWithCategory);
 
-            // Now diff the server-acknowledged state
-            const {updated, deleted} = findTaskChangesForAPI(previousTasks, finalTaskList);
+            // Find new tasks (with local IDs)
+            const newLocalTasks = nextTasksWithCategory.filter(t => t.id.startsWith('task-'));
 
-            const updatePromises = updated.map(({id, changes}) => service.apiUpdateTask(id, changes));
-            const deletePromises = deleted.map(id => service.apiDeleteTask(id));
+            // Create API call promises
+            const creationPromises = newLocalTasks.map(task => {
+                const {subtasks, ...mainTaskData} = task;
+                const payload: TaskCreate = {
+                    title: mainTaskData.title,
+                    content: mainTaskData.content,
+                    listId: mainTaskData.listId,
+                    priority: mainTaskData.priority,
+                    tags: mainTaskData.tags,
+                    dueDate: mainTaskData.dueDate ? new Date(mainTaskData.dueDate).toISOString() : null,
+                    order: mainTaskData.order,
+                    completed: mainTaskData.completed,
+                    completePercentage: mainTaskData.completePercentage ?? 0,
+                    subtasks: subtasks?.map(s => ({title: s.title}))
+                };
+                return service.apiCreateTask(payload);
+            });
 
-            await Promise.all([...updatePromises, ...deletePromises]);
+            const updateTaskPromises = updatedTasks.map(({id, changes}) => service.apiUpdateTask(id, changes));
+            const createSubtaskPromises = createdSubtasks.map(({parentTaskId, subtask}) => service.apiCreateSubtask(parentTaskId, subtask));
+            const updateSubtaskPromises = updatedSubtasks.map(({id, changes}) => service.apiUpdateSubtask(id, changes));
+            const deleteSubtaskPromises = deletedSubtasks.map(id => service.apiDeleteSubtask(id));
 
+            // Execute all API calls concurrently
+            await Promise.all([
+                ...creationPromises,
+                ...updateTaskPromises,
+                ...createSubtaskPromises,
+                ...updateSubtaskPromises,
+                ...deleteSubtaskPromises,
+            ]);
+
+            // After all operations, refetch from server to get the source of truth
             const fetchedTasks = await service.apiFetchTasks();
             const tasksWithCategory = fetchedTasks.map(t => ({...t, groupCategory: getTaskGroupCategory(t)}));
             set(baseTasksDataAtom, tasksWithCategory.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
@@ -273,13 +311,14 @@ export const tasksAtom: AsyncDataAtom<Task[]> = atom(
         } catch (e: any) {
             console.error('[TasksAtom] Backend update failed, reverting:', e);
             set(tasksErrorAtom, e.message || 'Failed to sync tasks with server.');
-            set(baseTasksDataAtom, previousTasks);
+            set(baseTasksDataAtom, previousTasks); // Revert to previous state on error
         }
     }
 );
 tasksAtom.onMount = (setSelf) => {
     setSelf(RESET);
 };
+
 
 // --- List Atoms ---
 const baseUserListsAtom = atom<List[] | null>(null);

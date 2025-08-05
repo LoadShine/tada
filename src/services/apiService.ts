@@ -5,6 +5,7 @@ import {
     AuthResponse as ApiAuthResponse,
     ListCreate,
     ListUpdate,
+    SubtaskUpdate, // 核心修复逻辑：导入新的类型
     TaskBulkDelete,
     TaskBulkUpdate,
     TaskCreate,
@@ -320,6 +321,30 @@ export const apiCreateSubtask = async (taskId: string, subtaskData: { title: str
         updatedAt: apiSubtask.updatedAt ? new Date(apiSubtask.updatedAt).getTime() : null,
     } as Subtask;
 };
+
+
+// --- 核心修复逻辑在这里 (2/3) ---
+// 添加更新和删除子任务的API函数
+const transformSubtaskFromApi = (apiSubtask: any): Subtask => ({
+    ...apiSubtask,
+    dueDate: apiSubtask.dueDate ? new Date(apiSubtask.dueDate).getTime() : null,
+    completedAt: apiSubtask.completedAt ? new Date(apiSubtask.completedAt).getTime() : null,
+    createdAt: apiSubtask.createdAt ? new Date(apiSubtask.createdAt).getTime() : null,
+    updatedAt: apiSubtask.updatedAt ? new Date(apiSubtask.updatedAt).getTime() : null,
+});
+
+export const apiUpdateSubtask = async (subtaskId: string, subtaskData: SubtaskUpdate): Promise<Subtask> => {
+    const apiSubtask = await apiFetch<any>(`/tasks/subtasks/${subtaskId}`, {
+        method: 'PUT',
+        body: subtaskData,
+    });
+    return transformSubtaskFromApi(apiSubtask);
+};
+
+export const apiDeleteSubtask = (subtaskId: string): Promise<void> => {
+    return apiFetch<void>(`/tasks/subtasks/${subtaskId}`, {method: 'DELETE'});
+};
+
 
 export const apiDeleteTask = (taskId: string): Promise<void> => {
     return apiFetch<void>(`/tasks/${taskId}`, {method: 'DELETE'});
