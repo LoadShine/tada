@@ -518,14 +518,6 @@ storedSummariesAtom.onMount = (setSelf) => {
 
 export const currentSummaryIndexAtom = atom<number>(0);
 export const isGeneratingSummaryAtom = atom<boolean>(false);
-export const SUMMARY_FIELD_OPTIONS: { id: string; label: string }[] = [{
-    id: 'accomplishments',
-    label: '今日工作总结'
-}, {id: 'tomorrowPlan', label: '明日工作计划'}, {id: 'challenges', label: '遇到的问题与困难'}, {
-    id: 'teamCommunication',
-    label: '团队沟通情况'
-}, {id: 'learnings', label: '学习与成长收获'}, {id: 'blockers', label: '当前主要瓶颈'},];
-export const summarySelectedFieldsAtom = atom<string[]>([SUMMARY_FIELD_OPTIONS[0].id, SUMMARY_FIELD_OPTIONS[1].id]);
 
 // --- Derived Atoms ---
 export const selectedTaskAtom = atom((get) => {

@@ -4,16 +4,17 @@ import {useAtom, useAtomValue, useSetAtom} from 'jotai';
 import {
     appearanceSettingsAtom,
     currentUserAtom,
-    DarkModeOption, defaultAppearanceSettingsForApi,
-    DefaultNewTaskDueDate, defaultPreferencesSettingsForApi,
+    DarkModeOption,
+    defaultAppearanceSettingsForApi,
+    DefaultNewTaskDueDate,
+    defaultPreferencesSettingsForApi,
     isSettingsOpenAtom,
     preferencesSettingsAtom,
     premiumSettingsAtom,
     settingsSelectedTabAtom,
-    userDefinedListsAtom,
     userListNamesAtom,
 } from '@/store/atoms';
-import {SettingsTab, User} from '@/types';
+import {SettingsTab} from '@/types';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
 import {twMerge} from 'tailwind-merge';
@@ -196,7 +197,7 @@ const AccountSettings: React.FC = memo(() => {
         }
         setIsLoading(true);
         try {
-            const updatedUser = await apiService.apiUpdateUser({ username: newName.trim() });
+            const updatedUser = await apiService.apiUpdateUser({username: newName.trim()});
             setCurrentUserGlobally(updatedUser);
             setIsEditingName(false);
         } catch (e: any) {
@@ -269,31 +270,40 @@ const AccountSettings: React.FC = memo(() => {
     const displayIdentifier = userEmail || userPhone;
 
     return (<div className="space-y-6">
-        {isLoading && <div className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10"><Icon name="loader" className="animate-spin text-primary" size={24}/></div>}
+        {isLoading && <div
+            className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10"><Icon
+            name="loader" className="animate-spin text-primary" size={24}/></div>}
 
         <div className="flex items-center space-x-4 mb-4">
             <div className="relative group/avatar">
-                <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-grey-ultra-light dark:bg-neutral-700">
+                <div
+                    className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-grey-ultra-light dark:bg-neutral-700">
                     {avatarSrc ? (
                         <img src={avatarSrc} alt={userName} className="w-full h-full object-cover"/>
                     ) : (
-                        <div className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-400 text-2xl font-normal">
+                        <div
+                            className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-400 text-2xl font-normal">
                             {avatarInitial || <Icon name="user" size={24} strokeWidth={1}/>}
                         </div>
                     )}
                 </div>
-                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                <div
+                    className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                     <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*" hidden/>
-                    <Button variant="ghost" size="icon" icon="upload" onClick={handleAvatarUploadClick} className="text-white hover:bg-white/20" title="Upload new avatar"/>
-                    {avatarSrc && <Button variant="ghost" size="icon" icon="trash" onClick={handleDeleteAvatar} className="text-white hover:bg-white/20" title="Delete avatar"/>}
+                    <Button variant="ghost" size="icon" icon="upload" onClick={handleAvatarUploadClick}
+                            className="text-white hover:bg-white/20" title="Upload new avatar"/>
+                    {avatarSrc && <Button variant="ghost" size="icon" icon="trash" onClick={handleDeleteAvatar}
+                                          className="text-white hover:bg-white/20" title="Delete avatar"/>}
                 </div>
             </div>
             <div>
                 <h3 className="text-[18px] font-normal text-grey-dark dark:text-neutral-100">{userName}</h3>
                 <p className="text-[13px] text-grey-medium dark:text-neutral-300 font-light">{displayIdentifier}</p>
                 {isPremium && (
-                    <div className="text-[11px] text-primary dark:text-primary-light flex items-center mt-1.5 font-normal bg-primary-light dark:bg-primary-dark/30 px-2 py-0.5 rounded-full w-fit">
-                        <Icon name="crown" size={12} className="mr-1 text-primary dark:text-primary-light" strokeWidth={1.5}/>
+                    <div
+                        className="text-[11px] text-primary dark:text-primary-light flex items-center mt-1.5 font-normal bg-primary-light dark:bg-primary-dark/30 px-2 py-0.5 rounded-full w-fit">
+                        <Icon name="crown" size={12} className="mr-1 text-primary dark:text-primary-light"
+                              strokeWidth={1.5}/>
                         <span>Premium Member</span>
                     </div>
                 )}
@@ -311,17 +321,22 @@ const AccountSettings: React.FC = memo(() => {
                         disabled={isLoading}
                     />
                     <Button variant="primary" size="sm" onClick={handleSaveName} disabled={isLoading}>Save</Button>
-                    <Button variant="ghost" size="sm" onClick={handleCancelEditName} className="ml-1" disabled={isLoading}>Cancel</Button>
+                    <Button variant="ghost" size="sm" onClick={handleCancelEditName} className="ml-1"
+                            disabled={isLoading}>Cancel</Button>
                 </SettingsRow>
             ) : (
                 <SettingsRow label="Username" value={userName}
-                             action={<Button variant="link" size="sm" onClick={handleEditName} disabled={isLoading}>Edit</Button>}/>
+                             action={<Button variant="link" size="sm" onClick={handleEditName}
+                                             disabled={isLoading}>Edit</Button>}/>
             )}
             <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            {userEmail && <SettingsRow label="Email Address" value={userEmail} description="Used for login and notifications."/> }
-            {userPhone && <SettingsRow label="Phone Number" value={userPhone} description="Used for login and notifications."/> }
+            {userEmail &&
+                <SettingsRow label="Email Address" value={userEmail} description="Used for login and notifications."/>}
+            {userPhone &&
+                <SettingsRow label="Phone Number" value={userPhone} description="Used for login and notifications."/>}
             <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <SettingsRow label="Password" action={<Button variant="link" size="sm" onClick={handleChangePassword} disabled={isLoading}>Change Password</Button>}/>
+            <SettingsRow label="Password" action={<Button variant="link" size="sm" onClick={handleChangePassword}
+                                                          disabled={isLoading}>Change Password</Button>}/>
         </div>
 
         <div className="mt-8">
@@ -353,8 +368,14 @@ const AppearanceSettings: React.FC = memo(() => {
 
     const currentAppearance = appearance ?? defaultAppearanceSettingsFromAtoms;
 
-    const handleThemeChange = (themeId: string) => setAppearance(s => ({...(s ?? defaultAppearanceSettingsFromAtoms), themeId}));
-    const handleDarkModeChange = (mode: DarkModeOption) => setAppearance(s => ({...(s ?? defaultAppearanceSettingsFromAtoms), darkMode: mode}));
+    const handleThemeChange = (themeId: string) => setAppearance(s => ({
+        ...(s ?? defaultAppearanceSettingsFromAtoms),
+        themeId
+    }));
+    const handleDarkModeChange = (mode: DarkModeOption) => setAppearance(s => ({
+        ...(s ?? defaultAppearanceSettingsFromAtoms),
+        darkMode: mode
+    }));
     const handleBgImageChange = (url: string) => {
         setAppearance(s => ({...(s ?? defaultAppearanceSettingsFromAtoms), backgroundImageUrl: url}));
         if (!PREDEFINED_BACKGROUND_IMAGES.some(img => img.url === url) && url !== 'none') {
@@ -375,11 +396,17 @@ const AppearanceSettings: React.FC = memo(() => {
     };
     const handleBlurChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10);
-        setAppearance(s => ({...(s ?? defaultAppearanceSettingsFromAtoms), backgroundImageBlur: Math.max(0, Math.min(20, value)) }));
+        setAppearance(s => ({
+            ...(s ?? defaultAppearanceSettingsFromAtoms),
+            backgroundImageBlur: Math.max(0, Math.min(20, value))
+        }));
     };
     const handleBrightnessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10);
-        setAppearance(s => ({...(s ?? defaultAppearanceSettingsFromAtoms), backgroundImageBrightness: Math.max(0, Math.min(200, value)) }));
+        setAppearance(s => ({
+            ...(s ?? defaultAppearanceSettingsFromAtoms),
+            backgroundImageBrightness: Math.max(0, Math.min(200, value))
+        }));
     };
 
 
@@ -434,7 +461,8 @@ const AppearanceSettings: React.FC = memo(() => {
                             "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light"
                         )}
                     />
-                    <Button variant="secondary" size="md" onClick={handleCustomBgUrlApply} className="flex-shrink-0">Apply URL</Button>
+                    <Button variant="secondary" size="md" onClick={handleCustomBgUrlApply}
+                            className="flex-shrink-0">Apply URL</Button>
                 </div>
             </div>
 
@@ -444,19 +472,24 @@ const AppearanceSettings: React.FC = memo(() => {
                     <SettingsRow label="Background Blur" htmlFor="bgBlurSlider"
                                  description="Adjust background image blurriness.">
                         <div className="flex items-center space-x-2 w-[180px]">
-                            <input id="bgBlurSlider" type="range" min="0" max="20" step="1" value={currentAppearance.backgroundImageBlur}
+                            <input id="bgBlurSlider" type="range" min="0" max="20" step="1"
+                                   value={currentAppearance.backgroundImageBlur}
                                    onChange={handleBlurChange}
                                    className="range-slider-track flex-grow" aria-label="Background blur amount"/>
-                            <span className="text-xs text-grey-medium dark:text-neutral-300 w-8 text-right tabular-nums">{currentAppearance.backgroundImageBlur}px</span>
+                            <span
+                                className="text-xs text-grey-medium dark:text-neutral-300 w-8 text-right tabular-nums">{currentAppearance.backgroundImageBlur}px</span>
                         </div>
                     </SettingsRow>
                     <SettingsRow label="Background Brightness" htmlFor="bgBrightnessSlider"
                                  description="Adjust background image brightness.">
                         <div className="flex items-center space-x-2 w-[180px]">
-                            <input id="bgBrightnessSlider" type="range" min="0" max="200" step="5" value={currentAppearance.backgroundImageBrightness}
+                            <input id="bgBrightnessSlider" type="range" min="0" max="200" step="5"
+                                   value={currentAppearance.backgroundImageBrightness}
                                    onChange={handleBrightnessChange}
-                                   className="range-slider-track flex-grow" aria-label="Background brightness percentage"/>
-                            <span className="text-xs text-grey-medium dark:text-neutral-300 w-8 text-right tabular-nums">{currentAppearance.backgroundImageBrightness}%</span>
+                                   className="range-slider-track flex-grow"
+                                   aria-label="Background brightness percentage"/>
+                            <span
+                                className="text-xs text-grey-medium dark:text-neutral-300 w-8 text-right tabular-nums">{currentAppearance.backgroundImageBrightness}%</span>
                         </div>
                     </SettingsRow>
                 </>
@@ -478,7 +511,10 @@ const PreferencesSettings: React.FC = memo(() => {
     const currentPreferences = preferences ?? defaultPreferencesFromAtoms;
 
 
-    const handleLanguageChange = (value: string) => setPreferences(p => ({...(p ?? defaultPreferencesFromAtoms), language: value as 'en' | 'zh-CN'}));
+    const handleLanguageChange = (value: string) => setPreferences(p => ({
+        ...(p ?? defaultPreferencesFromAtoms),
+        language: value as 'en' | 'zh-CN'
+    }));
     const handleDefaultDueDateChange = (value: string) => setPreferences(p => ({
         ...(p ?? defaultPreferencesFromAtoms),
         defaultNewTaskDueDate: value === 'none' ? null : value as DefaultNewTaskDueDate
@@ -487,8 +523,14 @@ const PreferencesSettings: React.FC = memo(() => {
         ...(p ?? defaultPreferencesFromAtoms),
         defaultNewTaskPriority: value === 'none' ? null : parseInt(value, 10)
     }));
-    const handleDefaultListChange = (value: string) => setPreferences(p => ({...(p ?? defaultPreferencesFromAtoms), defaultNewTaskList: value}));
-    const handleConfirmDeletionsChange = (checked: boolean) => setPreferences(p => ({...(p ?? defaultPreferencesFromAtoms), confirmDeletions: checked}));
+    const handleDefaultListChange = (value: string) => setPreferences(p => ({
+        ...(p ?? defaultPreferencesFromAtoms),
+        defaultNewTaskList: value
+    }));
+    const handleConfirmDeletionsChange = (checked: boolean) => setPreferences(p => ({
+        ...(p ?? defaultPreferencesFromAtoms),
+        confirmDeletions: checked
+    }));
 
 
     const dueDateOptions = [
@@ -655,7 +697,9 @@ const PremiumSettings: React.FC = memo(() => {
 
     return (
         <div className="space-y-6 relative">
-            {isLoading && <div className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10"><Icon name="loader" className="animate-spin text-primary" size={24}/></div>}
+            {isLoading && <div
+                className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10"><Icon
+                name="loader" className="animate-spin text-primary" size={24}/></div>}
             <div
                 className="p-4 rounded-base bg-primary-light/50 dark:bg-primary-dark/20 border border-primary/30 dark:border-primary-dark/40">
                 <div className="flex items-center">
@@ -697,10 +741,12 @@ const PremiumSettings: React.FC = memo(() => {
                             ))}
                         </ul>
                         {premiumInfo.tier === 'free' && tier.id === "pro" && (
-                            <Button variant="primary" fullWidth onClick={() => handleUpgrade(tier.id)} disabled={isLoading}>Upgrade to Pro</Button>
+                            <Button variant="primary" fullWidth onClick={() => handleUpgrade(tier.id)}
+                                    disabled={isLoading}>Upgrade to Pro</Button>
                         )}
                         {premiumInfo.tier === 'pro' && tier.id === "pro" && (
-                            <Button variant="secondary" fullWidth onClick={handleManageSubscription} disabled={isLoading}>Manage Subscription</Button>
+                            <Button variant="secondary" fullWidth onClick={handleManageSubscription}
+                                    disabled={isLoading}>Manage Subscription</Button>
                         )}
                     </div>
                 ))}
@@ -759,7 +805,8 @@ const AboutSettings: React.FC = memo(() => {
             {activeContent === 'terms' && renderContent()}
             <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
             <SettingsRow label="Feedback & Suggestions" description="We'd love to hear from you!">
-                <Button as="a" href="mailto:feedback@tada-app.example.com?subject=Tada App Feedback" variant="secondary"
+                <Button as="a" href="mailto:feedback@tada-app.example.com?subject=Tada App Feedback"
+                        variant="secondary"
                         size="sm" icon="mail">
                     Send Email
                 </Button>
@@ -829,7 +876,8 @@ const SettingsModal: React.FC = () => {
                                                 : 'text-grey-dark dark:text-neutral-200 font-light hover:bg-grey-light dark:hover:bg-neutral-700 hover:text-grey-dark dark:hover:text-neutral-100',
                                             'focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-grey-ultra-light dark:focus-visible:ring-offset-grey-deep'
                                         )} aria-current={selectedTab === item.id ? 'page' : undefined}>
-                                    <Icon name={item.icon} size={16} strokeWidth={1} className="mr-2.5 opacity-90"
+                                    <Icon name={item.icon} size={16} strokeWidth={1}
+                                          className="mr-2.5 opacity-90"
                                           aria-hidden="true"/>
                                     <span>{item.label}</span>
                                 </button>

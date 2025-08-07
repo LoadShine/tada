@@ -21,7 +21,6 @@ import {
     storedSummariesAtom,
     storedSummariesErrorAtom,
     storedSummariesLoadingAtom,
-    summarySelectedFieldsAtom,
     tasksAtom,
     tasksErrorAtom,
     tasksLoadingAtom,
@@ -300,7 +299,6 @@ const App: React.FC = () => {
     useAtomValue(appearanceSettingsAtom);
     useAtomValue(preferencesSettingsAtom);
     useAtomValue(storedSummariesAtom);
-    useAtomValue(summarySelectedFieldsAtom);
 
     return (
         <>
