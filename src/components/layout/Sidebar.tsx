@@ -77,8 +77,8 @@ const SidebarItem: React.FC<{
     const linkClassName = useMemo(() => twMerge(
         'flex items-center justify-between px-2 py-0 h-8 rounded-base mb-0.5 text-[13px] group transition-colors duration-200 ease-in-out cursor-pointer relative w-full',
         isActive
-            ? 'bg-grey-ultra-light text-primary dark:bg-primary-dark/20 dark:text-primary-light font-medium'
-            : 'text-grey-dark dark:text-neutral-200 font-light hover:bg-grey-ultra-light dark:hover:bg-grey-deep hover:text-grey-dark dark:hover:text-neutral-100',
+            ? 'bg-black/5 text-primary dark:bg-primary-dark/20 dark:text-primary-light font-medium'
+            : 'text-grey-dark dark:text-neutral-200 font-light hover:bg-black/5 dark:hover:bg-white/5 hover:text-grey-dark dark:hover:text-neutral-100',
         'focus:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-grey-deep'
     ), [isActive]);
 
@@ -86,7 +86,7 @@ const SidebarItem: React.FC<{
         "text-[10px] font-light px-1 py-0 rounded-sm ml-1 tabular-nums flex-shrink-0",
         isActive
             ? 'text-primary bg-primary/20 dark:text-primary-light dark:bg-primary-light/10'
-            : 'text-grey-medium dark:text-neutral-400 bg-grey-light dark:bg-grey-deep group-hover:bg-grey-light dark:group-hover:bg-grey-deep'
+            : 'text-grey-medium dark:text-neutral-400 bg-black/5 dark:bg-white/5'
     ), [isActive]);
 
     return (
@@ -273,9 +273,9 @@ const Sidebar: React.FC = () => {
 
     const searchInputClassName = useMemo(() => twMerge(
         "w-full h-[32px] pl-8 pr-7 text-[13px] font-light rounded-base focus:outline-none",
-        "bg-grey-ultra-light/70 dark:bg-grey-deep/70",
-        "border border-transparent dark:border-transparent",
-        "focus:border-transparent dark:focus:border-transparent",
+        "bg-black/5 dark:bg-white/5",
+        "border border-black/5 dark:border-white/5",
+        "focus:border-primary/50 dark:focus:border-primary-light/50",
         "placeholder:text-grey-medium dark:placeholder:text-neutral-400",
         "text-grey-dark dark:text-neutral-100",
         "transition-colors duration-200 ease-in-out"
@@ -286,7 +286,7 @@ const Sidebar: React.FC = () => {
         searchWords: debouncedSearchTerm.split(' ').filter(Boolean), autoEscape: true,
     }), [debouncedSearchTerm]);
 
-    const searchResultButtonClassName = "flex items-start w-full px-2 py-1.5 text-left rounded-base hover:bg-grey-ultra-light dark:hover:bg-grey-deep text-[13px] group transition-colors duration-100 ease-in-out focus:outline-none focus-visible:ring-1 focus-visible:ring-primary";
+    const searchResultButtonClassName = "flex items-start w-full px-2 py-1.5 text-left rounded-base hover:bg-black/5 dark:hover:bg-white/5 text-[13px] group transition-colors duration-100 ease-in-out focus:outline-none focus-visible:ring-1 focus-visible:ring-primary";
 
     const dropdownContentClasses = "z-[60] min-w-[120px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700 data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide";
     const dropdownItemClasses = "relative flex cursor-pointer select-none items-center rounded-base px-2.5 py-1.5 text-[12px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-7 focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700 text-grey-dark data-[highlighted]:text-grey-dark dark:text-neutral-200 dark:data-[highlighted]:text-neutral-100";
@@ -318,7 +318,7 @@ const Sidebar: React.FC = () => {
                                             transition={{duration: 0.1}}
                                             className="absolute right-1.5 h-full flex items-center z-10">
                                     <Button variant="ghost" size="icon" icon="x-circle" onClick={handleClearSearch}
-                                            className="w-5 h-5 text-grey-medium dark:text-neutral-400 opacity-70 hover:opacity-100 hover:bg-grey-light dark:hover:bg-grey-deep"
+                                            className="w-5 h-5 text-grey-medium dark:text-neutral-400 opacity-70 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
                                             iconProps={{size: 14, strokeWidth: 1}} aria-label="Clear search"/>
                                 </motion.div>
                             )}
@@ -381,7 +381,7 @@ const Sidebar: React.FC = () => {
                                 <CollapsibleSection title={t('sidebar.myLists')}
                                                     action={
                                                         <Button variant="ghost" size="icon" icon="plus"
-                                                                className="w-6 h-6 text-grey-medium dark:text-neutral-400 hover:text-primary dark:hover:text-primary-light hover:bg-grey-ultra-light dark:hover:bg-grey-deep"
+                                                                className="w-6 h-6 text-grey-medium dark:text-neutral-400 hover:text-primary dark:hover:text-primary-light hover:bg-black/5 dark:hover:bg-white/5"
                                                                 iconProps={{size: 16, strokeWidth: 1.5}}
                                                                 onClick={handleAddNewListClick}
                                                                 aria-label={t('sidebar.addNewList')}/>
@@ -396,7 +396,7 @@ const Sidebar: React.FC = () => {
                                                  className="group/listitem relative pr-7 flex items-center h-8 mb-0.5">
                                                 {isEditing ? (
                                                     <div
-                                                        className="flex items-center w-full px-2 py-0 h-full rounded-base bg-grey-ultra-light dark:bg-neutral-700">
+                                                        className="flex items-center w-full px-2 py-0 h-full rounded-base bg-black/5 dark:bg-white/10">
                                                         <Icon name={(list.icon as IconName) || 'list'} size={16}
                                                               strokeWidth={1}
                                                               className="mr-2 flex-shrink-0 opacity-90 text-primary dark:text-primary-light"/>

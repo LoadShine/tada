@@ -79,9 +79,9 @@ const DraggableCalendarTask: React.FC<DraggableTaskProps> = React.memo(({task, o
     }, [transform, isDragging, isOverlay, task.completed]);
 
     const taskBlockClasses = useMemo(() => {
-        let bgColor = 'bg-primary-light/30 dark:bg-primary-dark/20';
-        if (task.completed) bgColor = 'bg-grey-light/50 dark:bg-neutral-700/50';
-        if (overdue) bgColor = 'bg-error/30 dark:bg-error/20';
+        let bgColor = 'bg-primary-light/30 dark:bg-primary-dark/20 backdrop-blur-sm';
+        if (task.completed) bgColor = 'bg-grey-light/50 dark:bg-neutral-700/50 backdrop-blur-sm';
+        if (overdue) bgColor = 'bg-error/30 dark:bg-error/20 backdrop-blur-sm';
 
         return twMerge(
             "flex items-center w-full text-left px-1.5 py-0.5 rounded-base space-x-1.5 group h-[22px]",
@@ -91,7 +91,7 @@ const DraggableCalendarTask: React.FC<DraggableTaskProps> = React.memo(({task, o
                 ? "text-grey-medium dark:text-neutral-500 line-through italic opacity-75"
                 : "text-grey-dark dark:text-neutral-200 hover:opacity-80 dark:hover:opacity-90",
             'text-[11px] font-light leading-snug truncate',
-            isOverlay && "bg-white dark:bg-neutral-750 shadow-subtle !text-grey-dark dark:!text-neutral-100 !opacity-100 !visibility-visible !relative",
+            isOverlay && "bg-white/90 dark:bg-neutral-750/90 shadow-subtle !text-grey-dark dark:!text-neutral-100 !opacity-100 !visibility-visible !relative",
         );
     }, [task.completed, overdue, isOverlay]);
 
@@ -314,8 +314,8 @@ const CalendarView: React.FC = () => {
         return (
             <DroppableDayCell key={dateKey} day={day}
                               className={twMerge(
-                                  'border-r border-b border-grey-light dark:border-neutral-700',
-                                  !isCurrentMonthDay && 'bg-grey-ultra-light/30 dark:bg-neutral-750/30 opacity-70',
+                                  'border-r border-b border-grey-light/50 dark:border-neutral-700/50',
+                                  !isCurrentMonthDay && 'bg-black/5 dark:bg-white/5 opacity-70',
                                   index % 7 === 6 && 'border-r-0',
                                   index >= daysInGrid.length - 7 && 'border-b-0',
                                   'overflow-hidden p-1'
@@ -352,7 +352,7 @@ const CalendarView: React.FC = () => {
     if (isLoadingTasks) {
         return (
             <div
-                className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden items-center justify-center">
+                className="h-full flex flex-col bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md overflow-hidden items-center justify-center">
                 <Icon name="loader" size={24} className="text-primary animate-spin"/>
             </div>
         );
@@ -362,9 +362,9 @@ const CalendarView: React.FC = () => {
         <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} collisionDetection={pointerWithin}
                     measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
             <div
-                className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden">
+                className="h-full flex flex-col bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md overflow-hidden">
                 <div
-                    className="px-6 py-0 h-[56px] border-b border-grey-light dark:border-neutral-700 flex justify-between items-center flex-shrink-0 bg-white dark:bg-neutral-800 z-10">
+                    className="px-6 py-0 h-[56px] border-b border-grey-light/50 dark:border-neutral-700/50 flex justify-between items-center flex-shrink-0 bg-transparent z-10">
                     <div className="w-1/3"><h1
                         className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate">{t('iconBar.calendar')}</h1>
                     </div>
@@ -375,12 +375,12 @@ const CalendarView: React.FC = () => {
                         <div className="flex items-center">
                             <Button onClick={() => changeMonth(-1)} variant="ghost" size="icon" icon="chevron-left"
                                     aria-label="Previous month"
-                                    className="w-8 h-8 text-grey-medium dark:text-neutral-400 hover:bg-grey-ultra-light dark:hover:bg-neutral-700"
+                                    className="w-8 h-8 text-grey-medium dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10"
                                     iconProps={{size: 16, strokeWidth: 1}}/>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild>
                                     <Button variant="ghost" size="sm"
-                                            className="!h-8 px-3 text-[14px] font-normal w-36 text-center tabular-nums text-grey-dark dark:text-neutral-100 hover:bg-grey-ultra-light dark:hover:bg-neutral-700">
+                                            className="!h-8 px-3 text-[14px] font-normal w-36 text-center tabular-nums text-grey-dark dark:text-neutral-100 hover:bg-black/5 dark:hover:bg-white/10">
                                         {format(currentMonthDate, 'MMMM yyyy', {locale: dateFnsLocale})}
                                         <Icon name="chevron-down" size={14} strokeWidth={1}
                                               className="ml-1.5 opacity-70"/>
@@ -397,14 +397,14 @@ const CalendarView: React.FC = () => {
                             </DropdownMenu.Root>
                             <Button onClick={() => changeMonth(1)} variant="ghost" size="icon" icon="chevron-right"
                                     aria-label="Next month"
-                                    className="w-8 h-8 text-grey-medium dark:text-neutral-400 hover:bg-grey-ultra-light dark:hover:bg-neutral-700"
+                                    className="w-8 h-8 text-grey-medium dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10"
                                     iconProps={{size: 16, strokeWidth: 1}}/>
                         </div>
                     </div>
                     <div className="w-1/3"></div>
                 </div>
                 <div
-                    className="flex-1 overflow-hidden flex flex-col p-4 bg-white dark:bg-neutral-800">
+                    className="flex-1 overflow-hidden flex flex-col p-4 bg-transparent">
                     <div className="grid grid-cols-7 flex-shrink-0 mb-1 px-0.5">
                         {weekDays.map((day, index) => (<div key={`${day}-${index}`}
                                                             className="text-center py-1 text-[11px] font-normal text-grey-medium dark:text-neutral-400 tracking-wide uppercase"> {day} </div>))}
@@ -413,8 +413,8 @@ const CalendarView: React.FC = () => {
                         className="flex-1 min-h-0">
                         <div
                             className={twMerge(
-                                "grid grid-cols-7 h-full w-full gap-0 rounded-base overflow-hidden border border-grey-light dark:border-neutral-700",
-                                "bg-white dark:bg-neutral-800",
+                                "grid grid-cols-7 h-full w-full gap-0 rounded-base overflow-hidden border border-grey-light/50 dark:border-neutral-700/50",
+                                "bg-white/60 dark:bg-neutral-800/60",
                                 numberOfRows <= 5 ? "grid-rows-5" : "grid-rows-6"
                             )}>
                             {daysInGrid.map(renderCalendarDay)}

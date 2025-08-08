@@ -105,7 +105,7 @@ export const PREDEFINED_BACKGROUND_IMAGES: {
     {
         "id": "burrata-salad-bowl",
         "nameKey": "theme.bgBurrataSaladBowl",
-        "url": "/backgrounds/5.webp",
+        "url": "/backgrounds/5.png",
         "isLight": true
     },
     {

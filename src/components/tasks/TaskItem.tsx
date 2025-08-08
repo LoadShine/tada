@@ -480,14 +480,14 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
 
     const baseClasses = useMemo(() => twMerge(
         'task-item flex items-center px-4 pr-3 h-[48px] mb-1.5',
-        'group relative rounded-base',
+        'group relative rounded-base backdrop-blur-sm', // 添加 backdrop-blur
         isOverlay
-            ? 'bg-white dark:bg-neutral-750 shadow-xl border border-grey-light dark:border-neutral-600'
+            ? 'bg-white/90 dark:bg-neutral-750/90 shadow-xl border border-grey-light/50 dark:border-neutral-600/50'
             : isSelected && !isDragging
-                ? 'bg-grey-ultra-light dark:bg-neutral-700'
+                ? 'bg-black/5 dark:bg-white/10' // 选中状态
                 : isTrashItem || isCompleted
-                    ? 'bg-white dark:bg-neutral-800 opacity-60'
-                    : 'bg-white dark:bg-neutral-800 hover:bg-grey-ultra-light dark:hover:bg-neutral-750',
+                    ? 'bg-white/50 dark:bg-neutral-800/50 opacity-60' // 完成和垃圾桶状态
+                    : 'bg-white/60 dark:bg-neutral-800/60 hover:bg-white/80 dark:hover:bg-neutral-750/80', // 普通状态
         isDragging ? 'cursor-grabbing' : (isSortable ? 'cursor-grab' : 'cursor-default'),
         'transition-colors duration-150 ease-in-out outline-none',
         'focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-800'
@@ -533,7 +533,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         'text-[11px] font-light',
         overdue && 'text-error dark:text-red-400',
         (isCompleted || isTrashItem) && 'line-through opacity-70',
-        isDateClickable && 'cursor-pointer hover:bg-grey-light dark:hover:bg-neutral-700 px-1 py-0.5 mx-[-4px] my-[-2px] focus-visible:ring-1 focus-visible:ring-primary',
+        isDateClickable && 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 px-1 py-0.5 mx-[-4px] my-[-2px] focus-visible:ring-1 focus-visible:ring-primary',
         !isDateClickable && 'px-0 py-0',
         !overdue && 'text-grey-medium dark:text-neutral-400'
     ), [overdue, isCompleted, isTrashItem, isDateClickable]);
@@ -707,7 +707,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                             <Tooltip.Provider delayDuration={200}><Tooltip.Root>
                                 <Tooltip.Trigger asChild>
                                     <span
-                                        className={clsx("flex items-center bg-grey-ultra-light dark:bg-neutral-700 text-grey-medium dark:text-neutral-400 px-1.5 py-[1px] rounded-base text-[10px] font-light cursor-default", (isCompleted || isTrashItem) && 'line-through opacity-60')}
+                                        className={clsx("flex items-center bg-black/5 dark:bg-white/5 text-grey-medium dark:text-neutral-400 px-1.5 py-[1px] rounded-base text-[10px] font-light cursor-default", (isCompleted || isTrashItem) && 'line-through opacity-60')}
                                         data-tooltip-trigger="true"
                                     >
                                         <Icon name="tag" size={10} strokeWidth={1.5}
@@ -762,7 +762,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                 <Button
                                     ref={moreActionsButtonRef} variant="ghost" size="icon"
                                     icon="more-horizontal"
-                                    className="h-7 w-7 text-grey-medium dark:text-neutral-400 hover:bg-grey-light dark:hover:bg-neutral-600 focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-grey-light dark:focus-visible:bg-neutral-600"
+                                    className="h-7 w-7 text-grey-medium dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-primary"
                                     iconProps={{size: 16, strokeWidth: 1.5}}
                                     aria-label={`More actions for ${task.title || 'task'}`}/>
                             </DropdownMenu.Trigger>

@@ -24,20 +24,21 @@ const MainLayout: React.FC = () => {
 
     return (
         <div
-            className="flex h-screen bg-transparent overflow-hidden font-primary"> {/* Made bg-transparent to allow body background to show */}
+            className="flex h-screen bg-transparent overflow-hidden font-primary">
             <IconBar/>
             {!hideSidebar && (
                 <div className={twMerge(
                     "w-[240px] flex-shrink-0 h-full relative border-r border-grey-light/50 dark:border-grey-deep/50",
-                    "bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md transition-colors duration-300" // Semi-transparent with blur
+                    // 这是正确的毛玻璃效果
+                    "bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md transition-colors duration-300"
                 )}>
                     <Sidebar/>
                 </div>
             )}
             <main className={twMerge(
                 "flex-1 overflow-hidden relative flex flex-col min-w-0",
-                // Pages themselves will define their solid backgrounds, this main container can be transparent or subtly layered
-                "bg-transparent" // Or a very subtle overlay: "bg-white/10 dark:bg-black/10"
+                // 主内容区设为透明，让子页面（如MainPage）来定义背景
+                "bg-transparent"
             )}>
                 <Suspense fallback={<LoadingSpinner/>}>
                     <Outlet/>

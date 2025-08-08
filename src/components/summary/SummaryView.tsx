@@ -458,7 +458,7 @@ const SummaryView: React.FC = () => {
         }, [sortedSubtasks, INITIAL_VISIBLE_SUBTASKS]);
 
         return (<label htmlFor={uniqueId}
-                       className={twMerge("flex flex-col p-2 rounded-base transition-colors duration-150 ease-in-out", isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer", isSelected && !isDisabled ? "bg-grey-ultra-light dark:bg-neutral-700" : "hover:bg-grey-ultra-light dark:hover:bg-neutral-750")}
+                       className={twMerge("flex flex-col p-2 rounded-base transition-colors duration-150 ease-in-out", isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer", isSelected && !isDisabled ? "bg-black/5 dark:bg-white/5" : "hover:bg-black/5 dark:hover:bg-white/5")}
                        onClick={handleLabelClick}>
             <div className="flex items-center">
                 <SelectionCheckboxRadix id={uniqueId} checked={isSelected}
@@ -478,7 +478,7 @@ const SummaryView: React.FC = () => {
                             name="calendar" size={10} strokeWidth={1}
                             className="mr-0.5 opacity-80"/>{formatRelativeDate(parsedDueDate, t, false, preferences?.language)}</span>)}
                         {task.listName && task.listName !== 'Inbox' && (<span
-                            className="flex items-center bg-grey-ultra-light dark:bg-neutral-700 px-1 rounded-sm text-[10px] max-w-[70px] truncate"
+                            className="flex items-center bg-black/5 dark:bg-white/5 px-1 rounded-sm text-[10px] max-w-[70px] truncate"
                             title={task.listName}><Icon name={task.listName === 'Trash' ? 'trash' : 'list'} size={10}
                                                         strokeWidth={1}
                                                         className="mr-0.5 opacity-80 flex-shrink-0"/><span
@@ -486,7 +486,7 @@ const SummaryView: React.FC = () => {
                         {task.tags && task.tags.length > 0 && (
                             <span className="flex items-center space-x-1">{task.tags.slice(0, 1).map(tag => (
                                 <span key={tag}
-                                      className="bg-grey-ultra-light dark:bg-neutral-700 px-1 rounded-sm text-[10px] max-w-[60px] truncate">#{tag}</span>))}{task.tags.length > 1 &&
+                                      className="bg-black/5 dark:bg-white/5 px-1 rounded-sm text-[10px] max-w-[60px] truncate">#{tag}</span>))}{task.tags.length > 1 &&
                                 <span
                                     className="text-[10px] text-grey-medium/80 dark:text-neutral-400/80">+{task.tags.length - 1}</span>}</span>)}
                     </div>
@@ -494,7 +494,7 @@ const SummaryView: React.FC = () => {
             </div>
             {sortedSubtasks && sortedSubtasks.length > 0 && !isDisabled && (
                 <div
-                    className={twMerge("mt-1.5 pt-1.5 border-t border-grey-light dark:border-neutral-700", "pl-[calc(0.5rem+16px+0.5rem)]")}>
+                    className={twMerge("mt-1.5 pt-1.5 border-t border-grey-light/50 dark:border-neutral-700/50", "pl-[calc(0.5rem+16px+0.5rem)]")}>
                     <AnimatePresence initial={false}>
                         {isSubtasksExpanded && (
                             <motion.div key="subtask-list-animated" initial="collapsed"
@@ -545,9 +545,9 @@ const SummaryView: React.FC = () => {
     TaskItemMiniInline.displayName = 'TaskItemMiniInline';
 
     return (
-        <div className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden">
+        <div className="h-full flex flex-col bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md overflow-hidden">
             <div
-                className="px-6 py-0 h-[56px] border-b border-grey-light dark:border-neutral-700 flex justify-between items-center flex-shrink-0 bg-white dark:bg-neutral-800 z-10">
+                className="px-6 py-0 h-[56px] border-b border-grey-light/50 dark:border-neutral-700/50 flex justify-between items-center flex-shrink-0 bg-transparent z-10">
                 <div className="w-1/3 flex items-center space-x-2">
                     <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate">{t('iconBar.aiSummary')}</h1>
                     <Tooltip.Provider>
@@ -558,7 +558,7 @@ const SummaryView: React.FC = () => {
                                     size="icon"
                                     icon="history"
                                     onClick={openHistoryModal}
-                                    className="w-7 h-7 text-grey-medium dark:text-neutral-400 hover:bg-grey-ultra-light dark:hover:bg-neutral-700"
+                                    className="w-7 h-7 text-grey-medium dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10"
                                     iconProps={{size: 16, strokeWidth: 1}}
                                     aria-label={t('summary.history.title')}
                                     disabled={isGenerating}
@@ -579,7 +579,7 @@ const SummaryView: React.FC = () => {
                             <Popover.Anchor asChild>
                                 <DropdownMenu.Trigger asChild disabled={isGenerating}>
                                     <Button variant="ghost" size="sm"
-                                            className="!h-8 px-3 text-grey-dark dark:text-neutral-200 font-light hover:bg-grey-ultra-light dark:hover:bg-neutral-700 dark:bg-neutral-750 dark:border-neutral-600 min-w-[120px] tabular-nums">
+                                            className="!h-8 px-3 text-grey-dark dark:text-neutral-200 font-light hover:bg-black/5 dark:hover:bg-white/10 bg-white/50 dark:bg-neutral-800/50 min-w-[120px] tabular-nums">
                                         <Icon name="calendar-days" size={14} strokeWidth={1}
                                               className="mr-1.5 opacity-80"/>
                                         {selectedPeriodLabel}
@@ -625,7 +625,7 @@ const SummaryView: React.FC = () => {
                     <DropdownMenu.Root open={isListDropdownOpen} onOpenChange={setIsListDropdownOpen}>
                         <DropdownMenu.Trigger asChild disabled={isGenerating}>
                             <Button variant="ghost" size="sm"
-                                    className="!h-8 px-3 text-grey-dark dark:text-neutral-200 font-light hover:bg-grey-ultra-light dark:hover:bg-neutral-700 dark:bg-neutral-750 dark:border-neutral-600 min-w-[110px]"><Icon
+                                    className="!h-8 px-3 text-grey-dark dark:text-neutral-200 font-light hover:bg-black/5 dark:hover:bg-white/10 bg-white/50 dark:bg-neutral-800/50 min-w-[110px]"><Icon
                                 name="list" size={14} strokeWidth={1} className="mr-1.5 opacity-80"/>{selectedListLabel}<Icon
                                 name="chevron-down" size={14} strokeWidth={1}
                                 className="ml-auto opacity-70 pl-1"/></Button>
@@ -658,9 +658,9 @@ const SummaryView: React.FC = () => {
 
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-3 md:p-4 gap-3 md:gap-4 min-h-0">
                 <div
-                    className="w-full md:w-[360px] h-1/2 md:h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden flex-shrink-0">
+                    className="w-full md:w-[360px] h-1/2 md:h-full flex flex-col bg-transparent overflow-hidden flex-shrink-0">
                     <div
-                        className="px-4 py-3 border-b border-grey-light dark:border-neutral-700 flex justify-between items-center flex-shrink-0 h-12">
+                        className="px-4 py-3 border-b border-grey-light/50 dark:border-neutral-700/50 flex justify-between items-center flex-shrink-0 h-12">
                         <h2 className="text-[16px] font-normal text-grey-dark dark:text-neutral-100 truncate">
                             {t('summary.tasksTitle')} ({selectableTasks.length})
                         </h2>
@@ -680,7 +680,7 @@ const SummaryView: React.FC = () => {
                             <div
                                 className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-4 text-center pt-10">
                                 <Icon name="archive" size={32} strokeWidth={1}
-                                      className="mb-3 text-grey-light dark:text-neutral-500 opacity-80"/>
+                                      className="mb-3 text-grey-light/70 dark:text-neutral-500/70 opacity-80"/>
                                 <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-200">{t('summary.noTasks.title')}</p>
                                 <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">{t('summary.noTasks.description')}</p>
                             </div>
@@ -692,11 +692,11 @@ const SummaryView: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="hidden md:block w-px bg-grey-light dark:bg-neutral-700 self-stretch my-0"></div>
+                <div className="hidden md:block w-px bg-grey-light/50 dark:bg-neutral-700/50 self-stretch my-0"></div>
 
-                <div className="flex-1 h-1/2 md:h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden">
+                <div className="flex-1 h-1/2 md:h-full flex flex-col bg-transparent overflow-hidden">
                     <div
-                        className="px-4 py-3 h-12 border-b border-grey-light dark:border-neutral-700 flex justify-between items-center flex-shrink-0">
+                        className="px-4 py-3 h-12 border-b border-grey-light/50 dark:border-neutral-700/50 flex justify-between items-center flex-shrink-0">
                         <span className="text-[11px] font-light text-grey-medium dark:text-neutral-400 truncate">
                             {isGenerating ? t('summary.generating') : (currentIndex === -1 ? t('summary.newSummary') : (summaryTimestamp ? `${t('summary.generated')}: ${summaryTimestamp}` : t('summary.title')))}
                         </span>
@@ -712,7 +712,7 @@ const SummaryView: React.FC = () => {
                                 }}>{t('summary.doneEditing')}</Button>
                             )}
                             {(currentSummary && !isGenerating) &&
-                                <div className="w-px h-4 bg-grey-light dark:bg-neutral-700"></div>}
+                                <div className="w-px h-4 bg-grey-light/50 dark:bg-neutral-700/50"></div>}
                             {currentSummary && !isGenerating && (
                                 <DropdownMenu.Root open={isRefTasksDropdownOpen}
                                                    onOpenChange={setIsRefTasksDropdownOpen}>
@@ -770,13 +770,13 @@ const SummaryView: React.FC = () => {
                                 <div
                                     className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-2 text-center">
                                     <Icon name="sparkles" size={32} strokeWidth={1}
-                                          className="mb-3 text-grey-light dark:text-neutral-500 opacity-80"/>
+                                          className="mb-3 text-grey-light/70 dark:text-neutral-500/70 opacity-80"/>
                                     <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-200">{t('summary.noSummary.title')}</p>
                                     <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">{t('summary.noSummary.description')}</p>
                                 </div>
                             )
                         ) : (
-                            <div className="h-full w-full relative overflow-hidden bg-white dark:bg-neutral-800">
+                            <div className="h-full w-full relative overflow-hidden bg-transparent">
                                 <CodeMirrorEditor
                                     key={currentSummary?.id ?? 'editing-summary'}
                                     ref={editorRef}

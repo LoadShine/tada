@@ -578,8 +578,8 @@ const TaskDetail: React.FC = () => {
     const displayCreatedAt = useMemo(() => selectedTask ? formatDateTime(selectedTask.createdAt, preferences?.language) : '', [selectedTask, preferences]);
     const displayUpdatedAt = useMemo(() => selectedTask ? formatDateTime(selectedTask.updatedAt, preferences?.language) : '', [selectedTask, preferences]);
 
-    const mainPanelClass = useMemo(() => twMerge("h-full flex flex-col", "bg-white dark:bg-neutral-850"), []);
-    const headerClass = useMemo(() => twMerge("px-4 py-2 h-[56px] flex items-center justify-between flex-shrink-0", "border-b border-grey-light dark:border-neutral-700/60", "bg-white dark:bg-neutral-850"), []);
+    const mainPanelClass = useMemo(() => twMerge("h-full flex flex-col", "bg-transparent"), []);
+    const headerClass = useMemo(() => twMerge("px-4 py-2 h-[56px] flex items-center justify-between flex-shrink-0", "border-b border-grey-light/50 dark:border-neutral-700/50", "bg-white/70 dark:bg-neutral-850/70 backdrop-blur-sm"), []);
     const taskListPriorityMap: Record<number, {
         label: string;
         iconColor: string;
@@ -610,9 +610,9 @@ const TaskDetail: React.FC = () => {
     const titleInputClasses = useMemo(() => twMerge("flex-1 text-lg font-medium border-none focus:ring-0 focus:outline-none bg-transparent p-0 leading-tight", "placeholder:text-grey-medium dark:placeholder:text-neutral-500 placeholder:font-normal", (isInteractiveDisabled) && "line-through text-grey-medium dark:text-neutral-400/80", "text-grey-dark dark:text-neutral-100 tracking-tight"), [isInteractiveDisabled]);
     const editorContainerClass = useMemo(() => twMerge("flex-1 min-h-0 overflow-hidden", "prose dark:prose-invert max-w-none prose-sm prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2"), []);
     const editorClasses = useMemo(() => twMerge("!h-full text-sm !bg-transparent !border-none !shadow-none", (isInteractiveDisabled) && "opacity-60 cursor-not-allowed", isTrash && "pointer-events-none", "dark:!text-neutral-300"), [isInteractiveDisabled, isTrash]);
-    const footerClass = useMemo(() => twMerge("px-4 py-2 h-11 flex items-center justify-between flex-shrink-0", "border-t border-grey-light dark:border-neutral-700/60", "bg-white dark:bg-neutral-850"), []);
-    const actionButtonClass = useMemo(() => twMerge("text-grey-medium dark:text-neutral-400", "hover:bg-grey-ultra-light dark:hover:bg-neutral-700/50", "hover:text-grey-dark dark:hover:text-neutral-200", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850"), []);
-    const footerDateTriggerClass = useMemo(() => twMerge("h-8 flex items-center text-xs px-2 py-1 rounded-base transition-colors duration-150", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850", "hover:bg-grey-ultra-light dark:hover:bg-neutral-700/50", (displayDueDateForRender && isValid(displayDueDateForRender)) ? (overdue && !isCompleted && !isTrash ? "text-error dark:text-red-400 font-medium" : "text-primary dark:text-primary-light font-medium") : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200", isTrash && "cursor-not-allowed opacity-60"), [displayDueDateForRender, overdue, isCompleted, isTrash]);
+    const footerClass = useMemo(() => twMerge("px-4 py-2 h-11 flex items-center justify-between flex-shrink-0", "border-t border-grey-light/50 dark:border-neutral-700/50", "bg-white/70 dark:bg-neutral-850/70 backdrop-blur-sm"), []);
+    const actionButtonClass = useMemo(() => twMerge("text-grey-medium dark:text-neutral-400", "hover:bg-black/5 dark:hover:bg-white/10", "hover:text-grey-dark dark:hover:text-neutral-200", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850"), []);
+    const footerDateTriggerClass = useMemo(() => twMerge("h-8 flex items-center text-xs px-2 py-1 rounded-base transition-colors duration-150", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850", "hover:bg-black/5 dark:hover:bg-white/10", (displayDueDateForRender && isValid(displayDueDateForRender)) ? (overdue && !isCompleted && !isTrash ? "text-error dark:text-red-400 font-medium" : "text-primary dark:text-primary-light font-medium") : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200", isTrash && "cursor-not-allowed opacity-60"), [displayDueDateForRender, overdue, isCompleted, isTrash]);
     const dropdownContentClasses = useMemo(() => twMerge("z-[60] min-w-[180px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700", "data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"), []);
     const subtaskDatePickerPopoverWrapperClasses = useMemo(() => twMerge("z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800", "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"), []);
     const newSubtaskInputPaddingLeft = useMemo(() => {
@@ -982,7 +982,7 @@ const TaskDetail: React.FC = () => {
                 </div>
 
                 <div
-                    className="flex-1 overflow-y-auto styled-scrollbar-thin flex flex-col bg-white dark:bg-neutral-850">
+                    className="flex-1 overflow-y-auto styled-scrollbar-thin flex flex-col bg-transparent">
                     <div className={twMerge(editorContainerClass, "p-5 pb-3")}>
                         <CodeMirrorEditor ref={editorRef} value={localContent} onChange={handleContentChange}
                                           onBlur={handleMainContentBlur}
@@ -992,7 +992,7 @@ const TaskDetail: React.FC = () => {
                     <div
                         className={twMerge(
                             "px-5",
-                            "flex-shrink-0 flex flex-col bg-white dark:bg-neutral-850"
+                            "flex-shrink-0 flex flex-col bg-transparent"
                         )}
                     >
                         <div className="h-px bg-grey-light/70 dark:bg-neutral-700/40 mt-2 mb-3"></div>
@@ -1063,7 +1063,7 @@ const TaskDetail: React.FC = () => {
                                             : "mt-0"
                                     )}>
                                     <div
-                                        className="group relative flex items-center flex-1 h-8 bg-grey-ultra-light dark:bg-neutral-700/60 rounded-base transition-all duration-150 ease-in-out border border-transparent dark:border-transparent">
+                                        className="group relative flex items-center flex-1 h-8 bg-white/50 dark:bg-neutral-800/50 rounded-base transition-all duration-150 ease-in-out border border-transparent dark:border-transparent backdrop-blur-sm">
                                         <div
                                             className="absolute left-0.5 top-1/2 -translate-y-1/2 flex items-center h-full">
                                             <Popover.Root open={isNewSubtaskDatePickerOpen}

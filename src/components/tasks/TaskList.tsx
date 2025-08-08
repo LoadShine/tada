@@ -63,7 +63,7 @@ const TaskGroupHeader: React.FC<{
             className={twMerge(
                 "flex items-center justify-between px-4 pt-3 pb-1.5",
                 "text-[12px] font-normal text-grey-medium dark:text-neutral-400 uppercase tracking-[0.5px]",
-                "sticky top-0 z-10 bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm"
+                "sticky top-0 z-10"
             )}
         >
             <span>{title}</span>
@@ -606,7 +606,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         return t('emptyState.title.default', {pageTitle});
     }, [isSearching, searchTerm, currentFilterGlobal, pageTitle, t]);
 
-    const headerClass = useMemo(() => twMerge("px-6 py-0 h-[56px]", "border-b border-grey-light dark:border-neutral-700", "flex justify-between items-center flex-shrink-0 z-10", "bg-white dark:bg-neutral-800"), []);
+    const headerClass = useMemo(() => twMerge("px-6 py-0 h-[56px]", "border-b border-grey-light/50 dark:border-neutral-700/50", "flex justify-between items-center flex-shrink-0 z-10", "bg-transparent"), []);
 
     const shouldShowInputSection = useMemo(() => isRegularNewTaskModeAllowed || isAiTaskInputVisible, [isRegularNewTaskModeAllowed, isAiTaskInputVisible]);
     const isCurrentlyAiMode = isAiTaskInputVisible;
@@ -616,19 +616,19 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     const newTaskInputWrapperClass = useMemo(() => {
         const baseWrapperClasses = "group relative flex items-center w-full h-[32px] rounded-base transition-all duration-150 ease-in-out border";
         if (isCurrentlyAiMode) {
-            if (isAiProcessing) return twMerge(baseWrapperClasses, "bg-grey-ultra-light dark:bg-neutral-700/60", "opacity-70", "border-grey-light dark:border-neutral-600");
+            if (isAiProcessing) return twMerge(baseWrapperClasses, "bg-grey-ultra-light dark:bg-neutral-700/60", "opacity-70", "border-grey-light/50 dark:border-neutral-600/50");
             return twMerge(baseWrapperClasses, "ai-glow-anim-border animate-border-flow", getAiGlowThemeClass(newTaskPriority), "border-transparent");
         } else {
             const prioritySpecificBorder = newTaskPriority && priorityMap[newTaskPriority]?.borderColor;
             const darkPrioritySpecificBorder = newTaskPriority && priorityMap[newTaskPriority]?.darkBorderColor;
-            return twMerge(baseWrapperClasses, "bg-grey-ultra-light dark:bg-neutral-700/60", prioritySpecificBorder ? `${prioritySpecificBorder} ${darkPrioritySpecificBorder || 'dark:border-transparent'}` : "border-grey-light dark:border-neutral-600");
+            return twMerge(baseWrapperClasses, "bg-white/50 dark:bg-neutral-800/50 backdrop-blur-sm", prioritySpecificBorder ? `${prioritySpecificBorder} ${darkPrioritySpecificBorder || 'dark:border-transparent'}` : "border-grey-light/50 dark:border-neutral-600/50");
         }
     }, [newTaskPriority, isCurrentlyAiMode, isAiProcessing, priorityMap]);
 
     const newTaskInputClass = useMemo(() => {
         const baseClasses = "flex-1 min-w-0 h-full pl-2 pr-8 text-[13px] font-light outline-none border-none text-grey-dark dark:text-neutral-100 placeholder:text-grey-medium dark:placeholder:text-neutral-400/70";
         if (isCurrentlyAiMode) {
-            if (isAiProcessing) return twMerge(baseClasses, "bg-grey-ultra-light dark:bg-neutral-700/60 rounded-4px");
+            if (isAiProcessing) return twMerge(baseClasses, "bg-transparent rounded-4px");
             return twMerge(baseClasses, "bg-white dark:bg-neutral-800 rounded-4px");
         }
         return twMerge(baseClasses, "bg-transparent");
@@ -649,7 +649,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
     if (isLoadingTasks || isLoadingPreferences) {
         return (
-            <div className="h-full flex items-center justify-center bg-white dark:bg-neutral-800">
+            <div className="h-full flex items-center justify-center bg-transparent">
                 <Icon name="loader" size={24} className="text-primary animate-spin"/>
             </div>
         );
@@ -658,7 +658,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
     return (
         <TaskItemMenuProvider>
-            <div className="h-full flex flex-col bg-white dark:bg-neutral-800 overflow-hidden relative">
+            <div className="h-full flex flex-col bg-transparent overflow-hidden relative">
                 <div className={headerClass}>
                     <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate pr-2"
                         title={pageTitle}>{pageTitle}</h1>
@@ -696,7 +696,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                 </div>
 
                 {shouldShowInputSection && (
-                    <div className="bg-white dark:bg-neutral-800">
+                    <div className="bg-transparent">
                         <div className="px-4 py-2.5">
                             <div className={newTaskInputWrapperClass}>
                                 <div className="flex items-center h-full flex-shrink-0">
@@ -904,7 +904,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                 </div>
                             </div>
                         </div>
-                        <div className="h-px bg-grey-ultra-light dark:bg-neutral-700/50 mx-4"></div>
+                        <div className="h-px bg-grey-ultra-light/50 dark:bg-neutral-700/30 mx-4"></div>
                     </div>
                 )}
 
@@ -912,14 +912,14 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd} measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
                         <div ref={scrollContainerRef}
-                             className="flex-1 overflow-y-auto styled-scrollbar relative p-2 bg-white dark:bg-neutral-800">
+                             className="flex-1 overflow-y-auto styled-scrollbar relative p-2 bg-transparent">
                             {isEmpty ? (
                                 <div
                                     className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-6 text-center pt-10">
                                     <Icon
                                         name={currentFilterGlobal === 'trash' ? 'trash' : (currentFilterGlobal === 'completed' ? 'check-square' : (isSearching ? 'search' : 'archive'))}
                                         size={32} strokeWidth={1}
-                                        className="mb-3 text-grey-light dark:text-neutral-500 opacity-80"/>
+                                        className="mb-3 text-grey-light/70 dark:text-neutral-500/70 opacity-80"/>
                                     <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-300">{emptyStateTitle}</p>
                                     {(isRegularNewTaskModeAllowed && !isCurrentlyAiMode) && (
                                         <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">{t('emptyState.addTaskHint')}</p>)}

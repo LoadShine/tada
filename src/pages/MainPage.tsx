@@ -26,8 +26,9 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
                 className={twMerge(
                     "h-full",
                     isLg ? "w-1/2 flex-shrink-0" : "w-full flex-shrink-0",
-                    "bg-white dark:bg-neutral-800",
-                    "border-r border-grey-light dark:border-neutral-700/50"
+                    // 应用毛玻璃效果
+                    "bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md",
+                    "border-r border-grey-light/50 dark:border-neutral-700/50"
                 )}
             >
                 <TaskList title={title}/>
@@ -36,7 +37,8 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
             {isLg ? (
                 <div className={twMerge(
                     "h-full flex-1 flex-shrink-0 relative overflow-hidden",
-                    "bg-white dark:bg-neutral-850"
+                    // 应用毛玻璃效果
+                    "bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md"
                 )}>
                     {!selectedTaskId && <TaskDetailPlaceholder/>}
                     <AnimatePresence initial={false}>
@@ -71,7 +73,8 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
                                 key="drawer-task-detail"
                                 className={twMerge(
                                     "fixed top-0 right-0 h-full w-[90%] max-w-md shadow-2xl z-40 flex flex-col",
-                                    "bg-white dark:bg-neutral-850"
+                                    // 移动端抽屉也应用毛玻璃效果
+                                    "bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md"
                                 )}
                                 initial={{x: '100%'}}
                                 animate={{x: 0}}

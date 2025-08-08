@@ -54,14 +54,13 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
             cursor: 'grabbing',
             zIndex: 1000,
             boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
-            background: 'var(--background-color-primary, hsl(var(--color-white)))'
         };
         if (isDragging) return {
             transform: baseTransform,
             transition,
             opacity: 0.6,
             cursor: 'grabbing',
-            background: 'var(--background-color-secondary-hover, hsla(var(--color-grey-ultra-light), 0.5))'
+            background: 'hsla(0, 0%, 100%, 0.5)' // A light dragging background
         };
         return {transform: baseTransform, transition};
     }, [transform, transition, isDragging, isDraggingOverlay]);
@@ -137,8 +136,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
     const isSubtaskOverdue = useMemo(() => subtaskDueDate && isValid(subtaskDueDate) && !subtask.completed && !isDisabledByParent && isOverdue(subtaskDueDate), [subtaskDueDate, subtask.completed, isDisabledByParent]);
 
     const subtaskItemBaseClasses = "group/subtask-detail flex flex-col rounded-lg transition-colors duration-150 ease-apple";
-    const subtaskItemHoverClasses = !isDraggingOverlay && !isDragging ? "hover:bg-grey-ultra-light dark:hover:bg-white/[.025]" : "";
-    const subtaskItemEditingContentClasses = "";
+    const subtaskItemHoverClasses = !isDraggingOverlay && !isDragging ? "hover:bg-black/5 dark:hover:bg-white/5" : "";
 
     const tooltipContentClass = "text-[11px] bg-grey-dark dark:bg-neutral-900/90 text-white dark:text-neutral-100 px-2 py-1 rounded-base shadow-md select-none z-[75] data-[state=delayed-open]:animate-fadeIn data-[state=closed]:animate-fadeOut";
 
@@ -155,7 +153,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                 ? (isSubtaskOverdue
                     ? "text-error dark:text-red-400 hover:bg-error/10 dark:hover:bg-red-500/15"
                     : "text-primary dark:text-primary-light hover:bg-primary/10 dark:hover:bg-primary-dark/20")
-                : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200 hover:bg-grey-ultra-light dark:hover:bg-white/[.07]"
+                : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5"
         ),
         isDisabled && (
             subtask.dueDate
@@ -178,8 +176,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                 className={twMerge(
                     subtaskItemBaseClasses,
                     subtaskItemHoverClasses,
-                    subtaskItemEditingContentClasses,
-                    isDraggingOverlay && "bg-white dark:bg-neutral-750 shadow-lg px-1.5",
+                    isDraggingOverlay && "bg-white/90 dark:bg-neutral-750/90 shadow-lg px-1.5 backdrop-blur-sm",
                     !isDisabledByParent && !isDragging && !isDraggingOverlay && "cursor-grab",
                     isDisabledByParent && "cursor-not-allowed"
                 )}
