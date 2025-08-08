@@ -51,6 +51,9 @@
         --ai-glow-gradient-yellow: linear-gradient(90deg, #F78C33, #F6AD55, #FFDB1A, #A3CC33, #F78C33);
         --ai-glow-gradient-blue: linear-gradient(90deg, #4ADCF2, #63B3ED, #738AF2, #9C6BF7, #4ADCF2);
         --ai-glow-gradient-neutral: linear-gradient(90deg, #ADC9F5, #CDE5EF, #D2BDEF, #F7D9E0, #ADC9F5);
+
+        --app-background-image: none;
+        --app-background-filter: none;
     }
 
     .dark { /* Dark mode neutral overrides */
@@ -67,12 +70,36 @@
         font-weight: var(--font-primary-regular-weight);
         font-size: 13.5px;
         line-height: 1.65;
-        background-color: hsl(var(--color-white)); /* Default, will be overridden by JS if bg image */
+        background-color: hsl(var(--color-white));
         color: hsl(var(--color-grey-dark));
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        transition: background-color 0.3s ease-in-out, background-image 0.3s ease-in-out, filter 0.3s ease-in-out; /* For background image changes */
+        /* 移除 body 上的 transition，将其移至 ::before 伪元素 */
+        transition: background-color 0.3s ease-in-out;
     }
+
+    /* --- 核心修复逻辑 (3/3) --- */
+    /* 创建一个伪元素来承载背景图和滤镜，与 body 内容分离 */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+
+        /* 使用 CSS 变量来接收来自 JS 的样式 */
+        background-image: var(--app-background-image);
+        filter: var(--app-background-filter);
+
+        /* 保持背景图的样式 */
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+
+        /* 将过渡效果应用到这个伪元素上 */
+        transition: background-image 0.3s ease-in-out, filter 0.3s ease-in-out;
+    }
+
 
     .dark body {
         background-color: hsl(var(--color-grey-deep)); /* Dark mode base background */

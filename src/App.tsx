@@ -79,17 +79,20 @@ const SettingsApplicator: React.FC = () => {
         document.documentElement.style.setProperty('--color-primary-dark-hsl', selectedTheme.colors.dark);
 
         if (appearance.backgroundImageUrl && appearance.backgroundImageUrl !== 'none') {
-            document.body.style.backgroundImage = `url('${appearance.backgroundImageUrl}')`;
-            document.body.style.backgroundSize = 'cover';
-            document.body.style.backgroundPosition = 'center';
-            document.body.style.backgroundRepeat = 'no-repeat';
-            document.body.style.backgroundAttachment = 'fixed';
+            document.documentElement.style.setProperty('--app-background-image', `url('${appearance.backgroundImageUrl}')`);
 
             const filterValue = `brightness(${appearance.backgroundImageBrightness}%) ${appearance.backgroundImageBlur > 0 ? `blur(${appearance.backgroundImageBlur}px)` : ''}`;
-            document.body.style.filter = filterValue.trim();
+            document.documentElement.style.setProperty('--app-background-filter', filterValue.trim());
+
+            // 使 body 背景透明，以便伪元素背景可见
+            document.body.style.backgroundColor = 'transparent';
         } else {
-            document.body.style.backgroundImage = 'none';
-            document.body.style.filter = 'none';
+            // 移除背景图时，清除 CSS 变量并恢复 body 的背景色
+            document.documentElement.style.removeProperty('--app-background-image');
+            document.documentElement.style.removeProperty('--app-background-filter');
+
+            // 移除内联样式，让 CSS 文件中的 body 规则重新生效
+            document.body.style.backgroundColor = '';
         }
 
         return () => {
