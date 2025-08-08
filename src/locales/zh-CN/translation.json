@@ -102,7 +102,7 @@
       "darkModeOptions": {
         "light": "浅色",
         "dark": "深色",
-        "system": "跟随系统"
+        "system": "系统"
       },
       "themeColor": "主题色",
       "themeColorDescription": "为应用选择一个强调色。",

@@ -61,7 +61,7 @@ const TaskGroupHeader: React.FC<{
     return (
         <div
             className={twMerge(
-                "flex items-center justify-between px-4 pt-3 pb-1.5",
+                "flex items-center justify-between pt-3 pb-1.5",
                 "text-[12px] font-normal text-grey-medium dark:text-neutral-400 uppercase tracking-[0.5px]",
                 "sticky top-0 z-10"
             )}
@@ -912,10 +912,10 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd} measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
                         <div ref={scrollContainerRef}
-                             className="flex-1 overflow-y-auto styled-scrollbar relative p-2 bg-transparent">
+                             className="flex-1 overflow-y-auto styled-scrollbar relative px-4 py-2 bg-transparent">
                             {isEmpty ? (
                                 <div
-                                    className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-6 text-center pt-10">
+                                    className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-4 text-center pt-10">
                                     <Icon
                                         name={currentFilterGlobal === 'trash' ? 'trash' : (currentFilterGlobal === 'completed' ? 'check-square' : (isSearching ? 'search' : 'archive'))}
                                         size={32} strokeWidth={1}
