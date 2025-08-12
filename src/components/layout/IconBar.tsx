@@ -111,7 +111,7 @@ const IconBar: React.FC = memo(() => {
                                 aria-label={t('iconBar.accountSettings')}>
                             {currentUser?.avatarUrl ? (
                                 <img src={currentUser.avatarUrl} alt={currentUser.username || 'User Avatar'}
-                                     className="w-full h-full object-cover"/>
+                                     className="absolute inset-0 w-full h-full object-cover"/>
                             ) : (
                                 <div
                                     className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-300 font-normal text-sm">

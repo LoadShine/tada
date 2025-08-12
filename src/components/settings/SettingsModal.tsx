@@ -33,6 +33,7 @@ import {
 } from '@/config/themes';
 import * as apiService from '@/services/apiService';
 import {useTranslation} from "react-i18next";
+import ConfirmDeleteModalRadix from "@/components/common/ConfirmDeleteModal";
 
 interface SettingsItem {
     id: SettingsTab;
@@ -179,6 +180,7 @@ const AccountSettings: React.FC = memo(() => {
     const [isEditingName, setIsEditingName] = useState(false);
     const [newName, setNewName] = useState(currentUser?.username || '');
     const [isLoading, setIsLoading] = useState(false);
+    const [isDeleteAvatarConfirmOpen, setIsDeleteAvatarConfirmOpen] = useState(false);
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -247,19 +249,23 @@ const AccountSettings: React.FC = memo(() => {
         if (event.target) event.target.value = '';
     };
 
-    const handleDeleteAvatar = async () => {
+    const handleDeleteAvatar = () => {
         if (!currentUser?.avatarUrl) return;
-        if (confirm(t('settings.account.confirmDeleteAvatar'))) {
-            setIsLoading(true);
-            try {
-                const updatedUser = await apiService.apiDeleteAvatar();
-                setCurrentUserGlobally(updatedUser);
-            } catch (e: any) {
-                alert(t('settings.account.deleteAvatarError', {message: e.message}));
-            }
-            setIsLoading(false);
-        }
+        setIsDeleteAvatarConfirmOpen(true);
     };
+
+    const confirmDeleteAvatar = async () => {
+        setIsDeleteAvatarConfirmOpen(false);
+        setIsLoading(true);
+        try {
+            const updatedUser = await apiService.apiDeleteAvatar();
+            setCurrentUserGlobally(updatedUser);
+        } catch (e: any) {
+            alert(t('settings.account.deleteAvatarError', {message: e.message}));
+        }
+        setIsLoading(false);
+    };
+
 
     const handleLogout = async () => {
         setIsLoading(true);
@@ -274,86 +280,100 @@ const AccountSettings: React.FC = memo(() => {
     const avatarInitial = useMemo(() => currentUser?.username?.charAt(0).toUpperCase() || '', [currentUser]);
     const displayIdentifier = userEmail || userPhone;
 
-    return (<div className="space-y-6">
-        {isLoading && <div
-            className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10"><Icon
-            name="loader" className="animate-spin text-primary" size={24}/></div>}
+    return (<>
+        <div className="space-y-6">
+            {isLoading && <div
+                className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10">
+                <Icon
+                    name="loader" className="animate-spin text-primary" size={24}/></div>}
 
-        <div className="flex items-center space-x-4 mb-4">
-            <div className="relative group/avatar">
-                <div
-                    className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-grey-ultra-light dark:bg-neutral-700">
-                    {avatarSrc ? (
-                        <img src={avatarSrc} alt={userName} className="w-full h-full object-cover"/>
-                    ) : (
+            <div className="flex items-center space-x-4 mb-4">
+                <div className="relative group/avatar">
+                    <div
+                        className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-grey-ultra-light dark:bg-neutral-700">
+                        {avatarSrc ? (
+                            <img src={avatarSrc} alt={userName} className="w-full h-full object-cover"/>
+                        ) : (
+                            <div
+                                className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-400 text-2xl font-normal">
+                                {avatarInitial || <Icon name="user" size={24} strokeWidth={1}/>}
+                            </div>
+                        )}
+                    </div>
+                    <div
+                        className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                        <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*"
+                               hidden/>
+                        <Button variant="ghost" size="icon" icon="upload" onClick={handleAvatarUploadClick}
+                                className="text-white hover:bg-white/20" title={t('settings.account.uploadAvatar')}/>
+                        {avatarSrc && <Button variant="ghost" size="icon" icon="trash" onClick={handleDeleteAvatar}
+                                              className="text-white hover:bg-white/20"
+                                              title={t('settings.account.deleteAvatar')}/>}
+                    </div>
+                </div>
+                <div>
+                    <h3 className="text-[18px] font-normal text-grey-dark dark:text-neutral-100">{userName}</h3>
+                    <p className="text-[13px] text-grey-medium dark:text-neutral-300 font-light">{displayIdentifier}</p>
+                    {isPremium && (
                         <div
-                            className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-400 text-2xl font-normal">
-                            {avatarInitial || <Icon name="user" size={24} strokeWidth={1}/>}
+                            className="text-[11px] text-primary dark:text-primary-light flex items-center mt-1.5 font-normal bg-primary-light dark:bg-primary-dark/30 px-2 py-0.5 rounded-full w-fit">
+                            <Icon name="crown" size={12} className="mr-1 text-primary dark:text-primary-light"
+                                  strokeWidth={1.5}/>
+                            <span>{t('settings.account.premiumMember')}</span>
                         </div>
                     )}
                 </div>
-                <div
-                    className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
-                    <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*" hidden/>
-                    <Button variant="ghost" size="icon" icon="upload" onClick={handleAvatarUploadClick}
-                            className="text-white hover:bg-white/20" title={t('settings.account.uploadAvatar')}/>
-                    {avatarSrc && <Button variant="ghost" size="icon" icon="trash" onClick={handleDeleteAvatar}
-                                          className="text-white hover:bg-white/20"
-                                          title={t('settings.account.deleteAvatar')}/>}
-                </div>
             </div>
-            <div>
-                <h3 className="text-[18px] font-normal text-grey-dark dark:text-neutral-100">{userName}</h3>
-                <p className="text-[13px] text-grey-medium dark:text-neutral-300 font-light">{displayIdentifier}</p>
-                {isPremium && (
-                    <div
-                        className="text-[11px] text-primary dark:text-primary-light flex items-center mt-1.5 font-normal bg-primary-light dark:bg-primary-dark/30 px-2 py-0.5 rounded-full w-fit">
-                        <Icon name="crown" size={12} className="mr-1 text-primary dark:text-primary-light"
-                              strokeWidth={1.5}/>
-                        <span>{t('settings.account.premiumMember')}</span>
-                    </div>
+
+            <div className="space-y-0">
+                {isEditingName ? (
+                    <SettingsRow label={t('settings.account.username')}>
+                        <input
+                            type="text"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            className="flex-grow h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light mr-2 w-full sm:w-auto"
+                            disabled={isLoading}
+                        />
+                        <Button variant="primary" size="sm" onClick={handleSaveName}
+                                disabled={isLoading}>{t('common.save')}</Button>
+                        <Button variant="ghost" size="sm" onClick={handleCancelEditName} className="ml-1"
+                                disabled={isLoading}>{t('common.cancel')}</Button>
+                    </SettingsRow>
+                ) : (
+                    <SettingsRow label={t('settings.account.username')} value={userName}
+                                 action={<Button variant="link" size="sm" onClick={handleEditName}
+                                                 disabled={isLoading}>{t('common.edit')}</Button>}/>
                 )}
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+                {userEmail &&
+                    <SettingsRow label={t('settings.account.email')} value={userEmail}
+                                 description={t('settings.account.emailDescription')}/>}
+                {userPhone &&
+                    <SettingsRow label={t('settings.account.phone')} value={userPhone}
+                                 description={t('settings.account.phoneDescription')}/>}
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+                <SettingsRow label={t('settings.account.password')} action={<Button variant="link" size="sm"
+                                                                                    onClick={handleChangePassword}
+                                                                                    disabled={isLoading}>{t('settings.account.changePassword')}</Button>}/>
+            </div>
+
+            <div className="mt-8">
+                <Button variant="secondary" size="md" icon="logout" onClick={handleLogout}
+                        className="w-full sm:w-auto" disabled={isLoading}>{t('settings.account.logout')}</Button>
             </div>
         </div>
-
-        <div className="space-y-0">
-            {isEditingName ? (
-                <SettingsRow label={t('settings.account.username')}>
-                    <input
-                        type="text"
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        className="flex-grow h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light mr-2 w-full sm:w-auto"
-                        disabled={isLoading}
-                    />
-                    <Button variant="primary" size="sm" onClick={handleSaveName}
-                            disabled={isLoading}>{t('common.save')}</Button>
-                    <Button variant="ghost" size="sm" onClick={handleCancelEditName} className="ml-1"
-                            disabled={isLoading}>{t('common.cancel')}</Button>
-                </SettingsRow>
-            ) : (
-                <SettingsRow label={t('settings.account.username')} value={userName}
-                             action={<Button variant="link" size="sm" onClick={handleEditName}
-                                             disabled={isLoading}>{t('common.edit')}</Button>}/>
-            )}
-            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            {userEmail &&
-                <SettingsRow label={t('settings.account.email')} value={userEmail}
-                             description={t('settings.account.emailDescription')}/>}
-            {userPhone &&
-                <SettingsRow label={t('settings.account.phone')} value={userPhone}
-                             description={t('settings.account.phoneDescription')}/>}
-            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <SettingsRow label={t('settings.account.password')} action={<Button variant="link" size="sm"
-                                                                                onClick={handleChangePassword}
-                                                                                disabled={isLoading}>{t('settings.account.changePassword')}</Button>}/>
-        </div>
-
-        <div className="mt-8">
-            <Button variant="secondary" size="md" icon="logout" onClick={handleLogout}
-                    className="w-full sm:w-auto" disabled={isLoading}>{t('settings.account.logout')}</Button>
-        </div>
-    </div>);
+        <ConfirmDeleteModalRadix
+            isOpen={isDeleteAvatarConfirmOpen}
+            onClose={() => setIsDeleteAvatarConfirmOpen(false)}
+            onConfirm={confirmDeleteAvatar}
+            itemTitle={currentUser?.username || ''}
+            title={t('settings.account.deleteAvatar')}
+            description={t('settings.account.confirmDeleteAvatar')}
+            confirmText={t('common.delete')}
+            confirmVariant="danger"
+        />
+    </>);
 });
 AccountSettings.displayName = 'AccountSettings';
 
@@ -437,7 +457,7 @@ const AppearanceSettings: React.FC = memo(() => {
                             colorValue={theme.colors.primary}
                             selected={currentAppearance.themeId === theme.id}
                             onClick={() => handleThemeChange(theme.id)}
-                            themeName={theme.name}
+                            themeName={t(theme.nameKey)}
                         />
                     ))}
                 </div>
@@ -452,7 +472,7 @@ const AppearanceSettings: React.FC = memo(() => {
                         <BackgroundImagePreview
                             key={img.id}
                             imageUrl={img.url}
-                            name={img.name}
+                            name={t(img.nameKey)}
                             selected={currentAppearance.backgroundImageUrl === img.url}
                             onClick={() => handleBgImageChange(img.url)}
                         />
@@ -560,9 +580,9 @@ const PreferencesSettings: React.FC = memo(() => {
     const listOptions = useMemo(() => {
         return userLists.map(l => ({
             value: l,
-            label: l
+            label: l === 'Inbox' ? t('sidebar.inbox') : l
         }));
-    }, [userLists]);
+    }, [userLists, t]);
 
     const renderSelect = (id: string, value: string | null, onChange: (value: string) => void, options: {
         value: string,
@@ -763,11 +783,11 @@ const AboutSettings: React.FC = memo(() => {
     const {t} = useTranslation();
     const [activeContent, setActiveContent] = useState<'changelog' | 'privacy' | 'terms' | null>(null);
 
-    const contentMap = {
-        changelog: {title: 'Update Changelog', html: CHANGELOG_HTML},
-        privacy: {title: 'Privacy Policy', html: PRIVACY_POLICY_HTML},
-        terms: {title: 'Terms of Use', html: TERMS_OF_USE_HTML},
-    };
+    const contentMap = useMemo(() => ({
+        changelog: {title: t('settings.about.changelog'), html: CHANGELOG_HTML},
+        privacy: {title: t('settings.about.privacyPolicy'), html: PRIVACY_POLICY_HTML},
+        terms: {title: t('settings.about.termsOfUse'), html: TERMS_OF_USE_HTML},
+    }), [t]);
 
     const renderContent = () => {
         if (!activeContent || !contentMap[activeContent]) return null;
