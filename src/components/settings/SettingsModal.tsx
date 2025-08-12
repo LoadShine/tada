@@ -34,6 +34,7 @@ import {
 import * as apiService from '@/services/apiService';
 import {useTranslation} from "react-i18next";
 import ConfirmDeleteModalRadix from "@/components/common/ConfirmDeleteModal";
+import UserAvatar from "@/components/common/UserAvatar";
 
 interface SettingsItem {
     id: SettingsTab;
@@ -276,8 +277,6 @@ const AccountSettings: React.FC = memo(() => {
     const userEmail = useMemo(() => currentUser?.email ?? 'No email provided', [currentUser]);
     const userPhone = useMemo(() => currentUser?.phone ?? 'No phone provided', [currentUser]);
     const isPremium = useMemo(() => currentUser?.isPremium ?? false, [currentUser]);
-    const avatarSrc = useMemo(() => currentUser?.avatarUrl, [currentUser]);
-    const avatarInitial = useMemo(() => currentUser?.username?.charAt(0).toUpperCase() || '', [currentUser]);
     const displayIdentifier = userEmail || userPhone;
 
     return (<>
@@ -289,26 +288,18 @@ const AccountSettings: React.FC = memo(() => {
 
             <div className="flex items-center space-x-4 mb-4">
                 <div className="relative group/avatar">
-                    <div
-                        className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-grey-ultra-light dark:bg-neutral-700">
-                        {avatarSrc ? (
-                            <img src={avatarSrc} alt={userName} className="w-full h-full object-cover"/>
-                        ) : (
-                            <div
-                                className="w-full h-full bg-grey-light dark:bg-neutral-600 flex items-center justify-center text-grey-medium dark:text-neutral-400 text-2xl font-normal">
-                                {avatarInitial || <Icon name="user" size={24} strokeWidth={1}/>}
-                            </div>
-                        )}
-                    </div>
+                    <UserAvatar user={currentUser} size={64}/>
                     <div
                         className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                         <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*"
                                hidden/>
                         <Button variant="ghost" size="icon" icon="upload" onClick={handleAvatarUploadClick}
                                 className="text-white hover:bg-white/20" title={t('settings.account.uploadAvatar')}/>
-                        {avatarSrc && <Button variant="ghost" size="icon" icon="trash" onClick={handleDeleteAvatar}
-                                              className="text-white hover:bg-white/20"
-                                              title={t('settings.account.deleteAvatar')}/>}
+                        {currentUser?.avatarUrl && (
+                            <Button variant="ghost" size="icon" icon="trash" onClick={handleDeleteAvatar}
+                                    className="text-white hover:bg-white/20"
+                                    title={t('settings.account.deleteAvatar')}/>
+                        )}
                     </div>
                 </div>
                 <div>
