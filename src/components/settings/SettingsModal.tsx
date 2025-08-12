@@ -288,9 +288,11 @@ const AccountSettings: React.FC = memo(() => {
 
             <div className="flex items-center space-x-4 mb-4">
                 <div className="relative group/avatar">
-                    <UserAvatar user={currentUser} size={64}/>
+                    <div className="relative z-0">
+                        <UserAvatar user={currentUser} size={64}/>
+                    </div>
                     <div
-                        className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                        className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity z-10">
                         <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*"
                                hidden/>
                         <Button variant="ghost" size="icon" icon="upload" onClick={handleAvatarUploadClick}
