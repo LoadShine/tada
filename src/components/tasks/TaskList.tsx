@@ -442,12 +442,10 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         [currentFilterGlobal, isSearching]
     );
 
-    // <<< MODIFICATION START
     const shouldShowAiButton = useMemo(() =>
             !['completed', 'trash'].includes(currentFilterGlobal),
         [currentFilterGlobal]
     );
-    // MODIFICATION END >>>
 
     const toggleAiTaskInput = useCallback(() => {
         if (isAiProcessing) return;
@@ -669,7 +667,6 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                 <div className={headerClass}>
                     <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate pr-2"
                         title={pageTitle}>{pageTitle}</h1>
-                    {/* <<< MODIFICATION START */}
                     {shouldShowAiButton && (
                         <div className={twMerge(
                             "relative flex-shrink-0 ml-2 rounded-base",
@@ -703,7 +700,6 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                             </Button>
                         </div>
                     )}
-                    {/* MODIFICATION END >>> */}
                 </div>
 
                 {shouldShowInputSection && (

@@ -336,12 +336,12 @@ const SummaryView: React.FC = () => {
             if (startYear !== endYear) return `${format(period.start, 'MMM d, yyyy')} - ${format(period.end, 'MMM d, yyyy')}`; else if (startYear !== currentYear) return `${startStr} - ${endStr}, ${startYear}`; else return `${startStr} - ${endStr}`;
         }
         return t('summary.periods.select');
-    }, [period, periodOptions]);
+    }, [period, periodOptions, t]);
 
     const selectedListLabel = useMemo(() => {
         const option = listOptions.find(l => l.value === listFilter);
         return option ? option.label : t('summary.lists.select');
-    }, [listFilter, listOptions]);
+    }, [listFilter, listOptions, t]);
 
     const isGenerateDisabled = useMemo(() => {
         if (isGenerating) return true;
@@ -545,7 +545,7 @@ const SummaryView: React.FC = () => {
     TaskItemMiniInline.displayName = 'TaskItemMiniInline';
 
     return (
-        <div className="h-full flex flex-col bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md overflow-hidden">
+        <div className="h-full flex flex-col bg-transparent overflow-hidden">
             <div
                 className="px-6 py-0 h-[56px] border-b border-grey-light/50 dark:border-neutral-700/50 flex justify-between items-center flex-shrink-0 bg-transparent z-10">
                 <div className="w-1/3 flex items-center space-x-2">
@@ -771,8 +771,8 @@ const SummaryView: React.FC = () => {
                                     className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-2 text-center">
                                     <Icon name="sparkles" size={32} strokeWidth={1}
                                           className="mb-3 text-grey-light/70 dark:text-neutral-500/70 opacity-80"/>
-                                    <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-200">{t('summary.noSummary.title')}</p>
-                                    <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">{t('summary.noSummary.description')}</p>
+                                    <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-200">{t('summary.noSummary.title', 'No summary available')}</p>
+                                    <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">{t('summary.noSummary.description', 'Select tasks and generate a new summary.')}</p>
                                 </div>
                             )
                         ) : (

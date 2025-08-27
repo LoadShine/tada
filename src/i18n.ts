@@ -19,8 +19,8 @@ i18n
     .use(initReactI18next) // passes i18n down to react-i18next
     .init({
         resources,
-        lng: 'zh-CN', // <<<--- 修改这里：将 'en' 改为 'zh-CN'
-        fallbackLng: 'zh-CN', // <<<--- 修改这里：将 'en' 改为 'zh-CN'
+        lng: 'zh-CN', // 默认语言设置为简体中文
+        fallbackLng: 'zh-CN', // 后备语言设置为简体中文
 
         interpolation: {
             escapeValue: false, // react already safes from xss

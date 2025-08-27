@@ -32,13 +32,11 @@ import {
 import * as service from '@/services/apiService';
 import {SubtaskCreate, SubtaskUpdate, TaskCreate, TaskUpdate} from "@/types/api";
 
-// <<< NEW: Notification type moved here for global access
 export interface Notification {
     id: number;
     type: 'success' | 'error' | 'loading';
     message: string;
 }
-// NEW END >>>
 
 type AsyncDataAtom<TData, TUpdate = TData | ((prev: TData | null) => TData) | typeof RESET> = WritableAtom<
     TData | null,
@@ -73,7 +71,7 @@ export const defaultAppearanceSettingsForApi = (): AppearanceSettings => ({
     backgroundImageBrightness: 100, interfaceDensity: 'default',
 });
 export const defaultPreferencesSettingsForApi = (): PreferencesSettings => ({
-    language: 'en', defaultNewTaskDueDate: null, defaultNewTaskPriority: null,
+    language: 'zh-CN', defaultNewTaskDueDate: null, defaultNewTaskPriority: null,
     defaultNewTaskList: 'Inbox', confirmDeletions: true,
 });
 
@@ -317,8 +315,7 @@ export const tasksAtom: AsyncDataAtom<Task[]> = atom(
                 ...deleteSubtaskPromises,
             ]);
 
-            // <<< FIX START
-            // If new tasks were created, we need to update the state with the real tasks from the server
+            // If new tasks were created, update the state with the real tasks from the server
             // to replace the ones with temporary local IDs.
             if (creationResults.length > 0) {
                 const currentTasks = get(baseTasksDataAtom) ?? [];
@@ -330,11 +327,9 @@ export const tasksAtom: AsyncDataAtom<Task[]> = atom(
                     ...creationResults.map(t => ({...t, groupCategory: getTaskGroupCategory(t)}))
                 ];
 
+                // Set the final state with real IDs
                 set(baseTasksDataAtom, updatedTaskList.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
             }
-            // The main fix: We DO NOT refetch all tasks here. The optimistic state is now the source of truth
-            // until the next explicit refresh (e.g., page load).
-            // <<< FIX END
 
         } catch (e: any) {
             console.error('[TasksAtom] Backend update failed, reverting:', e);
@@ -396,7 +391,6 @@ export const isAddListModalOpenAtom = atom<boolean>(false);
 export const currentFilterAtom = atom<TaskFilter>('all');
 export const searchTermAtom = atom<string>('');
 
-// <<< NEW: Global Notification Atoms
 export const notificationsAtom = atom<Notification[]>([]);
 
 export const addNotificationAtom = atom(
@@ -412,7 +406,14 @@ export const addNotificationAtom = atom(
         }, 5000);
     }
 );
-// NEW END >>>
+
+// --- Payment Modal Atoms ---
+export const isPaymentModalOpenAtom = atom(false);
+export const paymentModalConfigAtom = atom<{ productId: string; productName: string } | null>(null);
+export const openPaymentModalAtom = atom(null, (get, set, config: { productId: string, productName: string }) => {
+    set(paymentModalConfigAtom, config);
+    set(isPaymentModalOpenAtom, true);
+});
 
 // --- Settings Atoms ---
 export type DarkModeOption = 'light' | 'dark' | 'system';

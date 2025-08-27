@@ -29,16 +29,14 @@ const MainLayout: React.FC = () => {
             {!hideSidebar && (
                 <div className={twMerge(
                     "w-[240px] flex-shrink-0 h-full relative border-r border-grey-light/50 dark:border-grey-deep/50",
-                    // 这是正确的毛玻璃效果
-                    "bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md transition-colors duration-300"
+                    "bg-white/50 dark:bg-grey-deep/50 backdrop-blur-md transition-colors duration-300"
                 )}>
                     <Sidebar/>
                 </div>
             )}
             <main className={twMerge(
                 "flex-1 overflow-hidden relative flex flex-col min-w-0",
-                // 主内容区设为透明，让子页面（如MainPage）来定义背景
-                "bg-transparent"
+                "bg-white/50 dark:bg-grey-deep/50 backdrop-blur-md transition-colors duration-300"
             )}>
                 <Suspense fallback={<LoadingSpinner/>}>
                     <Outlet/>

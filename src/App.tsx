@@ -15,7 +15,6 @@ import {
     currentUserLoadingAtom,
     defaultAppearanceSettingsForApi,
     defaultPreferencesSettingsForApi,
-    Notification,
     notificationsAtom,
     preferencesSettingsAtom,
     preferencesSettingsErrorAtom,
@@ -35,6 +34,7 @@ import Icon from "@/components/common/Icon";
 import {AnimatePresence, motion} from "framer-motion";
 import {twMerge} from "tailwind-merge";
 import {useTranslation} from "react-i18next";
+import PaymentModal from "@/components/premium/PaymentModal.tsx";
 
 const MainPage = lazy(() => import('./pages/MainPage'));
 const SummaryPage = lazy(() => import('./pages/SummaryPage'));
@@ -83,15 +83,13 @@ const SettingsApplicator: React.FC = () => {
 
         if (appearance.backgroundImageUrl && appearance.backgroundImageUrl !== 'none') {
             document.documentElement.style.setProperty('--app-background-image', `url('${appearance.backgroundImageUrl}')`);
-
-            const filterValue = `brightness(${appearance.backgroundImageBrightness}%) ${appearance.backgroundImageBlur > 0 ? `blur(${appearance.backgroundImageBlur}px)` : ''}`;
+            const brightnessValue = (appearance.backgroundImageBrightness ?? 100) / 100;
+            const filterValue = `brightness(${brightnessValue}) ${appearance.backgroundImageBlur > 0 ? `blur(${appearance.backgroundImageBlur}px)` : ''}`;
             document.documentElement.style.setProperty('--app-background-filter', filterValue.trim());
-
             document.body.style.backgroundColor = 'transparent';
         } else {
             document.documentElement.style.removeProperty('--app-background-image');
             document.documentElement.style.removeProperty('--app-background-filter');
-
             document.body.style.backgroundColor = '';
         }
 
@@ -181,8 +179,6 @@ const DailyTaskRefresh: React.FC = () => {
 };
 DailyTaskRefresh.displayName = 'DailyTaskRefresh';
 
-
-// <<< MODIFIED: GlobalStatusDisplay now uses Jotai atoms and handles success notifications
 const GlobalStatusDisplay: React.FC = () => {
     const {t} = useTranslation();
     const isLoadingCurrentUser = useAtomValue(currentUserLoadingAtom);
@@ -276,8 +272,6 @@ const GlobalStatusDisplay: React.FC = () => {
     );
 };
 GlobalStatusDisplay.displayName = 'GlobalStatusDisplay';
-// MODIFIED END >>>
-
 
 const ProtectedRoute: React.FC = () => {
     const currentUser = useAtomValue(currentUserAtom);
@@ -342,6 +336,7 @@ const App: React.FC = () => {
             <SettingsApplicator/>
             <DailyTaskRefresh/>
             <GlobalStatusDisplay/>
+            <PaymentModal />
             <Suspense fallback={<AppLoadingSpinner/>}>
                 <AppRoutes />
             </Suspense>

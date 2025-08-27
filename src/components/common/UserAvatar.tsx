@@ -49,10 +49,8 @@ const UserAvatar: React.FC<UserAvatarProps> = ({user, size, className}) => {
             {avatarData.type === 'initials' && (
                 <div
                     className="w-full h-full flex items-center justify-center font-medium animated-gradient-avatar"
-                    // Pass the generated gradient to CSS via a custom property
                     style={{'--avatar-gradient': avatarData.gradient} as React.CSSProperties}
                 >
-                    {/* Wrap the initial in a span to place it above the ::before pseudo-element */}
                     <span style={{
                         color: `hsl(${avatarData.textHsl})`,
                         fontSize: `${fontSize}px`,

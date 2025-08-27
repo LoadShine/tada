@@ -47,8 +47,6 @@ const apiFetch = async <T>(endpoint: string, options: ApiFetchOptions = {}): Pro
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-    } else {
-        console.log("not auth")
     }
 
     const config: RequestInit = {
@@ -77,7 +75,7 @@ const apiFetch = async <T>(endpoint: string, options: ApiFetchOptions = {}): Pro
         throw new Error(Array.isArray(errorMessage) ? errorMessage.map(e => e.msg).join(', ') : errorMessage);
     }
 
-    if (response.status === 204) {
+    if (response.status === 204 || response.headers.get('Content-Length') === '0') {
         return {} as T;
     }
 
@@ -104,12 +102,11 @@ export const apiSendCode = async (identifier: string, purpose: 'register' | 'log
     }
 };
 
-export const apiRegisterWithCode = async (formData: FormData): Promise<AuthResponse> => {
+export const apiRegisterWithCode = async (data: Record<string, string>): Promise<AuthResponse> => {
     try {
         const response = await apiFetch<AuthResponse>('/users/register', {
             method: 'POST',
-            body: formData,
-            isFormData: true,
+            body: data
         });
         if (response.success && response.token) {
             setAuthToken(response.token);
@@ -394,109 +391,16 @@ export const apiStreamSummary = (taskIds: string[], periodKey: string, listKey: 
     taskIds.forEach(id => queryParams.append('taskIds', id));
     queryParams.append('periodKey', periodKey);
     queryParams.append('listKey', listKey);
+    queryParams.append('token', getAuthToken() || ''); // Pass token as query param for SSE
 
-    const controller = new AbortController();
-
-    const customEventSource: any = {
-        _listeners: {message: [], end: [], error: []},
-        onmessage: null,
-        onend: null,
-        onerror: null,
-
-        addEventListener(type: 'message' | 'end' | 'error', listener: (event: any) => void) {
-            if (!this._listeners[type]) this._listeners[type] = [];
-            this._listeners[type].push(listener);
-        },
-
-        dispatchEvent(event: MessageEvent) {
-            const type = event.type as 'message' | 'end' | 'error';
-            if (typeof this[`on${type}`] === 'function') {
-                this[`on${type}`](event);
-            }
-            if (this._listeners[type]) {
-                this._listeners[type].forEach((l: any) => l(event));
-            }
-        },
-
-        close() {
-            controller.abort();
-        },
-    };
-
-    (async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/ai/summary?${queryParams.toString()}`, {
-                headers: {'Authorization': `Bearer ${getAuthToken()}`},
-                signal: controller.signal,
-            });
-
-            if (!response.ok || !response.body) {
-                throw new Error(`Failed to connect to SSE: ${response.status} ${response.statusText}`);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const {done, value} = await reader.read();
-                if (done) {
-                    break;
-                }
-
-                buffer += decoder.decode(value, {stream: true});
-                let boundary = buffer.indexOf('\n\n');
-
-                while (boundary > -1) {
-                    const eventBlock = buffer.substring(0, boundary);
-                    buffer = buffer.substring(boundary + 2);
-
-                    let eventType = 'message';
-                    const dataLines: string[] = [];
-
-                    eventBlock.split('\n').forEach(line => {
-                        if (line.startsWith('event:')) {
-                            eventType = line.substring(6).trim();
-                        } else if (line.startsWith('data:')) {
-                            dataLines.push(line.substring(5).trim());
-                        }
-                    });
-
-                    if (dataLines.length > 0) {
-                        const data = dataLines.join('\n');
-                        const messageEvent = new MessageEvent(eventType, {data});
-                        customEventSource.dispatchEvent(messageEvent);
-                    }
-
-                    boundary = buffer.indexOf('\n\n');
-                }
-            }
-        } catch (error) {
-            if ((error as any).name !== 'AbortError') {
-                console.error('SSE Stream Error:', error);
-                const errorEvent = new MessageEvent('error', {data: (error as Error).message});
-                customEventSource.dispatchEvent(errorEvent);
-            }
-        }
-    })();
-
-    return customEventSource;
+    return new EventSource(`${API_BASE_URL}/ai/summary?${queryParams.toString()}`);
 };
 
-const transformSummaryFromApi = (apiSummary: any): StoredSummary => {
-    const toMs = (timestamp: number | string | null | undefined): number => {
-        if (timestamp === null || timestamp === undefined) return 0;
-        if (typeof timestamp === 'string') return new Date(timestamp).getTime();
-        if (Number.isFinite(timestamp)) return Math.round(timestamp * 1000);
-        return 0;
-    };
-
-    return {
-        ...apiSummary,
-        createdAt: toMs(apiSummary.createdAt),
-        updatedAt: toMs(apiSummary.updatedAt),
-    } as StoredSummary;
-};
+const transformSummaryFromApi = (apiSummary: any): StoredSummary => ({
+    ...apiSummary,
+    createdAt: new Date(apiSummary.createdAt).getTime(),
+    updatedAt: new Date(apiSummary.updatedAt).getTime(),
+});
 
 
 export const apiFetchSummaries = async (): Promise<StoredSummary[]> => {
@@ -506,4 +410,17 @@ export const apiFetchSummaries = async (): Promise<StoredSummary[]> => {
 
 export const apiDeleteSummary = (summaryId: string): Promise<void> => {
     return apiFetch<void>(`/ai/summaries/${summaryId}`, {method: 'DELETE'});
+};
+
+// --- Payment Service ---
+interface PaymentResponse {
+    orderNo: string;
+    qrCodeUrl: string;
+}
+
+export const apiCreatePaymentOrder = (productId: string, platform: 'ALIPAY' | 'WECHAT_PAY'): Promise<PaymentResponse> => {
+    return apiFetch<PaymentResponse>('/payments/create', {
+        method: 'POST',
+        body: {productId, platform},
+    });
 };

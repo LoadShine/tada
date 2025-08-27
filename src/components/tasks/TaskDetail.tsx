@@ -14,7 +14,7 @@ import Icon from '../common/Icon';
 import Button from '../common/Button';
 import CodeMirrorEditor, {CodeMirrorEditorRef} from '../common/CodeMirrorEditor';
 import {formatDateTime, formatRelativeDate, isOverdue, isValid, safeParseDate,} from '@/utils/dateUtils';
-import {Subtask, Task} from '@/types';
+import {Subtask, Task, TaskGroupCategory} from '@/types';
 import {twMerge} from 'tailwind-merge';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Popover from '@radix-ui/react-popover';
@@ -439,28 +439,28 @@ const TaskDetail: React.FC = () => {
         hasUnsavedChangesRef.current = false;
 
         const now = Date.now();
-        const newParentTaskId = `task-${now}-${Math.random().toString(16).slice(2)}`;
+        const localId = `task-${now}-${Math.random().toString(16).slice(2)}`;
         const taskToDuplicate = selectedTask;
 
         const duplicatedSubtasks = (taskToDuplicate.subtasks || []).map(sub => ({
             ...sub,
             id: `subtask-${now}-${Math.random().toString(16).slice(2)}`,
-            parentId: newParentTaskId,
+            parentId: localId,
             createdAt: now,
             updatedAt: now,
             completedAt: sub.completed ? now : null,
         }));
 
-        const newTaskData: Partial<Task> = {
+        const newTaskData: Omit<Task, 'groupCategory'> & { groupCategory?: TaskGroupCategory } = {
             ...taskToDuplicate,
-            id: newParentTaskId,
+            id: localId,
             title: `${taskToDuplicate.title || t('common.untitledTask')} (Copy)`,
-            order: taskToDuplicate.order + 0.01,
+            order: (taskToDuplicate.order ?? 0) + 0.01,
             createdAt: now,
             updatedAt: now,
             completed: false,
             completedAt: null,
-            completePercentage: taskToDuplicate.completePercentage === 100 ? null : taskToDuplicate.completePercentage,
+            completePercentage: null,
             subtasks: duplicatedSubtasks,
         };
         delete newTaskData.groupCategory;
@@ -472,7 +472,8 @@ const TaskDetail: React.FC = () => {
             newTasks.splice(index !== -1 ? index + 1 : prev.length, 0, newTaskData as Task);
             return newTasks;
         });
-        setSelectedTaskId(newTaskData.id!);
+
+        setSelectedTaskId(localId);
         setIsMoreActionsOpen(false);
     }, [selectedTask, setTasks, setSelectedTaskId, savePendingChanges, localDueDate, t]);
 
@@ -579,7 +580,7 @@ const TaskDetail: React.FC = () => {
     const displayUpdatedAt = useMemo(() => selectedTask ? formatDateTime(selectedTask.updatedAt, preferences?.language) : '', [selectedTask, preferences]);
 
     const mainPanelClass = useMemo(() => twMerge("h-full flex flex-col", "bg-transparent"), []);
-    const headerClass = useMemo(() => twMerge("px-4 py-2 h-[56px] flex items-center justify-between flex-shrink-0", "border-b border-grey-light/50 dark:border-neutral-700/50", "bg-white/70 dark:bg-neutral-850/70 backdrop-blur-sm"), []);
+    const headerClass = useMemo(() => twMerge("px-4 py-2 h-[56px] flex items-center justify-between flex-shrink-0", "border-b border-grey-light/50 dark:border-neutral-700/50", "bg-white/50 dark:bg-grey-deep/50 backdrop-blur-md transition-colors duration-300"), []);
     const taskListPriorityMap: Record<number, {
         label: string;
         iconColor: string;

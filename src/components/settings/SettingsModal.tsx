@@ -10,8 +10,8 @@ import {
     DefaultNewTaskDueDate,
     defaultPreferencesSettingsForApi,
     isSettingsOpenAtom,
+    openPaymentModalAtom,
     preferencesSettingsAtom,
-    premiumSettingsAtom,
     settingsSelectedTabAtom,
     userListNamesAtom,
 } from '@/store/atoms';
@@ -519,7 +519,6 @@ const AccountSettings: React.FC = memo(() => {
             </div>
 
             <div className="space-y-0">
-                {/* <<< MODIFIED: Use children prop to show both value and button */}
                 <SettingsRow label={t('settings.account.email')}>
                      <span
                          className="text-grey-medium dark:text-neutral-300 text-right font-normal mr-2 truncate max-w-[200px]"
@@ -529,8 +528,6 @@ const AccountSettings: React.FC = memo(() => {
                     <Button variant="link" size="sm" onClick={() => setEditingModal('email')}
                             disabled={isLoading}>{t('common.edit')}</Button>
                 </SettingsRow>
-                {/* MODIFIED END >>> */}
-
                 <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
                 <SettingsRow label={t('settings.account.password')} action={<Button variant="link" size="sm"
                                                                                     onClick={() => setEditingModal('password')}
@@ -875,31 +872,12 @@ const PreferencesSettings: React.FC = memo(() => {
 PreferencesSettings.displayName = 'PreferencesSettings';
 
 const PremiumSettings: React.FC = memo(() => {
-    const {t} = useTranslation();
-    const premiumInfo = useAtomValue(premiumSettingsAtom);
+    const { t } = useTranslation();
     const currentUser = useAtomValue(currentUserAtom);
-    const [isLoading, setIsLoading] = useState(false);
+    const openPayment = useSetAtom(openPaymentModalAtom);
 
-    const handleUpgrade = async (tierId: string) => {
-        if (!currentUser) {
-            alert("Please log in to upgrade.");
-            return;
-        }
-        setIsLoading(true);
-        await new Promise(res => setTimeout(res, 1000));
-        setIsLoading(false);
-        alert(`Simulating redirect to upgrade page for tier ${tierId}.`);
-    };
-
-    const handleManageSubscription = async () => {
-        if (!currentUser) {
-            alert("Please log in to manage your subscription.");
-            return;
-        }
-        setIsLoading(true);
-        await new Promise(res => setTimeout(res, 1000));
-        setIsLoading(false);
-        alert(`Simulating redirect to subscription management portal.`);
+    const handleUpgrade = (productId: string, productName: string) => {
+        openPayment({ productId, productName });
     };
 
     const premiumTiers = [
@@ -907,37 +885,34 @@ const PremiumSettings: React.FC = memo(() => {
             id: "free",
             name: t('settings.premium.freeTier.name'),
             price: t('settings.premium.freeTier.price'),
-            features: t('settings.premium.freeTier.features', {returnObjects: true}) as string[],
-            current: premiumInfo.tier === 'free'
+            features: t('settings.premium.freeTier.features', { returnObjects: true }) as string[],
+            current: !currentUser?.isPremium
         },
         {
             id: "pro",
+            productId: "premium_monthly",
             name: t('settings.premium.proTier.name'),
             price: t('settings.premium.proTier.price'),
-            features: t('settings.premium.proTier.features', {returnObjects: true}) as string[],
-            current: premiumInfo.tier === 'pro'
+            features: t('settings.premium.proTier.features', { returnObjects: true }) as string[],
+            current: currentUser?.isPremium
         },
     ];
 
     return (
         <div className="space-y-6 relative">
-            {isLoading && <div
-                className="absolute inset-0 bg-white/50 dark:bg-neutral-800/50 flex items-center justify-center z-10"><Icon
-                name="loader" className="animate-spin text-primary" size={24}/></div>}
             <div
                 className="p-4 rounded-base bg-primary-light/50 dark:bg-primary-dark/20 border border-primary/30 dark:border-primary-dark/40">
                 <div className="flex items-center">
                     <Icon name="crown" size={24} className="text-primary dark:text-primary-light mr-3"/>
                     <div>
                         <h3 className="text-md font-medium text-primary dark:text-primary-light">
-                            {premiumInfo.tier === 'pro' ? t('settings.premium.youArePremium') : t('settings.premium.unlock')}
+                            {currentUser?.isPremium ? t('settings.premium.youArePremium') : t('settings.premium.unlock')}
                         </h3>
-                        {premiumInfo.tier === 'pro' && premiumInfo.subscribedUntil && (
+                        {currentUser?.isPremium ? (
                             <p className="text-xs text-primary/80 dark:text-primary-light/80">
-                                {t('settings.premium.activeUntil', {date: new Date(premiumInfo.subscribedUntil).toLocaleDateString()})}
+                                {t('settings.premium.activeUntil', { date: 'N/A' })} {/* Replace N/A with actual expiry date from user object if available */}
                             </p>
-                        )}
-                        {premiumInfo.tier !== 'pro' && (
+                        ) : (
                             <p className="text-xs text-primary/80 dark:text-primary-light/80">
                                 {t('settings.premium.supercharge')}
                             </p>
@@ -963,13 +938,15 @@ const PremiumSettings: React.FC = memo(() => {
                                 </li>
                             ))}
                         </ul>
-                        {premiumInfo.tier === 'free' && tier.id === "pro" && (
-                            <Button variant="primary" fullWidth onClick={() => handleUpgrade(tier.id)}
-                                    disabled={isLoading}>{t('settings.premium.upgradeToPro')}</Button>
+                        {!currentUser?.isPremium && tier.id === "pro" && (
+                            <Button variant="primary" fullWidth onClick={() => handleUpgrade(tier.productId!, tier.name)}>
+                                {t('settings.premium.upgradeToPro')}
+                            </Button>
                         )}
-                        {premiumInfo.tier === 'pro' && tier.id === "pro" && (
-                            <Button variant="secondary" fullWidth onClick={handleManageSubscription}
-                                    disabled={isLoading}>{t('settings.premium.manageSubscription')}</Button>
+                        {currentUser?.isPremium && tier.id === "pro" && (
+                            <Button variant="secondary" fullWidth onClick={() => alert('Redirecting to subscription management...')}>
+                                {t('settings.premium.manageSubscription')}
+                            </Button>
                         )}
                     </div>
                 ))}

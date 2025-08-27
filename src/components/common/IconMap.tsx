@@ -1,7 +1,11 @@
 // src/components/common/IconMap.tsx
 import * as LucideIcons from "lucide-react";
+import AlipayLogo from "./CustomIcons/AlipayLogo";
+import WechatLogo from "./CustomIcons/WechatLogo";
 
 export const iconMap = {
+    'alipay-logo': AlipayLogo,
+    'wechat-logo': WechatLogo,
     'check-square': LucideIcons.CheckSquare,
     'square': LucideIcons.Square,
     'calendar': LucideIcons.CalendarDays,
@@ -82,7 +86,7 @@ export const iconMap = {
     'circle-dot': LucideIcons.CircleDot,          // For 20%
     'circle-dot-dashed': LucideIcons.CircleDotDashed, // For 50%
     'circle-slash': LucideIcons.CircleSlash,       // For 80%
-    'circle-check': LucideIcons.CircleCheckBig,    // For 100%
+    'circle-check': LucideIcons.CircleCheckBig,    // For 100%, check-circle is already used
     'circle-gauge': LucideIcons.GaugeCircle,        // For MetaRow label in TaskDetail
 };
 
