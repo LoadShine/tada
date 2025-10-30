@@ -197,11 +197,14 @@ const defaultPreferencesFromAtoms = defaultPreferencesSettingsForApi();
 const renderSelect = (id: string, value: string | null, onChange: (value: string) => void, options: {
     value: string,
     label: string
-}[], placeholder: string) => (
+}[], placeholder: string, triggerClassName?: string, viewportClassName?: string) => (
     <Select.Root value={value ?? undefined} onValueChange={onChange}>
         <Select.Trigger
             id={id}
-            className="flex items-center justify-between w-[160px] h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 hover:bg-grey-light dark:hover:bg-neutral-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className={twMerge(
+                "flex items-center justify-between w-[160px] h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 hover:bg-grey-light dark:hover:bg-neutral-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                triggerClassName
+            )}
             aria-label={placeholder}
         >
             <Select.Value placeholder={placeholder}/>
@@ -214,7 +217,7 @@ const renderSelect = (id: string, value: string | null, onChange: (value: string
                 className="z-[60] min-w-[160px] bg-white dark:bg-neutral-750 rounded-base shadow-popover p-1 overflow-hidden animate-popoverShow"
                 position="popper" sideOffset={5}
             >
-                <Select.Viewport>
+                <Select.Viewport className={twMerge(viewportClassName)}>
                     {options.map(opt => (
                         <Select.Item
                             key={opt.value}
@@ -754,7 +757,9 @@ const AISettings: React.FC = memo(() => {
                             currentSettings.model,
                             handleModelChange,
                             modelOptions,
-                            "Select Model"
+                            "Select Model",
+                            "w-[240px]",
+                            "max-h-[224px] styled-scrollbar"
                         )}
                         {currentProvider.listModelsEndpoint && !currentProvider.requiresApiKey && (
                             <Button
