@@ -12,14 +12,15 @@ export interface AiTaskAnalysis {
     dueDate: string | null;
 }
 
-const getApiEndpoint = (settings: { provider: AIModel['id'], model: string, apiKey: string, baseUrl?: string }, type: 'chat' | 'models'): string => {
+const getApiEndpoint = (settings: AISettings, type: 'chat' | 'models'): string => {
     const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
     if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
 
     let endpoint = type === 'chat' ? provider.apiEndpoint : provider.listModelsEndpoint;
     if (!endpoint) throw new Error(`Endpoint type '${type}' not available for ${provider.name}.`);
 
-    if (provider.id === 'custom' && settings.baseUrl) {
+    // Handle custom/ollama base URL
+    if ((provider.id === 'custom' || provider.id === 'ollama') && settings.baseUrl) {
         const baseUrl = settings.baseUrl.endsWith('/') ? settings.baseUrl.slice(0, -1) : settings.baseUrl;
         endpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         return `${baseUrl}${endpoint}`;
@@ -32,7 +33,7 @@ const getApiEndpoint = (settings: { provider: AIModel['id'], model: string, apiK
     return endpoint;
 };
 
-const getApiHeaders = (settings: { provider: AIProvider['id'], apiKey: string }): Record<string, string> => {
+const getApiHeaders = (settings: AISettings): Record<string, string> => {
     const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
     if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
     const baseHeaders = provider.getHeaders(settings.apiKey);
@@ -42,15 +43,67 @@ const getApiHeaders = (settings: { provider: AIProvider['id'], apiKey: string })
     return baseHeaders;
 };
 
-export const fetchProviderModels = async (settings: { provider: AIProvider['id']; apiKey: string; baseUrl?: string; }): Promise<AIModel[]> => {
+export const testConnection = async (settings: AISettings): Promise<boolean> => {
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
+    if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
+
+    // For providers that don't require API key (like Ollama)
+    if (!provider.requiresApiKey && !settings.apiKey) {
+        if (provider.listModelsEndpoint) {
+            try {
+                const endpoint = getApiEndpoint(settings, 'models');
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: getApiHeaders(settings),
+                });
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+        return true; // Assume connection is OK if no way to test
+    }
+
+    if (!settings.apiKey) return false;
+
+    try {
+        if (provider.listModelsEndpoint) {
+            const models = await fetchProviderModels(settings);
+            return models.length > 0;
+        }
+
+        // Fallback: try a simple chat completion
+        const payload = {
+            model: settings.model || 'test',
+            messages: [{ role: 'user', content: 'Hello' }],
+            max_tokens: 1,
+        };
+
+        const response = await fetch(getApiEndpoint(settings, 'chat'), {
+            method: 'POST',
+            headers: getApiHeaders(settings),
+            body: JSON.stringify(payload),
+        });
+
+        return response.ok;
+    } catch (error) {
+        return false;
+    }
+};
+
+export const fetchProviderModels = async (settings: AISettings): Promise<AIModel[]> => {
     const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
     if (!provider || !provider.listModelsEndpoint || !provider.parseModels) {
         throw new Error("This provider does not support dynamic model fetching.");
     }
-    if (!settings.apiKey) throw new Error("API key is required to fetch models.");
 
-    const endpoint = getApiEndpoint({...settings, model: ''}, 'models');
-    const headers = provider.getHeaders(settings.apiKey);
+    // For Ollama, API key is not required
+    if (provider.requiresApiKey && !settings.apiKey) {
+        throw new Error("API key is required to fetch models.");
+    }
+
+    const endpoint = getApiEndpoint(settings, 'models');
+    const headers = getApiHeaders(settings);
 
     try {
         const response = await fetch(endpoint, {
@@ -67,8 +120,8 @@ export const fetchProviderModels = async (settings: { provider: AIProvider['id']
         return provider.parseModels(data);
     } catch (error) {
         console.error(`Error fetching models for ${provider.name}:`, error);
-        if (error instanceof TypeError) { // Often indicates a CORS issue
-            throw new Error("A network error occurred. This might be a CORS issue. Please check your browser console and network settings.");
+        if (error instanceof TypeError) {
+            throw new Error("Network error occurred. Please check your connection and CORS settings.");
         }
         throw error;
     }
@@ -92,6 +145,8 @@ const extractContentFromResponse = (data: any, providerId: AISettings['provider'
             return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
         case 'qwen':
             return data.output?.text ?? '';
+        case 'ollama':
+            return data.message?.content ?? '';
         case 'openai':
         default:
             return data.choices?.[0]?.message?.content ?? '';
@@ -99,19 +154,12 @@ const extractContentFromResponse = (data: any, providerId: AISettings['provider'
 }
 
 export const analyzeTaskInputWithAI = async (prompt: string, settings: AISettings): Promise<AiTaskAnalysis> => {
-    const providerId = settings.provider;
-    const providerSettings = settings.providerSettings?.[providerId];
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
+    if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
 
-    if (!providerSettings?.apiKey) throw new Error("API key is not set for the selected provider.");
-
-    const activeProviderConfig = {
-        provider: providerId,
-        apiKey: providerSettings.apiKey,
-        model: providerSettings.model,
-        baseUrl: providerSettings.baseUrl,
-    };
-    const provider = AI_PROVIDERS.find(p => p.id === providerId);
-    if (!provider) throw new Error(`Provider ${providerId} not found.`);
+    if (provider.requiresApiKey && !settings.apiKey) {
+        throw new Error("API key is not set for the selected provider.");
+    }
 
     const systemPrompt = `You are a helpful assistant that analyzes a user's task input and converts it into a structured JSON object.
 The current date is ${new Date().toLocaleDateString()}.
@@ -128,12 +176,12 @@ Analyze the user's prompt and extract these details. If a detail is not present,
 Be concise and accurate. Do not add any extra text outside of the JSON object.`;
 
     const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom'].includes(provider.id);
-    const payload = createOpenAICompatiblePayload(activeProviderConfig.model, systemPrompt, prompt, useJsonFormat);
+    const payload = createOpenAICompatiblePayload(settings.model, systemPrompt, prompt, useJsonFormat);
 
     try {
-        const response = await fetch(getApiEndpoint(activeProviderConfig, 'chat'), {
+        const response = await fetch(getApiEndpoint(settings, 'chat'), {
             method: 'POST',
-            headers: getApiHeaders(activeProviderConfig),
+            headers: getApiHeaders(settings),
             body: JSON.stringify(payload),
         });
 
@@ -166,6 +214,8 @@ const extractDeltaFromStream = (data: any, providerId: AISettings['provider']): 
             return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
         case 'qwen':
             return data.output?.text ?? null;
+        case 'ollama':
+            return data.message?.content ?? null;
         case 'openai':
         case 'openrouter':
         case 'moonshot':
@@ -187,19 +237,12 @@ export const generateAiSummary = async (
     settings: AISettings,
     onDelta: (chunk: string) => void,
 ): Promise<StoredSummary> => {
-    const providerId = settings.provider;
-    const providerSettings = settings.providerSettings?.[providerId];
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
+    if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
 
-    if (!providerSettings?.apiKey) throw new Error("API key is not set for the selected provider.");
-
-    const activeProviderConfig = {
-        provider: providerId,
-        apiKey: providerSettings.apiKey,
-        model: providerSettings.model,
-        baseUrl: providerSettings.baseUrl,
-    };
-    const provider = AI_PROVIDERS.find(p => p.id === providerId);
-    if (!provider) throw new Error(`Provider ${providerId} not found.`);
+    if (provider.requiresApiKey && !settings.apiKey) {
+        throw new Error("API key is not set for the selected provider.");
+    }
 
     const allTasks = service.fetchTasks();
     const tasksToSummarize = allTasks.filter(t => taskIds.includes(t.id));
@@ -222,13 +265,13 @@ Be insightful and professional. Do not add any extra text or pleasantries outsid
 
     // --- Non-streaming path for Gemini due to its unique API structure ---
     if (provider.id === 'gemini') {
-        let payload: any = createOpenAICompatiblePayload(activeProviderConfig.model, systemPrompt, userPrompt, false);
+        let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, userPrompt, false);
         if (provider.requestBodyTransformer) {
             payload = provider.requestBodyTransformer(payload);
         }
-        const response = await fetch(getApiEndpoint(activeProviderConfig, 'chat'), {
+        const response = await fetch(getApiEndpoint(settings, 'chat'), {
             method: 'POST',
-            headers: getApiHeaders(activeProviderConfig),
+            headers: getApiHeaders(settings),
             body: JSON.stringify(payload),
         });
         if (!response.ok) {
@@ -242,7 +285,7 @@ Be insightful and professional. Do not add any extra text or pleasantries outsid
     }
 
     // --- Streaming path for all other providers ---
-    let payload: any = createOpenAICompatiblePayload(activeProviderConfig.model, systemPrompt, userPrompt, false);
+    let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, userPrompt, false);
     payload.stream = true;
 
     if (provider.requestBodyTransformer) {
@@ -252,9 +295,9 @@ Be insightful and professional. Do not add any extra text or pleasantries outsid
         }
     }
 
-    const response = await fetch(getApiEndpoint(activeProviderConfig, 'chat'), {
+    const response = await fetch(getApiEndpoint(settings, 'chat'), {
         method: 'POST',
-        headers: getApiHeaders(activeProviderConfig),
+        headers: getApiHeaders(settings),
         body: JSON.stringify(payload),
     });
 

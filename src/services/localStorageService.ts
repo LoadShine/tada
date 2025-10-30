@@ -43,7 +43,6 @@ const getDefaultData = (): AppData => {
     };
 };
 
-
 // --- Core Read/Write Functions ---
 const loadData = (): AppData => {
     try {
@@ -157,7 +156,6 @@ export const updateList = (listId: string, updates: Partial<List>): List => {
     saveData(data);
     return updatedList;
 };
-
 
 export const deleteList = (listId: string): { message: string } => {
     const data = loadData();

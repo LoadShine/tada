@@ -87,18 +87,12 @@ export interface PreferencesSettings {
     confirmDeletions: boolean;
 }
 
-export interface AIProviderSettings {
-    apiKey: string;
-    model: string;
-    baseUrl?: string;
-    modelOrder?: string[]; // Order of models for this provider
-}
-
+// 简化的AI设置接口
 export interface AISettings {
-    provider: AIProvider['id']; // Currently selected provider in the UI
-    // Per-provider settings. A provider is only "configured" if it has an entry here with an API key.
-    providerSettings: Partial<Record<AIProvider['id'], AIProviderSettings>>;
-    providerOrder: AIProvider['id'][];
-    // Fetched models are now stored here to be persisted
-    fetchedModels?: Partial<Record<AIProvider['id'], AIModel[]>>;
+    provider: AIProvider['id']; // 当前选择的提供商
+    apiKey: string; // API密钥
+    model: string; // 选择的模型
+    baseUrl?: string; // 自定义base URL (用于ollama、custom等)
+    fetchedModels?: AIModel[]; // 获取到的模型列表
+    isConnected?: boolean; // 连接状态
 }

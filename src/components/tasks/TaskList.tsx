@@ -132,8 +132,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     const addNotification = useSetAtom(addNotificationAtom);
 
     const isAiEnabled = useMemo(() => {
-        if (!aiSettings || !aiSettings.provider) return false;
-        return !!aiSettings.providerSettings[aiSettings.provider]?.apiKey;
+        return !!(aiSettings && aiSettings.provider && aiSettings.apiKey);
     }, [aiSettings]);
 
     const groupTitles: Record<TaskGroupCategory, string> = useMemo(() => ({

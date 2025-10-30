@@ -15,7 +15,7 @@ import {
     settingsSelectedTabAtom,
     userListNamesAtom,
 } from '@/store/atoms';
-import {AIProviderSettings, AISettings as AISettingsType, SettingsTab} from '@/types';
+import {AISettings as AISettingsType, SettingsTab} from '@/types';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
 import {twMerge} from 'tailwind-merge';
@@ -33,7 +33,7 @@ import {
 } from '@/config/themes';
 import {useTranslation} from "react-i18next";
 import {AIProvider, AI_PROVIDERS, AIModel} from "@/config/aiProviders";
-import {fetchProviderModels} from "@/services/aiService";
+import {fetchProviderModels, testConnection} from "@/services/aiService";
 import {
     closestCenter,
     DndContext,
@@ -46,7 +46,6 @@ import {
 import {arrayMove, SortableContext, useSortable, verticalListSortingStrategy} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
 
-// ... (SettingsItem, SettingsRow, DarkModeSelector, ColorSwatch, AppearanceSettings, PreferencesSettings components are unchanged)
 interface SettingsItem {
     id: SettingsTab;
     labelKey: string;
@@ -372,269 +371,306 @@ const AISettings: React.FC = memo(() => {
     const [aiSettings, setAISettings] = useAtom(aiSettingsAtom);
     const addNotification = useSetAtom(addNotificationAtom);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
-    const [draggingId, setDraggingId] = useState<string | null>(null);
-
-    const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+    const [isTestingConnection, setIsTestingConnection] = useState(false);
 
     if (!aiSettings) {
         return <div className="p-4 text-center text-grey-medium">Loading AI settings...</div>;
     }
 
-    const currentSettings = aiSettings ?? defaultAISettingsFromAtoms;
-    const { provider: currentProviderId, providerSettings, providerOrder, fetchedModels = {} } = currentSettings;
-    const currentProvider = AI_PROVIDERS.find(p => p.id === currentProviderId) ?? AI_PROVIDERS[0];
-    const currentProviderSettings = providerSettings[currentProviderId] ?? { apiKey: '', model: '' };
-
-    const apiKeyDescription = currentProvider.id === 'custom'
-        ? t('settings.ai.apiKeyDescription_custom')
-        : t('settings.ai.apiKeyDescription', { providerName: currentProvider.name });
+    const currentSettings = aiSettings ?? defaultAISettingsForApi();
+    const currentProvider = AI_PROVIDERS.find(p => p.id === currentSettings.provider) ?? AI_PROVIDERS[0];
 
     const handleProviderChange = (providerId: AIProvider['id']) => {
-        setAISettings(s => {
-            const settings = s ?? defaultAISettingsForApi();
-            const existingProviderSettings = settings.providerSettings[providerId];
-            if (existingProviderSettings?.model) {
-                return { ...settings, provider: providerId };
-            }
-            const newProvider = AI_PROVIDERS.find(p => p.id === providerId);
-            const defaultModel = newProvider?.models[0]?.id ?? '';
-            return {
-                ...settings,
-                provider: providerId,
-                providerSettings: {
-                    ...settings.providerSettings,
-                    [providerId]: {
-                        ...(settings.providerSettings[providerId] ?? { apiKey: '' }),
-                        model: defaultModel,
-                    },
-                },
-            };
+        const newProvider = AI_PROVIDERS.find(p => p.id === providerId);
+        if (!newProvider) return;
+
+        setAISettings({
+            ...currentSettings,
+            provider: providerId,
+            model: newProvider.models[0]?.id || '',
+            baseUrl: newProvider.defaultBaseUrl || '',
+            fetchedModels: [],
+            isConnected: false,
         });
     };
 
-    const handleSettingChange = (field: keyof AIProviderSettings, value: string) => {
-        setAISettings(s => {
-            const settings = s ?? defaultAISettingsForApi();
-            const providerSettings = settings.providerSettings[currentProviderId] ?? { apiKey: '', model: '' };
-            return {
-                ...settings,
-                providerSettings: {
-                    ...settings.providerSettings,
-                    [currentProviderId]: { ...providerSettings, [field]: value },
-                },
-            };
+    const handleApiKeyChange = (apiKey: string) => {
+        setAISettings({
+            ...currentSettings,
+            apiKey,
+            isConnected: false,
         });
     };
+
+    const handleBaseUrlChange = (baseUrl: string) => {
+        setAISettings({
+            ...currentSettings,
+            baseUrl,
+            isConnected: false,
+        });
+    };
+
+    const handleModelChange = (model: string) => {
+        setAISettings({
+            ...currentSettings,
+            model,
+        });
+    };
+
+    const handleTestConnection = useCallback(async () => {
+        if (!currentProvider) return;
+
+        setIsTestingConnection(true);
+        try {
+            const isConnected = await testConnection(currentSettings);
+            setAISettings({
+                ...currentSettings,
+                isConnected,
+            });
+
+            if (isConnected) {
+                addNotification({
+                    type: 'success',
+                    message: `Successfully connected to ${currentProvider.name}`
+                });
+
+                // 自动获取模型
+                if (currentProvider.listModelsEndpoint) {
+                    handleFetchModels();
+                }
+            } else {
+                addNotification({
+                    type: 'error',
+                    message: `Failed to connect to ${currentProvider.name}`
+                });
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Connection failed";
+            addNotification({ type: 'error', message: errorMessage });
+            setAISettings({
+                ...currentSettings,
+                isConnected: false,
+            });
+        } finally {
+            setIsTestingConnection(false);
+        }
+    }, [currentProvider, currentSettings, setAISettings, addNotification]);
 
     const handleFetchModels = useCallback(async () => {
-        if (!currentProvider || isFetchingModels || !currentProviderSettings.apiKey) {
-            if (!currentProviderSettings.apiKey) {
-                addNotification({ type: 'error', message: "API key is required to fetch models." });
-            }
+        if (!currentProvider || isFetchingModels) return;
+
+        if (currentProvider.requiresApiKey && !currentSettings.apiKey) {
+            addNotification({ type: 'error', message: "API key is required to fetch models." });
             return;
         }
+
         setIsFetchingModels(true);
         try {
-            const models = await fetchProviderModels({
-                provider: currentProviderId,
-                apiKey: currentProviderSettings.apiKey,
-                baseUrl: currentProviderSettings.baseUrl,
+            const models = await fetchProviderModels(currentSettings);
+            setAISettings({
+                ...currentSettings,
+                fetchedModels: models,
             });
-            setAISettings(prev => {
-                const prevSettings = prev ?? defaultAISettingsForApi();
-                return {
-                    ...prevSettings,
-                    fetchedModels: {
-                        ...(prevSettings.fetchedModels ?? {}),
-                        [currentProviderId]: models,
-                    }
-                };
+
+            // 如果当前没有选择模型，自动选择第一个
+            if (!currentSettings.model && models.length > 0) {
+                setAISettings({
+                    ...currentSettings,
+                    fetchedModels: models,
+                    model: models[0].id,
+                });
+            }
+
+            addNotification({
+                type: 'success',
+                message: `Successfully fetched ${models.length} models`
             });
-            addNotification({ type: 'success', message: `Successfully fetched ${models.length} models for ${currentProvider.name}.` });
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-            addNotification({ type: 'error', message: `Failed to fetch models: ${errorMessage}` });
+            const errorMessage = error instanceof Error ? error.message : "Failed to fetch models";
+            addNotification({ type: 'error', message: errorMessage });
         } finally {
             setIsFetchingModels(false);
         }
-    }, [currentProvider, currentProviderId, currentProviderSettings, isFetchingModels, setAISettings, addNotification]);
-
-    const handleProviderDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        setDraggingId(null);
-        if (over && active.id !== over.id) {
-            setAISettings(s => {
-                const settings = s ?? defaultAISettingsFromAtoms;
-                const oldOrder = settings.providerOrder;
-                const configuredIds = oldOrder.filter(id => !!settings.providerSettings[id]?.apiKey);
-                const unconfiguredIds = oldOrder.filter(id => !settings.providerSettings[id]?.apiKey);
-
-                const oldIndex = configuredIds.indexOf(active.id as AIProvider['id']);
-                const newIndex = configuredIds.indexOf(over.id as AIProvider['id']);
-
-                if (oldIndex === -1 || newIndex === -1) return settings;
-
-                const reorderedConfigured = arrayMove(configuredIds, oldIndex, newIndex);
-                return { ...settings, providerOrder: [...reorderedConfigured, ...unconfiguredIds] };
-            });
-        }
-    };
-
-    const providerOptions = useMemo(() => providerOrder
-            .map(id => AI_PROVIDERS.find(p => p.id === id))
-            .filter((p): p is AIProvider => !!p)
-            .map(p => ({ value: p.id, label: p.name })),
-        [providerOrder]);
-
-    const configuredProviders = useMemo(() => providerOrder
-            .map(id => AI_PROVIDERS.find(p => p.id === id))
-            .filter((p): p is AIProvider => !!p && !!providerSettings[p.id]?.apiKey),
-        [providerOrder, providerSettings]);
+    }, [currentProvider, currentSettings, isFetchingModels, setAISettings, addNotification]);
 
     const modelOptions = useMemo(() => {
-        const providerFetchedModels = (fetchedModels ?? {})[currentProvider.id] ?? [];
-        const combinedModels = [...currentProvider.models, ...providerFetchedModels];
-        const uniqueModels = Array.from(new Map(combinedModels.map(m => [m.id, m])).values());
+        const defaultModels = currentProvider.models || [];
+        const fetchedModels = currentSettings.fetchedModels || [];
 
-        const modelOrder = currentProviderSettings.modelOrder;
-        if (modelOrder) {
-            uniqueModels.sort((a, b) => {
-                const indexA = modelOrder.indexOf(a.id);
-                const indexB = modelOrder.indexOf(b.id);
-                if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
-                if (indexA === -1) return 1;
-                if (indexB === -1) return -1;
-                return indexA - indexB;
-            });
-        } else {
-            uniqueModels.sort((a, b) => a.name.localeCompare(b.name));
-        }
-        return uniqueModels.map(m => ({ value: m.id, label: m.name, id: m.id, name: m.name }));
-    }, [currentProvider, fetchedModels, currentProviderSettings.modelOrder]);
+        // 合并默认模型和获取的模型，去重
+        const allModels = [...defaultModels, ...fetchedModels];
+        const uniqueModels = Array.from(
+            new Map(allModels.map(m => [m.id, m])).values()
+        );
 
-    const handleModelDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        setDraggingId(null);
-        if (over && active.id !== over.id) {
-            setAISettings(s => {
-                const settings = s ?? defaultAISettingsForApi();
-                const oldOrder = modelOptions.map(m => m.id);
-                const oldIndex = oldOrder.indexOf(active.id as string);
-                const newIndex = oldOrder.indexOf(over.id as string);
-                const newOrder = arrayMove(oldOrder, oldIndex, newIndex);
+        return uniqueModels.map(m => ({ value: m.id, label: m.name }));
+    }, [currentProvider.models, currentSettings.fetchedModels]);
 
-                return {
-                    ...settings,
-                    providerSettings: {
-                        ...settings.providerSettings,
-                        [currentProviderId]: {
-                            ...(settings.providerSettings[currentProviderId] ?? { apiKey: '', model: '' }),
-                            modelOrder: newOrder,
-                        },
-                    },
-                };
-            });
-        }
-    };
+    const providerOptions = useMemo(() =>
+            AI_PROVIDERS.map(p => ({ value: p.id, label: p.name })),
+        []
+    );
 
     return (
-        <div className="space-y-0">
-            <SettingsRow label={t('settings.ai.provider')} description={t('settings.ai.providerDescription')} htmlFor="aiProviderSelect">
-                {renderSelect('aiProviderSelect', currentProviderId, (id) => handleProviderChange(id as AIProvider['id']), providerOptions, "Select Provider")}
-            </SettingsRow>
-            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <SettingsRow label={t('settings.ai.apiKey')} description={apiKeyDescription} htmlFor="apiKeyInput">
-                <input
-                    id="apiKeyInput"
-                    type="password"
-                    value={currentProviderSettings.apiKey}
-                    onBlur={handleFetchModels}
-                    onChange={(e) => handleSettingChange('apiKey', e.target.value)}
-                    placeholder={t('settings.ai.apiKeyPlaceholder')}
-                    className={twMerge(
-                        "w-[240px] h-8 px-3 text-[13px] font-light rounded-base focus:outline-none",
-                        "bg-grey-ultra-light dark:bg-neutral-700",
-                        "placeholder:text-grey-medium dark:placeholder:text-neutral-400",
-                        "text-grey-dark dark:text-neutral-100 transition-colors duration-200 ease-in-out",
-                        "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light"
-                    )}
-                />
-            </SettingsRow>
-            {currentProvider.requiresBaseUrl && (
-                <>
-                    <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-                    <SettingsRow label={t('settings.ai.baseUrl')} description={t('settings.ai.baseUrlDescription')} htmlFor="baseUrlInput">
-                        <input
-                            id="baseUrlInput"
-                            type="url"
-                            value={currentProviderSettings.baseUrl ?? ''}
-                            onChange={(e) => handleSettingChange('baseUrl', e.target.value)}
-                            placeholder={t('settings.ai.baseUrlPlaceholder')}
-                            className={twMerge(
-                                "w-[240px] h-8 px-3 text-[13px] font-light rounded-base focus:outline-none",
-                                "bg-grey-ultra-light dark:bg-neutral-700",
-                                "placeholder:text-grey-medium dark:placeholder:text-neutral-400",
-                                "text-grey-dark dark:text-neutral-100 transition-colors duration-200 ease-in-out",
-                                "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light"
-                            )}
-                        />
-                    </SettingsRow>
-                </>
-            )}
-            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <SettingsRow label={t('settings.ai.model')} description={t('settings.ai.modelDescription')} htmlFor="aiModelSelect">
-                <div className="flex items-center space-x-2">
-                    {currentProvider.id === 'custom' ? (
-                        <input
-                            id="aiModelInput"
-                            type="text"
-                            value={currentProviderSettings.model}
-                            onChange={(e) => handleSettingChange('model', e.target.value)}
-                            placeholder="e.g., gpt-4"
-                            className={twMerge( "w-[160px] h-8 px-3 text-[13px] font-light rounded-base focus:outline-none", "bg-grey-ultra-light dark:bg-neutral-700", "placeholder:text-grey-medium dark:placeholder:text-neutral-400", "text-grey-dark dark:text-neutral-100 transition-colors duration-200 ease-in-out", "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light")}
-                        />
-                    ) : (
-                        renderSelect('aiModelSelect', currentProviderSettings.model, (value) => handleSettingChange('model', value), modelOptions, "Select Model")
-                    )}
-                    {currentProvider.listModelsEndpoint && (
-                        <Button variant="ghost" size="icon" icon="refresh-cw" onClick={handleFetchModels}
-                                disabled={isFetchingModels || !currentProviderSettings.apiKey} loading={isFetchingModels}
-                                className="w-7 h-7 text-grey-medium dark:text-neutral-400"
-                                aria-label="Fetch latest models"/>
-                    )}
-                </div>
-            </SettingsRow>
-            {modelOptions.length > 1 && currentProvider.id !== 'custom' &&
-                <div className="py-3">
-                    <p className="text-[11px] text-grey-medium dark:text-neutral-400 mt-0.5 font-light">Drag to reorder models for the current provider.</p>
-                    <div className="mt-2 max-h-40 overflow-y-auto styled-scrollbar-thin border border-grey-light dark:border-neutral-700 rounded-lg p-2">
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setDraggingId(e.active.id as string)} onDragEnd={handleModelDragEnd}>
-                            <SortableContext items={modelOptions.map(m => m.id)} strategy={verticalListSortingStrategy}>
-                                <div className="space-y-2">
-                                    {modelOptions.map(model => (<SortableItem key={model.id} item={model} isDragging={draggingId === model.id} />))}
+        <div className="space-y-6">
+            {/* Provider Selection */}
+            <div className="space-y-4">
+                <div>
+                    <h3 className="text-[14px] font-medium text-grey-dark dark:text-neutral-100 mb-3">
+                        {t('settings.ai.provider')}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        {AI_PROVIDERS.map((provider) => (
+                            <button
+                                key={provider.id}
+                                onClick={() => handleProviderChange(provider.id)}
+                                className={twMerge(
+                                    "p-4 rounded-lg border transition-all duration-200",
+                                    "text-left hover:shadow-sm",
+                                    currentSettings.provider === provider.id
+                                        ? "border-primary bg-primary/5 dark:bg-primary-dark/10"
+                                        : "border-grey-light dark:border-neutral-600 bg-white dark:bg-neutral-700"
+                                )}
+                            >
+                                <div className="flex items-start space-x-3">
+                                    <span className="text-2xl">{provider.icon}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[13px] font-medium text-grey-dark dark:text-neutral-100">
+                                            {provider.name}
+                                        </div>
+                                        <div className="text-[11px] text-grey-medium dark:text-neutral-400 mt-1">
+                                            {provider.description}
+                                        </div>
+                                    </div>
+                                    {currentSettings.provider === provider.id && (
+                                        <Icon name="check" size={16} className="text-primary dark:text-primary-light flex-shrink-0" />
+                                    )}
                                 </div>
-                            </SortableContext>
-                        </DndContext>
+                            </button>
+                        ))}
                     </div>
                 </div>
-            }
-            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
-            <div className="py-3">
-                <div className="flex-1 mr-4">
-                    <label className="text-[13px] text-grey-dark dark:text-neutral-200 font-normal block cursor-default">{t('settings.ai.providerPriority.title')}</label>
-                    <p className="text-[11px] text-grey-medium dark:text-neutral-400 mt-0.5 font-light">{t('settings.ai.providerPriority.description')}</p>
-                </div>
-                <div className="mt-3 max-h-60 overflow-y-auto styled-scrollbar-thin border border-grey-light dark:border-neutral-700 rounded-lg p-2">
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setDraggingId(e.active.id as string)} onDragEnd={handleProviderDragEnd}>
-                        <SortableContext items={configuredProviders.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-2">
-                                {configuredProviders.length > 0 ? configuredProviders.map(provider => (<SortableItem key={provider.id} item={provider} isDragging={draggingId === provider.id} />))
-                                    : <p className="text-center text-xs text-grey-medium p-2">No providers with API keys configured.</p>}
-                            </div>
-                        </SortableContext>
-                    </DndContext>
-                </div>
             </div>
+
+            <div className="h-px bg-grey-light dark:bg-neutral-700"></div>
+
+            {/* Configuration */}
+            <div className="space-y-0">
+                {currentProvider.requiresApiKey && (
+                    <>
+                        <SettingsRow
+                            label={t('settings.ai.apiKey')}
+                            description={`Enter your ${currentProvider.name} API key`}
+                            htmlFor="apiKeyInput"
+                        >
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    id="apiKeyInput"
+                                    type="password"
+                                    value={currentSettings.apiKey}
+                                    onChange={(e) => handleApiKeyChange(e.target.value)}
+                                    placeholder="sk-..."
+                                    className={twMerge(
+                                        "w-[200px] h-8 px-3 text-[13px] font-light rounded-base focus:outline-none",
+                                        "bg-grey-ultra-light dark:bg-neutral-700",
+                                        "placeholder:text-grey-medium dark:placeholder:text-neutral-400",
+                                        "text-grey-dark dark:text-neutral-100 transition-colors duration-200 ease-in-out",
+                                        "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light"
+                                    )}
+                                />
+                                {currentSettings.isConnected && (
+                                    <Icon name="check-circle" size={16} className="text-green-500" />
+                                )}
+                            </div>
+                        </SettingsRow>
+                        <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+                    </>
+                )}
+
+                {currentProvider.requiresBaseUrl && (
+                    <>
+                        <SettingsRow
+                            label={t('settings.ai.baseUrl')}
+                            description="Base URL for the API endpoint"
+                            htmlFor="baseUrlInput"
+                        >
+                            <input
+                                id="baseUrlInput"
+                                type="url"
+                                value={currentSettings.baseUrl || ''}
+                                onChange={(e) => handleBaseUrlChange(e.target.value)}
+                                placeholder={currentProvider.defaultBaseUrl || "http://localhost:11434"}
+                                className={twMerge(
+                                    "w-[240px] h-8 px-3 text-[13px] font-light rounded-base focus:outline-none",
+                                    "bg-grey-ultra-light dark:bg-neutral-700",
+                                    "placeholder:text-grey-medium dark:placeholder:text-neutral-400",
+                                    "text-grey-dark dark:text-neutral-100 transition-colors duration-200 ease-in-out",
+                                    "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light"
+                                )}
+                            />
+                        </SettingsRow>
+                        <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+                    </>
+                )}
+
+                <SettingsRow
+                    label="Connection Test"
+                    description="Test the connection to your AI provider"
+                >
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleTestConnection}
+                        loading={isTestingConnection}
+                        disabled={isTestingConnection || (currentProvider.requiresApiKey && !currentSettings.apiKey)}
+                        className="w-[120px]"
+                    >
+                        {isTestingConnection ? "Testing..." : "Test Connection"}
+                    </Button>
+                </SettingsRow>
+
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+                <SettingsRow
+                    label={t('settings.ai.model')}
+                    description="Select the AI model to use"
+                    htmlFor="aiModelSelect"
+                >
+                    <div className="flex items-center space-x-2">
+                        {renderSelect(
+                            'aiModelSelect',
+                            currentSettings.model,
+                            handleModelChange,
+                            modelOptions,
+                            "Select Model"
+                        )}
+                        {currentProvider.listModelsEndpoint && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                icon="refresh-cw"
+                                onClick={handleFetchModels}
+                                disabled={isFetchingModels || (currentProvider.requiresApiKey && !currentSettings.apiKey)}
+                                loading={isFetchingModels}
+                                className="w-7 h-7 text-grey-medium dark:text-neutral-400"
+                                aria-label="Fetch models"
+                            />
+                        )}
+                    </div>
+                </SettingsRow>
+            </div>
+
+            {/* Status */}
+            {currentSettings.isConnected && currentSettings.model && (
+                <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex items-center space-x-2">
+                        <Icon name="check-circle" size={16} className="text-green-600 dark:text-green-400" />
+                        <span className="text-[13px] text-green-700 dark:text-green-300">
+                            AI is configured and ready to use with {currentProvider.name} ({currentSettings.model})
+                        </span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 });

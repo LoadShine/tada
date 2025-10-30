@@ -59,18 +59,15 @@ export const defaultPreferencesSettingsForApi = (): PreferencesSettings => ({
     language: 'zh-CN', defaultNewTaskDueDate: null, defaultNewTaskPriority: null,
     defaultNewTaskList: 'Inbox', confirmDeletions: true,
 });
-export const defaultAISettingsForApi = (): AISettings => {
-    const defaultProvider = AI_PROVIDERS[0];
-    return {
-        provider: defaultProvider.id,
-        providerSettings: {}, // No providers configured by default
-        providerOrder: AI_PROVIDERS.map(p => p.id),
-        fetchedModels: {}, // Add fetchedModels to default
-    };
-};
+export const defaultAISettingsForApi = (): AISettings => ({
+    provider: 'openai',
+    apiKey: '',
+    model: '',
+    baseUrl: '',
+    fetchedModels: [],
+    isConnected: false,
+});
 
-// --- Atoms from before (no changes needed to their implementation logic) ---
-// ... tasksAtom, userListsAtom, UI State Atoms, Settings Atoms, Summary Atoms, Derived Atoms ...
 // --- Task Atoms ---
 const baseTasksDataAtom = atom<Task[] | null>(null);
 export const tasksLoadingAtom = atom<boolean>(false);
@@ -219,9 +216,6 @@ export const aiSettingsAtom: LocalDataAtom<AISettings> = atom(
             const mergedSettings: AISettings = {
                 ...defaultSettings,
                 ...savedSettings,
-                providerOrder: savedSettings.providerOrder && savedSettings.providerOrder.length > 0 ? savedSettings.providerOrder : defaultSettings.providerOrder,
-                providerSettings: savedSettings.providerSettings || {},
-                fetchedModels: savedSettings.fetchedModels || {}, // Merge fetchedModels
             };
             set(baseAISettingsAtom, mergedSettings);
             return;

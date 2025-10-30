@@ -83,8 +83,7 @@ const SummaryView: React.FC = () => {
     const aiSettings = useAtomValue(aiSettingsAtom);
 
     const isAiEnabled = useMemo(() => {
-        if (!aiSettings || !aiSettings.provider) return false;
-        return !!aiSettings.providerSettings[aiSettings.provider]?.apiKey;
+        return !!(aiSettings && aiSettings.provider && aiSettings.apiKey);
     }, [aiSettings]);
 
     const [summaryDisplayContent, setSummaryDisplayContent] = useState('');

@@ -6,8 +6,9 @@ export interface AIModel {
 }
 
 export interface AIProvider {
-    id: 'openai' | 'claude' | 'gemini' | 'xai' | 'openrouter' | 'moonshot' | 'deepseek' | 'qwen' | 'zhipu' | '302' | 'siliconflow' | 'custom';
+    id: 'openai' | 'claude' | 'gemini' | 'xai' | 'openrouter' | 'moonshot' | 'deepseek' | 'qwen' | 'zhipu' | '302' | 'siliconflow' | 'ollama' | 'custom';
     name: string;
+    description: string; // 添加描述
     models: AIModel[]; // Default/recommended models
     requiresApiKey: boolean;
     requiresBaseUrl?: boolean;
@@ -16,12 +17,16 @@ export interface AIProvider {
     listModelsEndpoint?: string; // Optional endpoint for fetching models
     parseModels?: (data: any) => AIModel[]; // Function to parse the model list response
     requestBodyTransformer?: (body: any) => any; // Optional transformer for non-standard body formats
+    icon?: string; // 添加图标
+    defaultBaseUrl?: string; // 默认base URL
 }
 
 export const AI_PROVIDERS: AIProvider[] = [
     {
         id: 'openai',
         name: 'OpenAI',
+        description: 'GPT-4, GPT-3.5 and other OpenAI models',
+        icon: '🤖',
         requiresApiKey: true,
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         listModelsEndpoint: 'https://api.openai.com/v1/models',
@@ -30,14 +35,16 @@ export const AI_PROVIDERS: AIProvider[] = [
             .filter((m: any) => m.id.includes('gpt'))
             .map((m: any) => ({ id: m.id, name: m.id })),
         models: [
-            {id: 'gpt-4o', name: 'GPT-4o (recommended)'},
-            {id: 'gpt-4-turbo', name: 'GPT-4 Turbo (recommended)'},
-            {id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo (recommended)'},
+            {id: 'gpt-4o', name: 'GPT-4o'},
+            {id: 'gpt-4-turbo', name: 'GPT-4 Turbo'},
+            {id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo'},
         ],
     },
     {
         id: 'claude',
-        name: 'Anthropic (Claude)',
+        name: 'Anthropic Claude',
+        description: 'Claude 3 family models from Anthropic',
+        icon: '🧠',
         requiresApiKey: true,
         apiEndpoint: 'https://api.anthropic.com/v1/messages',
         getHeaders: (apiKey) => ({
@@ -50,11 +57,12 @@ export const AI_PROVIDERS: AIProvider[] = [
             {id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet'},
             {id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku'},
         ],
-        // No listModelsEndpoint; models are listed in docs
     },
     {
         id: 'gemini',
-        name: 'Google (Gemini)',
+        name: 'Google Gemini',
+        description: 'Gemini models from Google',
+        icon: '✨',
         requiresApiKey: true,
         apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}',
         listModelsEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models?key={apiKey}',
@@ -76,17 +84,18 @@ export const AI_PROVIDERS: AIProvider[] = [
                     maxOutputTokens: body.max_tokens,
                     stopSequences: body.stop,
                 },
-                // Add safetySettings if needed from body
             };
         },
         models: [
-            {id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro (recommended)'},
-            {id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash (recommended)'},
+            {id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro'},
+            {id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash'},
         ],
     },
     {
         id: 'openrouter',
         name: 'OpenRouter',
+        description: 'Access multiple AI models through OpenRouter',
+        icon: '🌐',
         requiresApiKey: true,
         apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
         listModelsEndpoint: 'https://openrouter.ai/api/v1/models',
@@ -94,13 +103,33 @@ export const AI_PROVIDERS: AIProvider[] = [
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.name })),
         models: [
             {id: 'openrouter/auto', name: 'Auto (recommended)'},
-            {id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash (recommended)'},
-            {id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku (recommended)'},
+            {id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash'},
+            {id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku'},
+        ]
+    },
+    {
+        id: 'ollama',
+        name: 'Ollama',
+        description: 'Local AI models via Ollama',
+        icon: '🏠',
+        requiresApiKey: false,
+        requiresBaseUrl: true,
+        defaultBaseUrl: 'http://localhost:11434',
+        apiEndpoint: '/api/chat',
+        listModelsEndpoint: '/api/tags',
+        getHeaders: () => ({ 'Content-Type': 'application/json' }),
+        parseModels: (data) => data.models?.map((m: any) => ({ id: m.name, name: m.name })) || [],
+        models: [
+            {id: 'llama2', name: 'Llama 2'},
+            {id: 'codellama', name: 'Code Llama'},
+            {id: 'mistral', name: 'Mistral'},
         ]
     },
     {
         id: 'moonshot',
-        name: 'Moonshot AI (Kimi)',
+        name: 'Moonshot AI',
+        description: 'Kimi models from Moonshot AI',
+        icon: '🌙',
         requiresApiKey: true,
         apiEndpoint: 'https://api.moonshot.cn/v1/chat/completions',
         listModelsEndpoint: 'https://api.moonshot.cn/v1/models',
@@ -115,6 +144,8 @@ export const AI_PROVIDERS: AIProvider[] = [
     {
         id: 'deepseek',
         name: 'DeepSeek',
+        description: 'DeepSeek AI models',
+        icon: '🔍',
         requiresApiKey: true,
         apiEndpoint: 'https://api.deepseek.com/v1/chat/completions',
         listModelsEndpoint: 'https://api.deepseek.com/v1/models',
@@ -126,97 +157,16 @@ export const AI_PROVIDERS: AIProvider[] = [
         ]
     },
     {
-        id: 'qwen',
-        name: 'Alibaba (Qwen)',
-        requiresApiKey: true,
-        apiEndpoint: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
-        listModelsEndpoint: 'https://dashscope.aliyuncs.com/api/v1/models', // Assumed based on OpenAI compatibility claims
-        getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        requestBodyTransformer: (body: any) => ({
-            model: body.model,
-            input: {
-                messages: body.messages,
-            },
-            parameters: {
-                top_p: body.top_p,
-                temperature: body.temperature,
-                max_tokens: body.max_tokens,
-                stop: body.stop,
-                frequency_penalty: body.frequency_penalty,
-                presence_penalty: body.presence_penalty,
-            },
-        }),
-        models: [
-            {id: 'qwen-turbo', name: 'Qwen Turbo'},
-            {id: 'qwen-plus', name: 'Qwen Plus'},
-            {id: 'qwen-max', name: 'Qwen Max'},
-        ]
-    },
-    {
-        id: 'zhipu',
-        name: 'Zhipu AI (GLM)',
-        requiresApiKey: true,
-        apiEndpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-        listModelsEndpoint: 'https://open.bigmodel.cn/api/paas/v4/models',
-        getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'glm-4', name: 'GLM-4'},
-            {id: 'glm-3-turbo', name: 'GLM-3 Turbo'},
-        ]
-    },
-    {
-        id: 'xai',
-        name: 'xAI (Grok)',
-        requiresApiKey: true,
-        apiEndpoint: 'https://api.x.ai/v1/chat/completions',
-        listModelsEndpoint: 'https://api.x.ai/v1/models',
-        getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        parseModels: (data) => data.models.map((m: any) => ({ id: m.id, name: m.name })),
-        models: [
-            {id: 'grok-1.5-flash', name: 'Grok 1.5 Flash'},
-            {id: 'grok-1.5', name: 'Grok 1.5'},
-        ]
-    },
-    {
-        id: '302',
-        name: '302.AI',
-        requiresApiKey: true,
-        apiEndpoint: 'https://api.302.ai/v1/chat/completions',
-        listModelsEndpoint: 'https://api.302.ai/v1/models',
-        getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        // FIX: Changed data.models to data.data to match the actual API response structure
-        parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.name })),
-        models: [
-            {id: 'gpt-4o', name: 'GPT-4o'},
-            {id: 'claude-3-opus', name: 'Claude 3 Opus'},
-        ]
-    },
-    {
-        id: 'siliconflow',
-        name: 'SiliconFlow',
-        requiresApiKey: true,
-        apiEndpoint: 'https://api.siliconflow.cn/v1/chat/completions',
-        listModelsEndpoint: 'https://api.siliconflow.cn/v1/models',
-        getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'deepseek-ai/DeepSeek-V2-Chat', name: 'DeepSeek V2 Chat'},
-            {id: 'alibaba/Qwen2-72B-Instruct', name: 'Qwen2 72B Instruct'},
-        ]
-    },
-    {
         id: 'custom',
-        name: 'Custom (OpenAI-like)',
+        name: 'Custom Provider',
+        description: 'OpenAI-compatible API endpoint',
+        icon: '⚙️',
         requiresApiKey: true,
         requiresBaseUrl: true,
         apiEndpoint: '/v1/chat/completions',
         listModelsEndpoint: '/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
-        parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'custom-model', name: 'Custom Model (Editable)'},
-        ]
+        parseModels: (data) => data.data?.map((m: any) => ({ id: m.id, name: m.id })) || [],
+        models: []
     }
 ];
