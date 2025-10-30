@@ -5,12 +5,14 @@ import {
     defaultExtensions,
     placeholderCompartment,
     readOnlyCompartment,
+    setOnAIStream,
+    setTranslations,
     themeCompartment,
     wysiwygCompartment,
     wysiwygExtensions
 } from "./extensions/default-extensions";
 import { darkTheme, lightTheme } from "./theme/base-theme";
-import type { EditorConfig, Theme } from "./core";
+import type { EditorConfig, Theme, AIStreamHandler, MoondownTranslations } from "./core";
 
 /**
  * Moondown - A modern, feature-rich markdown editor built on CodeMirror 6
@@ -71,6 +73,13 @@ class Moondown {
         if (config?.theme) {
             this.setTheme(config.theme);
         }
+        if (config?.onAIStream) {
+            this.setAIStreamHandler(config.onAIStream);
+        }
+        if (config?.translations) {
+            this.setTranslations(config.translations);
+        }
+
         this.toggleSyntaxHiding(config?.syntaxHiding === undefined ? true : config.syntaxHiding);
     }
 
@@ -131,6 +140,26 @@ class Moondown {
     setPlaceholder(text: string): void {
         this.view.dispatch({
             effects: placeholderCompartment.reconfigure(text ? viewPlaceholder(text) : [])
+        });
+    }
+
+    /**
+     * Sets the handler for AI stream requests.
+     * @param handler - The function to call for AI completions.
+     */
+    setAIStreamHandler(handler: AIStreamHandler): void {
+        this.view.dispatch({
+            effects: setOnAIStream.of(handler)
+        });
+    }
+
+    /**
+     * Sets the translation strings for the editor UI.
+     * @param translations - A key-value object of translations.
+     */
+    setTranslations(translations: MoondownTranslations): void {
+        this.view.dispatch({
+            effects: setTranslations.of(translations)
         });
     }
 

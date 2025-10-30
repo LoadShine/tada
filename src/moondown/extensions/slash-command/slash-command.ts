@@ -5,6 +5,8 @@ import { slashCommandState, toggleSlashCommand } from "./fields";
 import { type SlashCommandOption, slashCommands } from "./commands";
 import { CSS_CLASSES, ICON_SIZES, TIMING } from "../../core/constants";
 import { createElement, createIconElement, debounce, scrollIntoView as scrollElementIntoView } from "../../core/utils/dom-utils";
+import {translationsState} from "../default-extensions";
+import {MoondownTranslations} from "../../core";
 
 /**
  * SlashCommandPlugin - Implements the slash command menu functionality
@@ -20,7 +22,7 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
     constructor(view: EditorView) {
         this.menu = createElement('div', CSS_CLASSES.SLASH_COMMAND_MENU);
         view.dom.appendChild(this.menu);
-        
+
         // Create debounced update function
         this.debouncedUpdate = debounce(
             (update: ViewUpdate) => this.updateMenu(update),
@@ -52,7 +54,8 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
      */
     private updateMenu(update: ViewUpdate): void {
         const state = update.state.field(slashCommandState);
-        
+        const translations = update.state.field(translationsState);
+
         if (!state.active) {
             this.hide();
             return;
@@ -79,17 +82,19 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
             }
         });
 
-        const filteredCommands = this.filterCommands(state.filterText);
+        const filteredCommands = this.filterCommands(state.filterText, translations);
 
-        this.renderCommands(filteredCommands, state.selectedIndex, update.view, state.pos);
+        this.renderCommands(filteredCommands, state.selectedIndex, update.view, state.pos, translations);
     }
 
     /**
      * Filters commands based on search text
      */
-    private filterCommands(filterText: string): SlashCommandOption[] {
-        return slashCommands.filter(cmd =>
-            cmd.title.toLowerCase().includes(filterText.toLowerCase())
+    private filterCommands(filterText: string, translations: MoondownTranslations): SlashCommandOption[] {
+        return slashCommands.filter(cmd => {
+                const title = translations[cmd.titleKey] || cmd.titleKey;
+                return title.toLowerCase().includes(filterText.toLowerCase())
+            }
         );
     }
 
@@ -100,13 +105,14 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
         commands: SlashCommandOption[],
         selectedIndex: number,
         view: EditorView,
-        pos: number
+        pos: number,
+        translations: MoondownTranslations
     ): void {
         requestAnimationFrame(() => {
             const fragment = document.createDocumentFragment();
 
             commands.forEach((cmd, index) => {
-                if (cmd.title === "divider") {
+                if (cmd.titleKey === "divider") {
                     const divider = createElement("hr", CSS_CLASSES.SLASH_COMMAND_DIVIDER);
                     fragment.appendChild(divider);
                     return;
@@ -117,10 +123,11 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
                     isSelected ? CSS_CLASSES.SLASH_COMMAND_SELECTED : ''
                 }`;
                 const item = createElement("div", itemClass);
+                const titleText = translations[cmd.titleKey] || cmd.titleKey;
 
                 const icon = createIconElement(cmd.icon, "cm-slash-command-icon");
                 const title = createElement("span", "cm-slash-command-title");
-                title.textContent = cmd.title;
+                title.textContent = titleText;
 
                 item.appendChild(icon);
                 item.appendChild(title);
@@ -130,7 +137,7 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
                     e.stopPropagation();
                     this.executeCommand(view, cmd, pos);
                 });
-                
+
                 fragment.appendChild(item);
             });
 
@@ -155,7 +162,7 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
         const selectedItem = this.menu.querySelector(
             `.${CSS_CLASSES.SLASH_COMMAND_ITEM}.${CSS_CLASSES.SLASH_COMMAND_SELECTED}`
         ) as HTMLElement;
-        
+
         if (selectedItem) {
             scrollElementIntoView(selectedItem, this.menu);
         }
@@ -169,7 +176,7 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
             changes: { from: pos, to: view.state.selection.main.from, insert: "" },
             effects: toggleSlashCommand.of(false)
         });
-        
+
         const result = cmd.execute(view);
         if (result instanceof Promise) {
             result.then(controller => {
@@ -178,7 +185,7 @@ export const slashCommandPlugin = ViewPlugin.fromClass(class {
                 }
             });
         }
-        
+
         view.focus();
     }
 

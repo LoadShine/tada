@@ -8,7 +8,7 @@ import { getCurrentLine } from "../../core/utils/editor-utils";
  * Slash command option interface
  */
 export interface SlashCommandOption {
-    title: string;
+    titleKey: string;
     icon: string;
     execute: (view: EditorView) => void | Promise<AbortController>;
 }
@@ -35,7 +35,7 @@ function insertAtCursor(
 ): void {
     const pos = view.state.selection.main.from;
     const changes = { from: pos, insert: text };
-    
+
     if (selectionStart !== undefined && selectionEnd !== undefined) {
         view.dispatch({
             changes,
@@ -54,62 +54,62 @@ function insertAtCursor(
  */
 export const slashCommands: SlashCommandOption[] = [
     {
-        title: "AI Continue Writing",
+        titleKey: "moondown.slash.aiContinue",
         icon: "bot",
         execute: async (view: EditorView) => ghostWriterExecutor(view)
     },
     {
-        title: "Heading 1",
+        titleKey: "moondown.slash.heading1",
         icon: "heading-1",
         execute: (view: EditorView) => insertAtLineStart(view, "# ", 0)
     },
     {
-        title: "Heading 2",
+        titleKey: "moondown.slash.heading2",
         icon: "heading-2",
         execute: (view: EditorView) => insertAtLineStart(view, "## ", 0)
     },
     {
-        title: "Heading 3",
+        titleKey: "moondown.slash.heading3",
         icon: "heading-3",
         execute: (view: EditorView) => insertAtLineStart(view, "### ", 0)
     },
     {
-        title: "Heading 4",
+        titleKey: "moondown.slash.heading4",
         icon: "heading-4",
         execute: (view: EditorView) => insertAtLineStart(view, "#### ", 0)
     },
     {
-        title: "divider",
+        titleKey: "divider",
         icon: "",
         execute: () => {} // Divider placeholder
     },
     {
-        title: "Insert Table",
+        titleKey: "moondown.slash.insertTable",
         icon: "table",
         execute: (view: EditorView) => insertAtCursor(view, MARKDOWN_TEMPLATES.TABLE)
     },
     {
-        title: "Insert Link",
+        titleKey: "moondown.slash.insertLink",
         icon: "link",
         execute: (view: EditorView) => insertAtCursor(view, MARKDOWN_TEMPLATES.LINK, 1, 10)
     },
     {
-        title: "Quote Block",
+        titleKey: "moondown.slash.quoteBlock",
         icon: "quote",
         execute: (view: EditorView) => insertAtLineStart(view, "> ", 0)
     },
     {
-        title: "Ordered List",
+        titleKey: "moondown.slash.orderedList",
         icon: "list-ordered",
         execute: (view: EditorView) => insertAtLineStart(view, "1. ", 0)
     },
     {
-        title: "Unordered List",
+        titleKey: "moondown.slash.unorderedList",
         icon: "list",
         execute: (view: EditorView) => insertAtLineStart(view, "- ", 0)
     },
     {
-        title: "Code Block",
+        titleKey: "moondown.slash.codeBlock",
         icon: "code",
         execute: (view: EditorView) => insertAtCursor(view, MARKDOWN_TEMPLATES.CODE_BLOCK, 4, 4)
     },

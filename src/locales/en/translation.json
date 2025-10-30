@@ -310,5 +310,23 @@
       "title": "No summary available",
       "description": "Select tasks and generate a new summary."
     }
+  },
+  "moondown": {
+    "ai": {
+      "thinking": "AI is thinking..."
+    },
+    "slash": {
+      "aiContinue": "AI Continue Writing",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "heading4": "Heading 4",
+      "insertTable": "Insert Table",
+      "insertLink": "Insert Link",
+      "quoteBlock": "Quote Block",
+      "orderedList": "Ordered List",
+      "unorderedList": "Unordered List",
+      "codeBlock": "Code Block"
+    }
   }
 }

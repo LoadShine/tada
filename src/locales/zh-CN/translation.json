@@ -310,5 +310,23 @@
       "title": "暂无摘要",
       "description": "选择任务并生成一个新的摘要。"
     }
+  },
+  "moondown": {
+    "ai": {
+      "thinking": "AI 思考中..."
+    },
+    "slash": {
+      "aiContinue": "AI 继续写作",
+      "heading1": "标题 1",
+      "heading2": "标题 2",
+      "heading3": "标题 3",
+      "heading4": "标题 4",
+      "insertTable": "插入表格",
+      "insertLink": "插入链接",
+      "quoteBlock": "引用块",
+      "orderedList": "有序列表",
+      "unorderedList": "无序列表",
+      "codeBlock": "代码块"
+    }
   }
 }

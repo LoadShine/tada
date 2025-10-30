@@ -3,9 +3,11 @@ import {EditorView, keymap} from "@codemirror/view";
 import {slashCommandState, toggleSlashCommand, updateSelectedIndex} from "./fields.ts";
 import {slashCommandPlugin} from "./slash-command.ts";
 import {slashCommands} from "./commands.ts";
+import {translationsState} from "../default-extensions.ts";
 
 export function handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {
     const state = view.state.field(slashCommandState)
+    const translations = view.state.field(translationsState);
     const plugin = view.plugin(slashCommandPlugin)
     if (event.key === "Escape") {
         if (state.active) {
@@ -21,15 +23,17 @@ export function handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {
 
     if (!state.active) return false
 
-    const filteredCommands = slashCommands.filter(cmd =>
-        cmd.title.toLowerCase().includes(state.filterText.toLowerCase())
-    )
+    const filteredCommands = slashCommands.filter(cmd => {
+            const title = translations[cmd.titleKey] || cmd.titleKey;
+            return title.toLowerCase().includes(state.filterText.toLowerCase())
+        }
+    );
 
     switch (event.key) {
         case "ArrowDown":
             // Skip divider commands and select the next available command
-            { let nextIndex = (state.selectedIndex + 1) % filteredCommands.length
-            while (filteredCommands[nextIndex].title === "divider") {
+        { let nextIndex = (state.selectedIndex + 1) % filteredCommands.length
+            while (filteredCommands[nextIndex].titleKey === "divider") {
                 nextIndex = (nextIndex + 1) % filteredCommands.length
             }
             view.dispatch({
@@ -38,8 +42,8 @@ export function handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {
             return true }
         case "ArrowUp":
             // Skip divider commands and select the previous available command
-            { let prevIndex = (state.selectedIndex - 1 + filteredCommands.length) % filteredCommands.length
-            while (filteredCommands[prevIndex].title === "divider") {
+        { let prevIndex = (state.selectedIndex - 1 + filteredCommands.length) % filteredCommands.length
+            while (filteredCommands[prevIndex].titleKey === "divider") {
                 prevIndex = (prevIndex - 1 + filteredCommands.length) % filteredCommands.length
             }
             view.dispatch({

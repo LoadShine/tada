@@ -1,5 +1,5 @@
 // src/moondown/extensions/default-extensions.ts
-import { type Extension, Compartment } from '@codemirror/state';
+import {type Extension, Compartment, StateEffect, StateField} from '@codemirror/state';
 import { EditorView, keymap, rectangularSelection } from '@codemirror/view';
 import { indentOnInput } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
@@ -7,6 +7,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
 import { languages } from "@codemirror/language-data";
 import { GFM } from "@lezer/markdown";
+import type {AIStreamHandler, MoondownTranslations} from "../core";
 
 // Import extensions
 import { correctList } from "./correct-list";
@@ -45,6 +46,26 @@ export const readOnlyCompartment = new Compartment();
  */
 export const placeholderCompartment = new Compartment();
 
+/** State field to hold the AI stream handler */
+export const onAIStreamState = StateField.define<AIStreamHandler | null>({
+    create: () => null,
+    update: (value, tr) => {
+        for (const e of tr.effects) if (e.is(setOnAIStream)) return e.value;
+        return value;
+    }
+});
+export const setOnAIStream = StateEffect.define<AIStreamHandler | null>();
+
+/** State field to hold translations */
+export const translationsState = StateField.define<MoondownTranslations>({
+    create: () => ({}),
+    update: (value, tr) => {
+        for (const e of tr.effects) if (e.is(setTranslations)) return e.value;
+        return value;
+    }
+});
+export const setTranslations = StateEffect.define<MoondownTranslations>();
+
 
 /**
  * Extensions that provide the WYSIWYG experience
@@ -75,6 +96,10 @@ export const defaultExtensions: Extension[] = [
     fencedCode(),
     blockquote(),
     bubbleMenu(),
+
+    // State Fields for dynamic settings
+    onAIStreamState,
+    translationsState,
 
     // Keymaps
     keymap.of([

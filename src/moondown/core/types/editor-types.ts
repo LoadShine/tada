@@ -9,6 +9,16 @@ import type { EditorState } from "@codemirror/state";
 /** Theme options */
 export type Theme = 'light' | 'dark';
 
+/** Translation strings for Moondown UI */
+export type MoondownTranslations = Record<string, string>;
+
+/** AI stream handler function type */
+export type AIStreamHandler = (
+    systemPrompt: string,
+    userPrompt: string,
+    signal: AbortSignal
+) => Promise<ReadableStream<string>>;
+
 /** Editor configuration options */
 export interface EditorConfig {
     /** Initial document content */
@@ -27,6 +37,10 @@ export interface EditorConfig {
     onFocus?: () => void;
     /** Blur event callback */
     onBlur?: () => void;
+    /** Translation strings */
+    translations?: MoondownTranslations;
+    /** AI stream handler */
+    onAIStream?: AIStreamHandler;
 }
 
 /** Position range in the document */

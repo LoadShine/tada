@@ -19,14 +19,19 @@ const getApiEndpoint = (settings: AISettings, type: 'chat' | 'models'): string =
     let endpoint = type === 'chat' ? provider.apiEndpoint : provider.listModelsEndpoint;
     if (!endpoint) throw new Error(`Endpoint type '${type}' not available for ${provider.id}.`);
 
-    if ((provider.id === 'custom' || provider.id === 'ollama') && settings.baseUrl) {
+    if (provider.requiresBaseUrl && settings.baseUrl) {
         const baseUrl = settings.baseUrl.endsWith('/') ? settings.baseUrl.slice(0, -1) : settings.baseUrl;
-        endpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        return `${baseUrl}${endpoint}`;
+        if (provider.id === 'ollama' && type === 'models') { // Special case for ollama model list
+            return `${baseUrl}${endpoint}`;
+        }
+        return `${baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
     }
 
-    if (provider.id === 'gemini') {
-        return endpoint.replace('{model}', settings.model).replace('{apiKey}', settings.apiKey);
+    if (endpoint.includes('{apiKey}')) {
+        endpoint = endpoint.replace('{apiKey}', settings.apiKey);
+    }
+    if (endpoint.includes('{model}')) {
+        endpoint = endpoint.replace('{model}', settings.model);
     }
 
     return endpoint;
@@ -52,7 +57,8 @@ export const fetchProviderModels = async (settings: AISettings): Promise<AIModel
     }
 
     const endpoint = getApiEndpoint(settings, 'models');
-    const headers = provider.getHeaders(settings.apiKey);
+    // For Gemini model listing, headers might be different or not needed if key is in URL
+    const headers = (provider.id === 'gemini') ? { 'Content-Type': 'application/json' } : provider.getHeaders(settings.apiKey);
 
     try {
         const response = await fetch(endpoint, {
@@ -92,18 +98,20 @@ export const testConnection = async (settings: AISettings): Promise<boolean> => 
         }
 
         // For providers that don't support model listing, try a simple chat request
-        let payload = {
+        let payload: any = {
             model: settings.model,
             messages: [{ role: "user", content: "Hi" }],
             max_tokens: 1,
         };
 
-        if (provider.requestBodyTransformer) {
-            const transformedPayload = provider.requestBodyTransformer(payload);
-            payload = transformedPayload;
+        // For Ollama with non-OpenAI-compatible body
+        if (provider.id === 'ollama' && provider.requestBodyTransformer) {
+            payload = provider.requestBodyTransformer(payload);
         }
 
-        const response = await fetch(getApiEndpoint(settings, 'chat'), {
+        const endpoint = provider.id === 'ollama' ? `${getApiEndpoint(settings, 'chat')}/api/chat` : getApiEndpoint(settings, 'chat');
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: getApiHeaders(settings),
             body: JSON.stringify(payload),
@@ -116,7 +124,7 @@ export const testConnection = async (settings: AISettings): Promise<boolean> => 
     }
 };
 
-const createOpenAICompatiblePayload = (model: string, systemPrompt: string, userPrompt: string, useJsonFormat: boolean) => ({
+const createOpenAICompatiblePayload = (model: string, systemPrompt: string, userPrompt: string, useJsonFormat: boolean, stream: boolean = false) => ({
     model,
     messages: [
         {role: "system", content: systemPrompt},
@@ -124,18 +132,18 @@ const createOpenAICompatiblePayload = (model: string, systemPrompt: string, user
     ],
     ...(useJsonFormat && {response_format: {type: "json_object"}}),
     temperature: 0.5,
+    stream,
 });
 
 const extractContentFromResponse = (data: any, providerId: AISettings['provider']): string => {
     switch (providerId) {
         case 'claude':
             return data.content?.[0]?.text ?? '';
-        case 'gemini':
-            return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
         case 'qwen':
             return data.output?.text ?? '';
         case 'ollama':
             return data.message?.content ?? '';
+        case 'gemini': // Now uses OpenAI compatibility, should be same as default
         case 'openai':
         default:
             return data.choices?.[0]?.message?.content ?? '';
@@ -165,14 +173,16 @@ Analyze the user's prompt and extract these details. If a detail is not present,
 Be concise and accurate. Do not add any extra text outside of the JSON object.`;
 
     const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom'].includes(provider.id);
-    let payload = createOpenAICompatiblePayload(settings.model, systemPrompt, prompt, useJsonFormat);
+    let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, prompt, useJsonFormat, false);
 
     if (provider.requestBodyTransformer) {
         payload = provider.requestBodyTransformer(payload);
     }
 
+    const endpoint = provider.id === 'ollama' ? `${getApiEndpoint(settings, 'chat')}/api/chat` : getApiEndpoint(settings, 'chat');
+
     try {
-        const response = await fetch(getApiEndpoint(settings, 'chat'), {
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: getApiHeaders(settings),
             body: JSON.stringify(payload),
@@ -203,12 +213,11 @@ const extractDeltaFromStream = (data: any, providerId: AISettings['provider']): 
                 return data.delta.text ?? null;
             }
             return null;
-        case 'gemini':
-            return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
         case 'qwen':
             return data.output?.text ?? null;
-        case 'ollama':
-            return data.message?.content ?? null;
+        case 'ollama': // For streaming, Ollama has a different structure
+            return data.done ? null : data.message?.content ?? null;
+        case 'gemini': // Now uses OpenAI compatibility, should be same as default
         case 'openai':
         case 'openrouter':
         case 'moonshot':
@@ -217,11 +226,108 @@ const extractDeltaFromStream = (data: any, providerId: AISettings['provider']): 
         case 'xai':
         case '302':
         case 'siliconflow':
+        case 'groq':
         case 'custom':
         default:
             return data.choices?.[0]?.delta?.content ?? null;
     }
 };
+
+async function* streamResponse(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, providerId: AISettings['provider']) {
+    let buffer = '';
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+            if (buffer.length > 0) yield buffer;
+            break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+
+        // Ollama sends one JSON object per line
+        if (providerId === 'ollama') {
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+            for (const line of lines) {
+                if (line.trim()) yield line;
+            }
+        } else {
+            // OpenAI-compatible SSE format
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() ?? ''; // Keep incomplete message in buffer
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    yield line;
+                }
+            }
+        }
+    }
+}
+
+export const streamChatCompletionForEditor = async (
+    settings: AISettings,
+    systemPrompt: string,
+    userPrompt: string,
+    signal: AbortSignal
+): Promise<ReadableStream<string>> => {
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
+    if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
+
+    let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, userPrompt, false, true);
+    if (provider.requestBodyTransformer) {
+        payload = provider.requestBodyTransformer(payload);
+    }
+
+    const endpoint = provider.id === 'ollama' ? `${getApiEndpoint(settings, 'chat')}/api/chat` : getApiEndpoint(settings, 'chat');
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: getApiHeaders(settings),
+        body: JSON.stringify(payload),
+        signal,
+    });
+
+    if (!response.ok || !response.body) {
+        const errorBody = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    return new ReadableStream({
+        async start(controller) {
+            signal.addEventListener('abort', () => {
+                reader.cancel();
+                controller.close();
+            });
+
+            try {
+                for await (const chunk of streamResponse(reader, decoder, provider.id)) {
+                    if (chunk.startsWith('data: ')) {
+                        const dataStr = chunk.substring(6);
+                        if (dataStr === '[DONE]') break;
+                        try {
+                            const data = JSON.parse(dataStr);
+                            const delta = extractDeltaFromStream(data, provider.id);
+                            if (delta) controller.enqueue(delta);
+                        } catch (e) { /* ignore parse errors on partial chunks */ }
+                    } else if (provider.id === 'ollama') { // Ollama's non-SSE streaming
+                        try {
+                            const data = JSON.parse(chunk);
+                            const delta = extractDeltaFromStream(data, provider.id);
+                            if (delta) controller.enqueue(delta);
+                        } catch (e) { /* ignore parse errors on partial chunks */ }
+                    }
+                }
+            } catch (error) {
+                controller.error(error);
+            } finally {
+                controller.close();
+            }
+        }
+    });
+};
+
 
 export const generateAiSummary = async (
     taskIds: string[],
@@ -230,13 +336,6 @@ export const generateAiSummary = async (
     settings: AISettings,
     onDelta: (chunk: string) => void,
 ): Promise<StoredSummary> => {
-    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
-    if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
-
-    if (provider.requiresApiKey && !settings.apiKey) {
-        throw new Error("API key is not set for the selected provider.");
-    }
-
     const allTasks = service.fetchTasks();
     const tasksToSummarize = allTasks.filter(t => taskIds.includes(t.id));
 
@@ -256,80 +355,16 @@ Be insightful and professional. Do not add any extra text or pleasantries outsid
 
     const userPrompt = `Please summarize the following tasks:\n\n${tasksString}`;
 
-    // --- Non-streaming path for providers that don't support streaming well ---
-    if (provider.id === 'gemini' || provider.id === 'ollama') {
-        let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, userPrompt, false);
-        if (provider.requestBodyTransformer) {
-            payload = provider.requestBodyTransformer(payload);
-        }
-        const response = await fetch(getApiEndpoint(settings, 'chat'), {
-            method: 'POST',
-            headers: getApiHeaders(settings),
-            body: JSON.stringify(payload),
-        });
-        if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
-        }
-        const data = await response.json();
-        const summaryText = extractContentFromResponse(data, provider.id);
-        onDelta(summaryText);
-        return service.createSummary({periodKey, listKey, taskIds, summaryText});
-    }
-
-    // --- Streaming path for other providers ---
-    let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, userPrompt, false);
-    payload.stream = true;
-
-    if (provider.requestBodyTransformer) {
-        payload = provider.requestBodyTransformer(payload);
-        if (provider.id === 'qwen') {
-            payload.parameters.stream = true;
-        }
-    }
-
-    const response = await fetch(getApiEndpoint(settings, 'chat'), {
-        method: 'POST',
-        headers: getApiHeaders(settings),
-        body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
-    }
-
-    if (!response.body) {
-        throw new Error("Response body is null, streaming not possible.");
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
+    const stream = await streamChatCompletionForEditor(settings, systemPrompt, userPrompt, new AbortController().signal);
+    const reader = stream.getReader();
     let fullText = "";
 
     while (true) {
-        const {done, value} = await reader.read();
+        const { done, value } = await reader.read();
         if (done) break;
-
-        const chunk = decoder.decode(value, {stream: true});
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-        for (const line of lines) {
-            if (line.startsWith('data: ')) {
-                const dataStr = line.substring(6);
-                if (dataStr === '[DONE]') break;
-
-                try {
-                    const data = JSON.parse(dataStr);
-                    const delta = extractDeltaFromStream(data, provider.id);
-                    if (delta) {
-                        fullText += delta;
-                        onDelta(delta);
-                    }
-                } catch (e) {
-                    console.error("Error parsing stream data chunk:", dataStr, e);
-                }
-            }
+        if (value) {
+            fullText += value;
+            onDelta(value);
         }
     }
 

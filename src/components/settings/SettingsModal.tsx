@@ -32,19 +32,8 @@ import {
     TERMS_OF_USE_HTML
 } from '@/config/themes';
 import {useTranslation} from "react-i18next";
-import {AIProvider, AI_PROVIDERS, AIModel} from "@/config/aiProviders";
+import {AIProvider, AI_PROVIDERS} from "@/config/aiProviders";
 import {fetchProviderModels, testConnection} from "@/services/aiService";
-import {
-    closestCenter,
-    DndContext,
-    DragEndEvent,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors
-} from "@dnd-kit/core";
-import {arrayMove, SortableContext, useSortable, verticalListSortingStrategy} from "@dnd-kit/sortable";
-import {CSS} from "@dnd-kit/utilities";
 
 interface SettingsItem {
     id: SettingsTab;
@@ -336,36 +325,6 @@ const PreferencesSettings: React.FC = memo(() => {
 });
 PreferencesSettings.displayName = 'PreferencesSettings';
 
-const defaultAISettingsFromAtoms = defaultAISettingsForApi();
-
-const SortableItem: React.FC<{ item: { id: string; name: string }; isDragging: boolean }> = ({ item, isDragging }) => {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.7 : 1,
-        zIndex: isDragging ? 10 : 'auto',
-    };
-
-    return (
-        <div
-            ref={setNodeRef}
-            style={style}
-            {...attributes}
-            className="flex items-center bg-grey-ultra-light dark:bg-neutral-700 rounded-base p-2 text-sm"
-        >
-            <button
-                {...listeners}
-                className="cursor-grab touch-none mr-3 text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200"
-                aria-label={`Reorder ${item.name}`}
-            >
-                <Icon name="grip-vertical" size={16} strokeWidth={1.5} />
-            </button>
-            <span className="text-grey-dark dark:text-neutral-100 font-light">{item.name}</span>
-        </div>
-    );
-};
-
 const ProviderCard: React.FC<{
     provider: AIProvider;
     isSelected: boolean;
@@ -559,35 +518,35 @@ const AISettings: React.FC = memo(() => {
         const newProvider = AI_PROVIDERS.find(p => p.id === providerId);
         if (!newProvider) return;
 
-        setAISettings({
-            ...currentSettings,
+        setAISettings((prev) => ({
+            ...(prev ?? defaultAISettingsForApi()),
             provider: providerId,
-            apiKey: providerId === currentSettings.provider ? currentSettings.apiKey : '',
+            apiKey: providerId === prev?.provider ? prev.apiKey : '',
             model: newProvider.models[0]?.id ?? '',
             baseUrl: newProvider.defaultBaseUrl ?? '',
             availableModels: newProvider.models,
-        });
+        }));
     };
 
     const handleApiKeyChange = (apiKey: string) => {
-        setAISettings({
-            ...currentSettings,
+        setAISettings((prev) => ({
+            ...(prev ?? defaultAISettingsForApi()),
             apiKey,
-        });
+        }));
     };
 
     const handleModelChange = (model: string) => {
-        setAISettings({
-            ...currentSettings,
+        setAISettings((prev) => ({
+            ...(prev ?? defaultAISettingsForApi()),
             model,
-        });
+        }));
     };
 
     const handleBaseUrlChange = (baseUrl: string) => {
-        setAISettings({
-            ...currentSettings,
+        setAISettings((prev) => ({
+            ...(prev ?? defaultAISettingsForApi()),
             baseUrl,
-        });
+        }));
     };
 
     const handleFetchModels = useCallback(async () => {
@@ -601,11 +560,11 @@ const AISettings: React.FC = memo(() => {
         setIsFetchingModels(true);
         try {
             const models = await fetchProviderModels(currentSettings);
-            setAISettings({
-                ...currentSettings,
+            setAISettings((prev) => ({
+                ...(prev ?? defaultAISettingsForApi()),
                 availableModels: models,
-                model: models[0]?.id ?? currentSettings.model,
-            });
+                model: models[0]?.id ?? prev?.model ?? '',
+            }));
             addNotification({
                 type: 'success',
                 message: `Successfully fetched ${models.length} models for ${t(currentProvider.nameKey)}.`
@@ -802,12 +761,12 @@ const AISettings: React.FC = memo(() => {
                 <div className="flex items-center space-x-2">
                     <div className={twMerge(
                         "w-2 h-2 rounded-full",
-                        currentSettings.apiKey && currentSettings.model
+                        (currentProvider.requiresApiKey ? currentSettings.apiKey : true) && currentSettings.model
                             ? "bg-green-500"
                             : "bg-orange-400"
                     )} />
                     <span className="text-[11px] text-grey-medium dark:text-neutral-400">
-                        {currentSettings.apiKey && currentSettings.model
+                        {(currentProvider.requiresApiKey ? currentSettings.apiKey : true) && currentSettings.model
                             ? t('settings.ai.statusReady')
                             : t('settings.ai.statusIncomplete')
                         }

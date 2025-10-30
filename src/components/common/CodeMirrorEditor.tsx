@@ -1,10 +1,14 @@
 // src/components/common/CodeMirrorEditor.tsx
-import React, {forwardRef, memo, useEffect, useImperativeHandle, useRef, useMemo} from 'react';
+import React, {forwardRef, memo, useEffect, useImperativeHandle, useRef, useMemo, useCallback} from 'react';
 import {twMerge} from 'tailwind-merge';
 import Moondown from '@/moondown/moondown';
 import {useAtomValue} from 'jotai';
-import {appearanceSettingsAtom} from '@/store/atoms';
+import {aiSettingsAtom, appearanceSettingsAtom} from '@/store/atoms';
 import {EditorView} from '@codemirror/view';
+import {useTranslation} from "react-i18next";
+import {AI_PROVIDERS} from "@/config/aiProviders";
+import {streamChatCompletionForEditor} from "@/services/aiService";
+import {MoondownTranslations} from "@/moondown/core";
 
 interface CodeMirrorEditorProps {
     value: string;
@@ -26,6 +30,8 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
         const editorContainerRef = useRef<HTMLDivElement>(null);
         const moondownInstanceRef = useRef<Moondown | null>(null);
         const appearance = useAtomValue(appearanceSettingsAtom);
+        const aiSettings = useAtomValue(aiSettingsAtom);
+        const { t, i18n } = useTranslation();
 
         const theme = useMemo(() => {
             const darkMode = appearance?.darkMode ?? 'system';
@@ -34,6 +40,32 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
             }
             return darkMode;
         }, [appearance?.darkMode]);
+
+        const moondownTranslations = useMemo((): MoondownTranslations => ({
+            'moondown.ai.thinking': t('moondown.ai.thinking'),
+            'moondown.slash.aiContinue': t('moondown.slash.aiContinue'),
+            'moondown.slash.heading1': t('moondown.slash.heading1'),
+            'moondown.slash.heading2': t('moondown.slash.heading2'),
+            'moondown.slash.heading3': t('moondown.slash.heading3'),
+            'moondown.slash.heading4': t('moondown.slash.heading4'),
+            'moondown.slash.insertTable': t('moondown.slash.insertTable'),
+            'moondown.slash.insertLink': t('moondown.slash.insertLink'),
+            'moondown.slash.quoteBlock': t('moondown.slash.quoteBlock'),
+            'moondown.slash.orderedList': t('moondown.slash.orderedList'),
+            'moondown.slash.unorderedList': t('moondown.slash.unorderedList'),
+            'moondown.slash.codeBlock': t('moondown.slash.codeBlock'),
+        }), [t]);
+
+        const handleAIStream = useCallback(async (
+            systemPrompt: string,
+            userPrompt: string,
+            signal: AbortSignal
+        ): Promise<ReadableStream<string>> => {
+            if (!aiSettings || !aiSettings.provider || !aiSettings.apiKey || !aiSettings.model) {
+                throw new Error("AI is not configured. Please check your AI settings.");
+            }
+            return streamChatCompletionForEditor(aiSettings, systemPrompt, userPrompt, signal);
+        }, [aiSettings]);
 
         useImperativeHandle(ref, () => ({
             focus: () => moondownInstanceRef.current?.focus(),
@@ -47,6 +79,8 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                     theme,
                     readOnly,
                     placeholder,
+                    translations: moondownTranslations,
+                    onAIStream: handleAIStream,
                     onChange: (update) => {
                         if (update.docChanged) {
                             onChange(update.state.doc.toString());
@@ -62,11 +96,20 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
                 instance?.destroy();
                 moondownInstanceRef.current = null;
             };
+            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []); // Empty dependency array ensures this runs only once on mount
 
         useEffect(() => {
             moondownInstanceRef.current?.setTheme(theme);
         }, [theme]);
+
+        useEffect(() => {
+            moondownInstanceRef.current?.setTranslations(moondownTranslations);
+        }, [moondownTranslations]);
+
+        useEffect(() => {
+            moondownInstanceRef.current?.setAIStreamHandler(handleAIStream);
+        }, [handleAIStream]);
 
         const containerClasses = twMerge(
             'cm-editor-container relative h-full w-full overflow-hidden rounded-base',

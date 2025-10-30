@@ -48,7 +48,7 @@ export const AI_PROVIDERS: AIProvider[] = [
             'Content-Type': 'application/json',
         }),
         models: [
-            {id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet'},
+            {id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet'},
             {id: 'claude-3-opus-20240229', name: 'Claude 3 Opus'},
             {id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku'},
         ],
@@ -57,26 +57,18 @@ export const AI_PROVIDERS: AIProvider[] = [
         id: 'gemini',
         nameKey: 'aiProviders.gemini',
         requiresApiKey: true,
-        apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}',
+        apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
         listModelsEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models?key={apiKey}',
-        getHeaders: () => ({ 'Content-Type': 'application/json' }),
+        getHeaders: (apiKey) => ({
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        }),
         parseModels: (data) => data.models
-            .filter((m: any) => m.supportedGenerationMethods.includes('generateContent'))
-            .map((m: any) => ({ id: m.name.replace('models/', ''), name: m.displayName })),
-        requestBodyTransformer: (body: any) => {
-            const contents = body.messages.map((msg: any) => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text: msg.content }]
-            }));
-            return {
-                contents,
-                generationConfig: {
-                    temperature: body.temperature,
-                    topP: body.top_p,
-                    maxOutputTokens: body.max_tokens,
-                },
-            };
-        },
+            .filter((m: any) => m.name.includes('gemini') && m.displayName)
+            .map((m: any) => ({
+                id: m.name.replace('models/', ''),
+                name: m.displayName
+            })),
         models: [
             {id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro'},
             {id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash'},
@@ -91,8 +83,8 @@ export const AI_PROVIDERS: AIProvider[] = [
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
         models: [
-            {id: 'grok-beta', name: 'Grok Beta'},
-            {id: 'grok-vision-beta', name: 'Grok Vision Beta'},
+            {id: 'grok-1.5-flash', name: 'Grok 1.5 Flash'},
+            {id: 'grok-1.5', name: 'Grok 1.5'},
         ]
     },
     {
@@ -136,7 +128,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.name })),
         models: [
-            {id: 'openrouter/auto', name: 'Auto (推荐)'},
+            {id: 'openrouter/auto', name: 'Auto (Recommended)'},
             {id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash'},
             {id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku'},
         ]
@@ -150,8 +142,8 @@ export const AI_PROVIDERS: AIProvider[] = [
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
         models: [
-            {id: 'deepseek-ai/DeepSeek-V2.5', name: 'DeepSeek V2.5'},
-            {id: 'Qwen/Qwen2.5-72B-Instruct', name: 'Qwen2.5 72B'},
+            {id: 'deepseek-ai/DeepSeek-V2-Chat', name: 'DeepSeek V2'},
+            {id: 'Qwen/Qwen2-72B-Instruct', name: 'Qwen2 72B'},
             {id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', name: 'Llama 3.1 70B'},
         ]
     },
@@ -165,7 +157,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
         models: [
             {id: 'gpt-4o', name: 'GPT-4o'},
-            {id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet'},
+            {id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet'},
             {id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro'},
         ]
     },
@@ -219,8 +211,8 @@ export const AI_PROVIDERS: AIProvider[] = [
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
         models: [
-            {id: 'glm-4-plus', name: 'GLM-4 Plus'},
-            {id: 'glm-4-0520', name: 'GLM-4'},
+            {id: 'glm-4-flash', name: 'GLM-4 Flash'},
+            {id: 'glm-4', name: 'GLM-4'},
             {id: 'glm-4-air', name: 'GLM-4 Air'},
         ]
     },
@@ -231,9 +223,9 @@ export const AI_PROVIDERS: AIProvider[] = [
         apiEndpoint: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
         getHeaders: (apiKey) => ({ 'Content-Type': 'application/json' }),
         models: [
-            {id: 'ernie-4.0-8k', name: '文心一言 4.0'},
-            {id: 'ernie-3.5-8k', name: '文心一言 3.5'},
-            {id: 'ernie-turbo-8k', name: '文心一言 Turbo'},
+            {id: 'ernie-4.0-8k', name: 'Wenxin 4.0'},
+            {id: 'ernie-3.5-8k', name: 'Wenxin 3.5'},
+            {id: 'ernie-speed-8k', name: 'ERNIE Speed'},
         ]
     },
     {
@@ -243,9 +235,9 @@ export const AI_PROVIDERS: AIProvider[] = [
         apiEndpoint: 'https://hunyuan.tencentcloudapi.com',
         getHeaders: (apiKey) => ({ 'Content-Type': 'application/json' }),
         models: [
-            {id: 'hunyuan-pro', name: '混元 Pro'},
-            {id: 'hunyuan-standard', name: '混元 Standard'},
-            {id: 'hunyuan-lite', name: '混元 Lite'},
+            {id: 'hunyuan-pro', name: 'Hunyuan Pro'},
+            {id: 'hunyuan-standard', name: 'Hunyuan Standard'},
+            {id: 'hunyuan-lite', name: 'Hunyuan Lite'},
         ]
     },
     {
@@ -255,9 +247,9 @@ export const AI_PROVIDERS: AIProvider[] = [
         apiEndpoint: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
         models: [
-            {id: 'doubao-pro-32k', name: '豆包 Pro'},
-            {id: 'doubao-lite-32k', name: '豆包 Lite'},
-            {id: 'doubao-pro-4k', name: '豆包 Pro 4K'},
+            {id: 'doubao-pro-32k', name: 'Doubao Pro'},
+            {id: 'doubao-lite-32k', name: 'Doubao Lite'},
+            {id: 'doubao-pro-4k', name: 'Doubao Pro 4K'},
         ]
     },
     {
@@ -280,7 +272,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         requiresApiKey: false,
         requiresBaseUrl: true,
         defaultBaseUrl: 'http://localhost:11434',
-        apiEndpoint: '/api/chat',
+        apiEndpoint: '/v1/chat/completions', // Assuming OpenAI compatibility
         listModelsEndpoint: '/api/tags',
         getHeaders: () => ({ 'Content-Type': 'application/json' }),
         parseModels: (data) => data.models.map((m: any) => ({
@@ -288,19 +280,10 @@ export const AI_PROVIDERS: AIProvider[] = [
             name: m.name,
             description: `Size: ${m.size ? (m.size / 1e9).toFixed(1) + 'GB' : 'Unknown'}`
         })),
-        requestBodyTransformer: (body: any) => ({
-            model: body.model,
-            messages: body.messages,
-            stream: body.stream || false,
-            options: {
-                temperature: body.temperature || 0.7,
-            }
-        }),
         models: [
-            {id: 'llama3.2', name: 'Llama 3.2'},
-            {id: 'qwen2.5', name: 'Qwen 2.5'},
+            {id: 'llama3', name: 'Llama 3'},
+            {id: 'qwen2', name: 'Qwen 2'},
             {id: 'mistral', name: 'Mistral'},
-            {id: 'codellama', name: 'Code Llama'},
         ]
     },
     {
@@ -313,7 +296,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data?.map((m: any) => ({ id: m.id, name: m.id })) || [],
         models: [
-            {id: 'custom-model', name: '自定义模型'},
+            {id: 'custom-model', name: 'Custom Model'},
         ]
     }
 ];

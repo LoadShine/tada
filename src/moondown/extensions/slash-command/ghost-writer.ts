@@ -2,9 +2,21 @@
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
 import { EditorSelection, StateEffect, StateField } from "@codemirror/state";
 import { slashCommandPlugin } from "./slash-command";
-import { chatCompletionStream } from "../../ai/completions";
-import { completionPrompt } from "../../ai/prompts";
 import { CSS_CLASSES, TIMING } from "../../core/constants";
+import {onAIStreamState, translationsState} from "../default-extensions";
+
+const completionPrompt: string = 'You are an AI assistant specializing in text continuation. ' +
+    'The user will provide text with a prefix, a {FILL_ME} marker, and a suffix. ' +
+    'Your task is to analyze the context of the prefix and suffix and write a coherent continuation at the {FILL_ME} position. ' +
+    'Please adhere to the following guidelines: ' +
+    '1. As a small model, use simple and clear sentences. Avoid complex vocabulary and grammar. ' +
+    '2. Carefully read the prefix and suffix to understand the main idea, tone, and logic before writing. ' +
+    '3. Write a continuation of about 200 characters at the {FILL_ME} position. ' +
+    '4. Avoid repeating content that is already present in the prefix or suffix. ' +
+    '5. You are a text continuation assistant, not a conversational one. Do not ask questions or provide hints. ' +
+    '6. Focus on the topic, emotional tone, logical connections, and style of the surrounding text. ' +
+    '7. Only output the content for the {FILL_ME} position. Do not repeat the prefix or suffix. ' +
+    'Now, read the following prefix and suffix and provide a continuation for {FILL_ME}:';
 
 /**
  * Loading widget displayed during AI text generation
@@ -13,12 +25,16 @@ class LoadingWidget extends WidgetType {
     /** Flag to identify this widget type */
     readonly isLoadingWidget = true;
 
+    constructor(private text: string) {
+        super();
+    }
+
     toDOM(): HTMLElement {
         const div = document.createElement("div");
         div.className = CSS_CLASSES.LOADING_WIDGET;
         div.innerHTML = `
           <div class="${CSS_CLASSES.LOADING_SPINNER}"></div>
-          <span>AI is thinking...</span>
+          <span>${this.text}</span>
         `;
         return div;
     }
@@ -27,7 +43,7 @@ class LoadingWidget extends WidgetType {
 /**
  * State effects for ghost writer
  */
-const addLoadingEffect = StateEffect.define<{ pos: number }>();
+const addLoadingEffect = StateEffect.define<{ pos: number, text: string }>();
 const removeLoadingEffect = StateEffect.define<null>();
 const markNewText = StateEffect.define<{ from: number; to: number }>();
 const unmarkNewText = StateEffect.define<{ from: number; to: number }>();
@@ -41,7 +57,7 @@ export const newTextState = StateField.define<DecorationSet>({
     },
     update(value, tr) {
         value = value.map(tr.changes);
-        
+
         for (const e of tr.effects) {
             if (e.is(markNewText)) {
                 value = value.update({
@@ -50,7 +66,7 @@ export const newTextState = StateField.define<DecorationSet>({
             } else if (e.is(addLoadingEffect)) {
                 value = value.update({
                     add: [Decoration.widget({
-                        widget: new LoadingWidget(),
+                        widget: new LoadingWidget(e.value.text),
                         side: 1
                     }).range(e.value.pos)]
                 });
@@ -70,7 +86,7 @@ export const newTextState = StateField.define<DecorationSet>({
                 });
             }
         }
-        
+
         return value;
     },
     provide: f => EditorView.decorations.from(f)
@@ -94,40 +110,58 @@ export async function ghostWriterExecutor(view: EditorView): Promise<AbortContro
     const prefix = text.slice(0, to);
     const suffix = text.slice(from);
     const pos = state.selection.main.from;
-    
-    const startPos = pos;
-    let endPos = pos;
 
-    // Show loading indicator
-    dispatch({
-        effects: addLoadingEffect.of({ pos })
-    });
+    const onAIStream = state.field(onAIStreamState);
+    const translations = state.field(translationsState);
 
     const abortController = new AbortController();
     const plugin = view.plugin(slashCommandPlugin);
-    
+
     if (plugin) {
         plugin.setCurrentAbortController(abortController);
     }
 
+    if (!onAIStream) {
+        console.error("AI stream handler is not configured for the Moondown editor.");
+        if (plugin) plugin.clearCurrentAbortController();
+        return abortController;
+    }
+
+    const startPos = pos;
+    let endPos = pos;
+    const loadingText = translations['moondown.ai.thinking'] || 'AI is thinking...';
+
+    // Show loading indicator
+    dispatch({
+        effects: addLoadingEffect.of({ pos, text: loadingText })
+    });
+
     try {
-        const stream = await chatCompletionStream(
+        const stream = await onAIStream(
             completionPrompt,
             `prefix: ${prefix}\n{FILL_ME}\nsuffix: ${suffix}`,
             abortController.signal
         );
 
-        for await (const part of stream) {
+        const reader = stream.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
             if (abortController.signal.aborted) {
-                console.log('Stream aborted');
+                console.log('Stream aborted by user.');
+                if (reader) await reader.cancel();
                 break;
             }
-            
-            const content = part.choices[0].delta?.content;
+
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const content = typeof value === 'string' ? value : decoder.decode(value);
+
             if (content) {
                 const insertPos = endPos;
                 endPos += content.length;
-                
+
                 dispatch({
                     changes: { from: insertPos, insert: content },
                     effects: [
@@ -148,7 +182,7 @@ export async function ghostWriterExecutor(view: EditorView): Promise<AbortContro
         dispatch({
             effects: removeLoadingEffect.of(null)
         });
-        
+
         // Move cursor to end of generated text
         view.dispatch(view.state.update({
             selection: EditorSelection.cursor(endPos)
@@ -166,6 +200,6 @@ export async function ghostWriterExecutor(view: EditorView): Promise<AbortContro
             plugin.clearCurrentAbortController();
         }
     }
-    
+
     return abortController;
 }
