@@ -4,7 +4,8 @@ import {twMerge} from 'tailwind-merge';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
 import {format, formatDistanceToNowStrict, isSameDay, isValid, parseISO, startOfDay, subDays} from 'date-fns';
-import CodeMirrorEditor, {CodeMirrorEditorRef} from '../common/CodeMirrorEditor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {StoredSummary, Task} from '@/types';
 import useDebounce from '@/hooks/useDebounce';
 import Highlighter from 'react-highlight-words';
@@ -106,7 +107,6 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
     const [selectedSummaryId, setSelectedSummaryId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 250);
-    const editorRef = useRef<CodeMirrorEditorRef>(null);
 
     const handleOpenChange = useCallback((open: boolean) => {
         if (!open) {
@@ -350,10 +350,11 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
                                     </div>
                                     <div
                                         className="flex-1 min-h-0 mb-4 rounded-base overflow-hidden relative bg-white dark:bg-neutral-800 border border-grey-light dark:border-neutral-700">
-                                        <CodeMirrorEditor ref={editorRef} key={selectedSummary.id}
-                                                          value={selectedSummary.summaryText} onChange={() => {
-                                        }} readOnly={true} className="!h-full !border-none !shadow-none !bg-transparent"
-                                                          placeholder="Summary content..."/>
+                                        <div
+                                            className="prose prose-sm dark:prose-invert max-w-none p-4 h-full overflow-y-auto styled-scrollbar-thin">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}>{selectedSummary.summaryText}</ReactMarkdown>
+                                        </div>
                                     </div>
                                     <div
                                         className="flex-shrink-0 max-h-[30%] overflow-hidden flex flex-col border-t border-grey-light dark:border-neutral-700 pt-3">
