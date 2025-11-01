@@ -37,6 +37,7 @@
     "framer-motion": "^12.7.3",
     "jotai": "^2.12.3",
     "jotai-persist": "^0.0.0",
+    "lucide": "^0.552.0",
     "lucide-react": "^0.488.0",
     "postcss": "^8.5.3",
     "qrcode.react": "^4.2.0",
@@ -55,6 +56,7 @@
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-radix": "^4.0.2",
+    "tippy.js": "^6.3.7",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

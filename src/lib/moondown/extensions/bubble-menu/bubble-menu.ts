@@ -1,7 +1,7 @@
 // src/moondown/extensions/bubble-menu/bubble-menu.ts
 import { EditorView, ViewUpdate, type PluginValue } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import * as icons from 'lucide';
+import { createIcons, icons } from 'lucide';
 import { createPopper, type Instance as PopperInstance, type VirtualElement } from '@popperjs/core';
 import type { BubbleMenuItem } from "./types";
 import { bubbleMenuField, showBubbleMenu } from "./fields";
@@ -379,7 +379,7 @@ export class BubbleMenu implements PluginValue {
 
         // Initialize Lucide icons after DOM update
         setTimeout(() => {
-            icons.createIcons({
+            createIcons({
                 icons,
                 attrs: ICON_SIZES.MEDIUM,
             });
