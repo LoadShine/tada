@@ -1,0 +1,68 @@
+# .github/workflows/deploy.yaml
+
+name: Deploy Web App to GitHub Pages
+
+# 控制工作流何时运行
+on:
+  # 在推送到 main 分支时触发
+  push:
+    branches: ["main"]
+  # 允许你从 Actions 选项卡手动运行此工作流
+  workflow_dispatch:
+
+# 设置 GITHUB_TOKEN 的权限以允许部署到 GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 只允许一个并发部署
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # 构建和部署 job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- 关键改动：设置 pnpm ---
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9 # 使用你 package.json 中指定的 pnpm 版本
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm' # 缓存类型改为 pnpm
+
+      # --- 关键改动：使用 pnpm 安装依赖 ---
+      - name: Install dependencies
+        run: pnpm install
+
+      # --- 关键改动：构建 @tada/web 包 ---
+      - name: Build project
+        # 使用 pnpm --filter 来指定只构建 web 包
+        run: pnpm --filter @tada/web build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # --- 关键改动：指定正确的 artifact 路径 ---
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 构建产物位于 web 包的 dist 目录中
+          path: './packages/web/dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
