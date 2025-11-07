@@ -376,7 +376,7 @@ const Sidebar: React.FC = () => {
                                                  label={t('sidebar.today')}
                                                  count={counts.today}/>
                                     <SidebarItem to="/next7days" filter="next7days" icon="calendar"
-                                                 label={t('sidebar.next7Days')}
+                                                 label={t('sidebar.next7days')}
                                                  count={counts.next7days}/>
                                     {inboxList && <SidebarItem to="/list/Inbox" filter="list-Inbox" icon="inbox"
                                                                label={t('sidebar.inbox')}

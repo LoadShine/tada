@@ -27,7 +27,7 @@
     "searchPlaceholder": "Search Tasks...",
     "allTasks": "All Tasks",
     "today": "Today",
-    "next7Days": "Next 7 Days",
+    "next7days": "Next 7 Days",
     "inbox": "Inbox",
     "myLists": "My Lists",
     "noCustomLists": "No custom lists yet.",
@@ -196,7 +196,7 @@
   "taskGroup": {
     "overdue": "Overdue",
     "today": "Today",
-    "next7Days": "Next 7 Days",
+    "next7days": "Next 7 Days",
     "later": "Later",
     "nodate": "No Date"
   },

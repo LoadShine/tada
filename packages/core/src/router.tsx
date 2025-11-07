@@ -77,7 +77,7 @@ const AppRouter: React.FC = () => {
                     <Route index element={<Navigate to="/all" replace />} />
                     <Route path="all" element={<MainPage title={t('sidebar.allTasks')} filter="all" />} />
                     <Route path="today" element={<MainPage title={t('sidebar.today')} filter="today" />} />
-                    <Route path="next7days" element={<MainPage title={t('sidebar.next7Days')} filter="next7days" />} />
+                    <Route path="next7days" element={<MainPage title={t('sidebar.next7days')} filter="next7days" />} />
                     <Route path="completed" element={<MainPage title={t('sidebar.completed')} filter="completed" />} />
                     <Route path="trash" element={<MainPage title={t('sidebar.trash')} filter="trash" />} />
                     <Route path="summary" element={<SummaryPage />} />
