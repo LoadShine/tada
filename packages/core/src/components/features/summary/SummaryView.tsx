@@ -92,6 +92,8 @@ const SummaryView: React.FC = () => {
     const [summaryDisplayContent, setSummaryDisplayContent] = useState('');
     const [summaryEditorContent, setSummaryEditorContent] = useState('');
 
+    const [originalContentOnEdit, setOriginalContentOnEdit] = useState<string>('');
+
     const debouncedEditorContent = useDebounce(summaryEditorContent, 700);
     const editorRef = useRef<CodeMirrorEditorRef>(null);
     const hasUnsavedChangesRef = useRef(false);
@@ -114,7 +116,6 @@ const SummaryView: React.FC = () => {
 
     useEffect(() => {
         if (editMode) return;
-
         if (isGenerating) return;
 
         const text = currentSummary?.summaryText ?? '';
@@ -127,18 +128,6 @@ const SummaryView: React.FC = () => {
         hasUnsavedChangesRef.current = false;
         setIsRefTasksDropdownOpen(false);
     }, [currentIndex, currentSummary, isGenerating, editMode]);
-
-    useEffect(() => {
-        if (hasUnsavedChangesRef.current && currentSummary?.id && !isGenerating && editMode) {
-            const summaryIdToUpdate = currentSummary.id;
-            setStoredSummaries(prev => (prev ?? []).map(s =>
-                s.id === summaryIdToUpdate
-                    ? {...s, summaryText: debouncedEditorContent, updatedAt: Date.now()}
-                    : s
-            ));
-            hasUnsavedChangesRef.current = false;
-        }
-    }, [debouncedEditorContent, currentSummary, setStoredSummaries, isGenerating, editMode]);
 
     const forceSaveCurrentSummary = useCallback(() => {
         if (hasUnsavedChangesRef.current && currentSummary?.id && !isGenerating) {
@@ -177,7 +166,6 @@ const SummaryView: React.FC = () => {
 
         const systemPrompt = t('prompts.taskSummary');
 
-        // Non-AI fallback
         if (!isAiEnabled) {
             const completedTasks = tasksToSummarize.filter(t => t.completed);
             const pendingTasks = tasksToSummarize.filter(t => !t.completed);
@@ -205,7 +193,6 @@ const SummaryView: React.FC = () => {
             return;
         }
 
-        // AI path
         try {
             const onDelta = (chunk: string) => {
                 setSummaryDisplayContent(prev => prev + chunk);
@@ -235,7 +222,6 @@ const SummaryView: React.FC = () => {
         isAiEnabled, t
     ]);
 
-
     const handleEditorChange = useCallback((newValue: string) => {
         if (isInternalEditorUpdate.current) {
             isInternalEditorUpdate.current = false;
@@ -246,6 +232,25 @@ const SummaryView: React.FC = () => {
             hasUnsavedChangesRef.current = true;
         }
     }, [isGenerating]);
+
+    const handleStartEditing = useCallback(() => {
+        setOriginalContentOnEdit(summaryEditorContent);
+        setEditMode(true);
+    }, [summaryEditorContent]);
+
+    const handleDoneEditing = useCallback(() => {
+        forceSaveCurrentSummary();
+        setEditMode(false);
+    }, [forceSaveCurrentSummary]);
+
+    const handleCancelEditing = useCallback(() => {
+        isInternalEditorUpdate.current = true;
+        setSummaryEditorContent(originalContentOnEdit);
+        setSummaryDisplayContent(originalContentOnEdit);
+        setEditMode(false);
+        hasUnsavedChangesRef.current = false;
+    }, [originalContentOnEdit]);
+
 
     const handlePeriodValueChange = useCallback((selectedValue: string) => {
         forceSaveCurrentSummary();
@@ -759,13 +764,19 @@ const SummaryView: React.FC = () => {
                         <div className="flex items-center space-x-1.5">
                             {currentSummary && !isGenerating && !editMode && (
                                 <Button variant="ghost" size="sm" icon="pencil" className="!h-7 px-2"
-                                        onClick={() => setEditMode(true)}>{t('common.edit')}</Button>
+                                        onClick={handleStartEditing}>{t('common.edit')}</Button>
                             )}
                             {currentSummary && !isGenerating && editMode && (
-                                <Button variant="primary" size="sm" icon="check" className="!h-7 px-2" onClick={() => {
-                                    forceSaveCurrentSummary();
-                                    setEditMode(false);
-                                }}>{t('summary.doneEditing')}</Button>
+                                <>
+                                    <Button variant="ghost" size="sm" className="!h-7 px-2"
+                                            onClick={handleCancelEditing}>
+                                        {t('common.cancel')}
+                                    </Button>
+                                    <Button variant="primary" size="sm" icon="check" className="!h-7 px-2"
+                                            onClick={handleDoneEditing}>
+                                        {t('summary.doneEditing')}
+                                    </Button>
+                                </>
                             )}
                             {(currentSummary && !isGenerating) &&
                                 <div className="w-px h-4 bg-grey-light/50 dark:bg-neutral-700/50"></div>}
@@ -793,13 +804,13 @@ const SummaryView: React.FC = () => {
                             {totalRelevantSummaries > 0 && !isGenerating && (
                                 <>
                                     <Button variant="ghost" size="icon" icon="chevron-left" onClick={handlePrevSummary}
-                                            disabled={currentIndex >= totalRelevantSummaries - 1}
+                                            disabled={currentIndex >= totalRelevantSummaries - 1 || editMode} // Disable nav in edit mode
                                             className="w-6 h-6 text-grey-medium dark:text-neutral-400"
                                             iconProps={{size: 14, strokeWidth: 1}} aria-label={t('summary.older')}/>
                                     <span
                                         className="text-[11px] font-normal text-grey-medium dark:text-neutral-400 tabular-nums">{displayedIndexForUi} / {totalForUi}</span>
                                     <Button variant="ghost" size="icon" icon="chevron-right" onClick={handleNextSummary}
-                                            disabled={currentIndex <= 0}
+                                            disabled={currentIndex <= 0 || editMode} // Disable nav in edit mode
                                             className="w-6 h-6 text-grey-medium dark:text-neutral-400"
                                             iconProps={{size: 14, strokeWidth: 1}} aria-label={t('summary.newer')}/>
                                 </>
@@ -842,8 +853,8 @@ const SummaryView: React.FC = () => {
                                 />
                                 {hasUnsavedChangesRef.current && (
                                     <span
-                                        className="absolute bottom-2 right-2 text-[10px] text-grey-medium/70 dark:text-neutral-400/70 italic animate-pulse font-light">
-                                        {t('summary.saving')}
+                                        className="absolute bottom-2 right-2 text-[10px] text-grey-medium/70 dark:text-neutral-400/70 italic font-light">
+                                        {t('common.unsavedChanges')}
                                     </span>
                                 )}
                             </div>

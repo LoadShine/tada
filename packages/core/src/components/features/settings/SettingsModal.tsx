@@ -112,7 +112,7 @@ const DarkModeSelector: React.FC<{ value: DarkModeOption; onChange: (value: Dark
 });
 DarkModeSelector.displayName = 'DarkModeSelector';
 
-const ColorSwatch: React.FC<{
+const ColorSwitch: React.FC<{
     colorValue: string;
     selected: boolean;
     onClick: () => void;
@@ -131,7 +131,7 @@ const ColorSwatch: React.FC<{
         aria-pressed={selected}
     />
 ));
-ColorSwatch.displayName = 'ColorSwatch';
+ColorSwitch.displayName = 'ColorSwitch';
 
 const defaultAppearanceSettingsFromAtoms = defaultAppearanceSettingsForApi();
 
@@ -165,7 +165,7 @@ const AppearanceSettings: React.FC = memo(() => {
                          description={t('settings.appearance.themeColorDescription')}>
                 <div className="flex space-x-2">
                     {APP_THEMES.map(theme => (
-                        <ColorSwatch
+                        <ColorSwitch
                             key={theme.id}
                             colorValue={theme.colors.primary}
                             selected={currentAppearance.themeId === theme.id}
