@@ -144,6 +144,36 @@
       "statusReady": "AI features are ready to use",
       "statusIncomplete": "Complete configuration to enable AI features"
     },
+    "data": {
+      "title": "Data",
+      "export": {
+        "title": "Export Data",
+        "description": "Create a local backup of all your data in a JSON file.",
+        "button": "Export All Data",
+        "success": "Data exported successfully.",
+        "error": "Data export failed."
+      },
+      "import": {
+        "title": "Import Data",
+        "description": "Import data from a previously exported JSON file.",
+        "button": "Import from File",
+        "success": "Import successful: {{tasks}} tasks, {{lists}} lists, and {{summaries}} summaries imported.",
+        "error": "Data import failed.",
+        "invalidFile": "Import failed: Invalid file format."
+      },
+      "conflicts": {
+        "title": "Resolve Import Conflicts",
+        "description": "Some items in the import file already exist locally. Please choose how to handle these {{count}} conflicts.",
+        "local": "Local Version",
+        "imported": "Imported Version",
+        "updatedAt": "Last Updated",
+        "keepLocal": "Keep Local Version",
+        "keepImported": "Keep Imported Version",
+        "keepNewer": "Keep the Newer Version",
+        "skip": "Skip This Item",
+        "resolve": "Apply Resolutions"
+      }
+    },
     "about": {
       "title": "About",
       "version": "Application Version",

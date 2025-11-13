@@ -6,12 +6,18 @@ import {
     PreferencesSettings,
     StoredSummary,
     Task,
-    Subtask
+    Subtask,
+    ExportedData,
+    ImportOptions,
+    ImportResult,
+    DataConflict,
+    ConflictResolution
 } from '@tada/core/types';
 import {
     defaultAISettingsForApi,
     defaultAppearanceSettingsForApi,
-    defaultPreferencesSettingsForApi
+    defaultPreferencesSettingsForApi,
+    getTaskGroupCategory
 } from '@tada/core/store/jotai';
 
 /**
@@ -568,5 +574,274 @@ export class LocalStorageService implements IStorageService {
     updateSummaries(summaries: StoredSummary[]) {
         setItem(KEYS.SUMMARIES, summaries, this.summariesCache);
         return summaries;
+    }
+
+    /**
+     * Export all data from localStorage
+     */
+    exportData(): ExportedData {
+        const settings = this.fetchSettings();
+        const lists = this.fetchLists();
+        const tasks = this.fetchTasks();
+        const summaries = this.fetchSummaries();
+
+        return {
+            version: '1.0.0',
+            exportedAt: Date.now(),
+            platform: 'web',
+            data: {
+                settings,
+                lists,
+                tasks,
+                summaries
+            }
+        };
+    }
+
+    /**
+     * Analyze imported data for conflicts
+     */
+    analyzeImport(data: ExportedData, options: ImportOptions): DataConflict[] {
+        const conflicts: DataConflict[] = [];
+
+        if (!data || !data.data) {
+            return conflicts;
+        }
+
+        // Check for list conflicts
+        if (options.includeLists && data.data.lists) {
+            const localLists = this.fetchLists();
+            const localListsMap = new Map(localLists.map(list => [list.id, list]));
+
+            data.data.lists.forEach(importedList => {
+                const localList = localListsMap.get(importedList.id);
+                if (localList) {
+                    conflicts.push({
+                        id: importedList.id,
+                        type: 'list',
+                        local: localList,
+                        imported: importedList
+                    });
+                }
+            });
+        }
+
+        // Check for task conflicts
+        if (options.includeTasks && data.data.tasks) {
+            const localTasks = this.fetchTasks();
+            const localTasksMap = new Map(localTasks.map(task => [task.id, task]));
+
+            data.data.tasks.forEach(importedTask => {
+                const localTask = localTasksMap.get(importedTask.id);
+                if (localTask) {
+                    conflicts.push({
+                        id: importedTask.id,
+                        type: 'task',
+                        local: localTask,
+                        imported: importedTask
+                    });
+                }
+            });
+        }
+
+        // Check for summary conflicts
+        if (options.includeSummaries && data.data.summaries) {
+            const localSummaries = this.fetchSummaries();
+            const localSummariesMap = new Map(localSummaries.map(summary => [summary.id, summary]));
+
+            data.data.summaries.forEach(importedSummary => {
+                const localSummary = localSummariesMap.get(importedSummary.id);
+                if (localSummary) {
+                    conflicts.push({
+                        id: importedSummary.id,
+                        type: 'summary',
+                        local: localSummary,
+                        imported: importedSummary
+                    });
+                }
+            });
+        }
+
+        return conflicts;
+    }
+
+    /**
+     * Import data into localStorage
+     */
+    importData(data: ExportedData, options: ImportOptions, conflictResolutions?: Map<string, ConflictResolution>): ImportResult {
+        const result: ImportResult = {
+            success: false,
+            message: '',
+            imported: {
+                settings: 0,
+                lists: 0,
+                tasks: 0,
+                summaries: 0
+            },
+            conflicts: [],
+            errors: []
+        };
+
+        try {
+            if (!data || !data.data) {
+                throw new Error('Invalid import data format');
+            }
+
+            // Import settings
+            if (options.includeSettings && data.data.settings) {
+                if (data.data.settings.appearance) {
+                    this.updateAppearanceSettings(data.data.settings.appearance);
+                    result.imported.settings++;
+                }
+                if (data.data.settings.preferences) {
+                    this.updatePreferencesSettings(data.data.settings.preferences);
+                    result.imported.settings++;
+                }
+                if (data.data.settings.ai) {
+                    this.updateAISettings(data.data.settings.ai);
+                    result.imported.settings++;
+                }
+            }
+
+            // Import lists
+            if (options.includeLists && data.data.lists) {
+                let lists = options.replaceAllData ? [] : this.fetchLists();
+                const localListsMap = new Map(lists.map(list => [list.id, list]));
+
+                data.data.lists.forEach(importedList => {
+                    const existingList = localListsMap.get(importedList.id);
+                    let shouldImport = true;
+                    let listToImport = importedList;
+
+                    if (existingList) {
+                        const resolution = conflictResolutions?.get(importedList.id) || options.conflictResolution;
+
+                        switch (resolution) {
+                            case 'keep-local':
+                                shouldImport = false;
+                                break;
+                            case 'keep-imported':
+                                listToImport = importedList;
+                                break;
+                            case 'keep-newer':
+                                // Lists don't have updatedAt, so we compare by name change or keep local
+                                shouldImport = existingList.name !== importedList.name;
+                                break;
+                            case 'skip':
+                                shouldImport = false;
+                                break;
+                        }
+                    }
+
+                    if (shouldImport) {
+                        if (existingList) {
+                            const index = lists.findIndex(l => l.id === importedList.id);
+                            lists[index] = listToImport;
+                        } else {
+                            lists.push(listToImport);
+                        }
+                        result.imported.lists++;
+                    }
+                });
+
+                this.updateLists(lists);
+            }
+
+            // Import tasks
+            if (options.includeTasks && data.data.tasks) {
+                let tasks = options.replaceAllData ? [] : this.fetchTasks();
+                const localTasksMap = new Map(tasks.map(task => [task.id, task]));
+
+                data.data.tasks.forEach(importedTask => {
+                    const existingTask = localTasksMap.get(importedTask.id);
+                    let shouldImport = true;
+                    let taskToImport = { ...importedTask, groupCategory: getTaskGroupCategory(importedTask) };
+
+                    if (existingTask) {
+                        const resolution = conflictResolutions?.get(importedTask.id) || options.conflictResolution;
+
+                        switch (resolution) {
+                            case 'keep-local':
+                                shouldImport = false;
+                                break;
+                            case 'keep-imported':
+                                taskToImport = { ...importedTask, groupCategory: getTaskGroupCategory(importedTask) };
+                                break;
+                            case 'keep-newer':
+                                shouldImport = importedTask.updatedAt > existingTask.updatedAt;
+                                break;
+                            case 'skip':
+                                shouldImport = false;
+                                break;
+                        }
+                    }
+
+                    if (shouldImport) {
+                        if (existingTask) {
+                            const index = tasks.findIndex(t => t.id === importedTask.id);
+                            tasks[index] = taskToImport;
+                        } else {
+                            tasks.push(taskToImport);
+                        }
+                        result.imported.tasks++;
+                    }
+                });
+
+                this.updateTasks(tasks);
+            }
+
+            // Import summaries
+            if (options.includeSummaries && data.data.summaries) {
+                let summaries = options.replaceAllData ? [] : this.fetchSummaries();
+                const localSummariesMap = new Map(summaries.map(summary => [summary.id, summary]));
+
+                data.data.summaries.forEach(importedSummary => {
+                    const existingSummary = localSummariesMap.get(importedSummary.id);
+                    let shouldImport = true;
+                    let summaryToImport = importedSummary;
+
+                    if (existingSummary) {
+                        const resolution = conflictResolutions?.get(importedSummary.id) || options.conflictResolution;
+
+                        switch (resolution) {
+                            case 'keep-local':
+                                shouldImport = false;
+                                break;
+                            case 'keep-imported':
+                                summaryToImport = importedSummary;
+                                break;
+                            case 'keep-newer':
+                                shouldImport = importedSummary.updatedAt > existingSummary.updatedAt;
+                                break;
+                            case 'skip':
+                                shouldImport = false;
+                                break;
+                        }
+                    }
+
+                    if (shouldImport) {
+                        if (existingSummary) {
+                            const index = summaries.findIndex(s => s.id === importedSummary.id);
+                            summaries[index] = summaryToImport;
+                        } else {
+                            summaries.push(summaryToImport);
+                        }
+                        result.imported.summaries++;
+                    }
+                });
+
+                this.updateSummaries(summaries);
+            }
+
+            result.success = true;
+            result.message = 'Data imported successfully';
+
+        } catch (error) {
+            result.success = false;
+            result.message = error instanceof Error ? error.message : 'Import failed';
+            result.errors.push(result.message);
+        }
+
+        return result;
     }
 }

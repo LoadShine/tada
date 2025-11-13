@@ -33,6 +33,7 @@ import {
 import {useTranslation} from "react-i18next";
 import {AIProvider, AI_PROVIDERS} from "@/config/aiProviders";
 import {fetchProviderModels, testConnection} from "@/services/aiService";
+import DataSettings from './DataSettings';
 
 interface SettingsItem {
     id: SettingsTab;
@@ -44,6 +45,7 @@ const settingsSections: SettingsItem[] = [
     {id: 'appearance', labelKey: 'settings.appearance.title', icon: 'settings'},
     {id: 'preferences', labelKey: 'settings.preferences.title', icon: 'sliders'},
     {id: 'ai', labelKey: 'settings.ai.title', icon: 'sparkles'},
+    {id: 'data', labelKey: 'settings.data.title', icon: 'hard-drive'},
     {id: 'about', labelKey: 'settings.about.title', icon: 'info'},
 ];
 
@@ -852,7 +854,7 @@ AISettings.displayName = 'AISettings';
 
 /**
  * The main modal component for application settings, containing tabs for
- * Appearance, Preferences, AI, and About sections.
+ * Appearance, Preferences, AI, Data, and About sections.
  */
 const SettingsModal: React.FC = () => {
     const {t} = useTranslation();
@@ -870,6 +872,8 @@ const SettingsModal: React.FC = () => {
                 return <PreferencesSettings/>;
             case 'ai':
                 return <AISettings />;
+            case 'data':
+                return <DataSettings />;
             case 'about':
                 return <AboutSettings/>;
             default:

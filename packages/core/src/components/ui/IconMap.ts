@@ -70,6 +70,7 @@ export const iconMap = {
     'arrow-up-down': LucideIcons.ArrowUpDown,
     'calendar-days': LucideIcons.CalendarDays,
     'loader': LucideIcons.Loader2,
+    'hard-drive': LucideIcons.HardDrive,
     'users': LucideIcons.Users,
     'sparkles': LucideIcons.Sparkles,
     'folder-plus': LucideIcons.FolderPlus,

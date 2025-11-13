@@ -5,7 +5,12 @@ import {
     PreferencesSettings,
     StoredSummary,
     Task,
-    Subtask
+    Subtask,
+    ExportedData,
+    ImportOptions,
+    ImportResult,
+    DataConflict,
+    ConflictResolution
 } from '@/types';
 
 /**
@@ -48,6 +53,11 @@ export interface IStorageService {
     createSummary(summaryData: Omit<StoredSummary, 'id' | 'createdAt' | 'updatedAt'>): StoredSummary;
     updateSummary(summaryId: string, updates: Partial<StoredSummary>): StoredSummary;
     updateSummaries(summaries: StoredSummary[]): StoredSummary[];
+
+    // Import/Export
+    exportData(): ExportedData;
+    analyzeImport(data: ExportedData, options: ImportOptions): DataConflict[];
+    importData(data: ExportedData, options: ImportOptions, conflictResolutions?: Map<string, ConflictResolution>): ImportResult;
 
     // Optional batch operations for performance optimization
     batchUpdateTasks?(tasks: Task[]): Promise<void>;

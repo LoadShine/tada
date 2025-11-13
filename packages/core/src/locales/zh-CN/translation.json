@@ -144,6 +144,36 @@
       "statusReady": "AI 功能已就绪",
       "statusIncomplete": "请完成配置以启用 AI 功能"
     },
+    "data": {
+      "title": "数据管理",
+      "export": {
+        "title": "导出数据",
+        "description": "将您的所有数据创建一个本地 JSON 文件备份。",
+        "button": "导出全部数据",
+        "success": "数据导出成功。",
+        "error": "数据导出失败。"
+      },
+      "import": {
+        "title": "导入数据",
+        "description": "从之前导出的 JSON 文件中导入数据。",
+        "button": "从文件导入",
+        "success": "导入成功：导入了 {{tasks}} 个任务，{{lists}} 个列表，以及 {{summaries}} 个总结。",
+        "error": "数据导入失败。",
+        "invalidFile": "导入失败：无效的文件格式。"
+      },
+      "conflicts": {
+        "title": "解决导入冲突",
+        "description": "导入文件中的部分项目已在本地存在。请选择如何处理这 {{count}} 个冲突。",
+        "local": "本地版本",
+        "imported": "导入版本",
+        "updatedAt": "最后更新于",
+        "keepLocal": "保留本地版本",
+        "keepImported": "保留导入版本",
+        "keepNewer": "保留较新版本",
+        "skip": "跳过此项目",
+        "resolve": "应用解决方案"
+      }
+    },
     "about": {
       "title": "关于",
       "version": "应用版本",

@@ -68,6 +68,7 @@ export type SettingsTab =
     | 'appearance'
     | 'preferences'
     | 'ai'
+    | 'data'
     | 'about';
 
 /**
@@ -122,4 +123,66 @@ export interface AISettings {
     model: string;
     baseUrl?: string; // for custom/ollama providers
     availableModels?: AIModel[]; // cached available models
+}
+
+/**
+ * Defines the structure for exported data.
+ */
+export interface ExportedData {
+    version: string;
+    exportedAt: number;
+    platform: 'web' | 'desktop';
+    data: {
+        settings: {
+            appearance: AppearanceSettings;
+            preferences: PreferencesSettings;
+            ai: AISettings;
+        };
+        lists: List[];
+        tasks: Task[];
+        summaries: StoredSummary[];
+    };
+}
+
+/**
+ * Defines the conflict resolution strategy for imports.
+ */
+export type ConflictResolution = 'keep-local' | 'keep-imported' | 'keep-newer' | 'skip';
+
+/**
+ * Defines a conflict between local and imported data.
+ */
+export interface DataConflict {
+    id: string;
+    type: 'list' | 'task' | 'summary';
+    local: any;
+    imported: any;
+}
+
+/**
+ * Defines the import options and conflict resolution.
+ */
+export interface ImportOptions {
+    includeSettings: boolean;
+    includeLists: boolean;
+    includeTasks: boolean;
+    includeSummaries: boolean;
+    conflictResolution: ConflictResolution;
+    replaceAllData: boolean;
+}
+
+/**
+ * Defines the result of an import operation.
+ */
+export interface ImportResult {
+    success: boolean;
+    message: string;
+    imported: {
+        settings: number;
+        lists: number;
+        tasks: number;
+        summaries: number;
+    };
+    conflicts: DataConflict[];
+    errors: string[];
 }
