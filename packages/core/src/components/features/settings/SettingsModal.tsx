@@ -531,6 +531,7 @@ const AISettings: React.FC = memo(() => {
     const addNotification = useSetAtom(addNotificationAtom);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [isTestingConnection, setIsTestingConnection] = useState(false);
+    const [showApiKey, setShowApiKey] = useState(false);
 
     if (!aiSettings) {
         return <div className="p-4 text-center text-grey-medium">Loading AI settings...</div>;
@@ -548,7 +549,9 @@ const AISettings: React.FC = memo(() => {
         setAISettings((prev) => ({
             ...(prev ?? defaultAISettingsForApi()),
             provider: providerId,
-            apiKey: providerId === prev?.provider ? prev.apiKey : '',
+            apiKey: providerId === prev?.provider
+                ? prev.apiKey
+                : (providerId === 'custom' ? 'no-api-key-is-required' : ''),
             model: newProvider.models[0]?.id ?? '',
             baseUrl: newProvider.defaultBaseUrl ?? '',
             availableModels: newProvider.models,
@@ -672,20 +675,40 @@ const AISettings: React.FC = memo(() => {
                             htmlFor="apiKeyInput"
                         >
                             <div className="flex items-center space-x-2">
-                                <input
-                                    id="apiKeyInput"
-                                    type="password"
-                                    value={currentSettings.apiKey}
-                                    onChange={(e) => handleApiKeyChange(e.target.value)}
-                                    placeholder={t('settings.ai.apiKeyPlaceholder')}
-                                    className={twMerge(
-                                        "w-[240px] h-8 px-3 text-[13px] font-light rounded-base focus:outline-none",
-                                        "bg-grey-ultra-light dark:bg-neutral-700",
-                                        "placeholder:text-grey-medium dark:placeholder:text-neutral-400",
-                                        "text-grey-dark dark:text-neutral-100 transition-colors duration-200 ease-in-out",
-                                        "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light"
-                                    )}
-                                />
+                                <div className="relative">
+                                    <input
+                                        id="apiKeyInput"
+                                        type={showApiKey ? "text" : "password"}
+                                        value={currentSettings.apiKey}
+                                        onChange={(e) => handleApiKeyChange(e.target.value)}
+                                        placeholder={t('settings.ai.apiKeyPlaceholder')}
+                                        className={twMerge(
+                                            "w-[240px] h-8 px-3 pr-9 text-[13px] font-light rounded-base focus:outline-none",
+                                            "bg-grey-ultra-light dark:bg-neutral-700",
+                                            "placeholder:text-grey-medium dark:placeholder:text-neutral-400",
+                                            "text-grey-dark dark:text-neutral-100 transition-colors duration-200 ease-in-out",
+                                            "border border-grey-light dark:border-neutral-600 focus:border-primary dark:focus:border-primary-light"
+                                        )}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowApiKey(!showApiKey)}
+                                        className={twMerge(
+                                            "absolute right-2 top-1/2 -translate-y-1/2",
+                                            "text-grey-medium dark:text-neutral-400",
+                                            "hover:text-grey-dark dark:hover:text-neutral-200",
+                                            "transition-colors duration-200 ease-in-out",
+                                            "focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
+                                        )}
+                                        aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                                    >
+                                        <Icon
+                                            name={showApiKey ? "eye-off" : "eye"}
+                                            size={14}
+                                            strokeWidth={1.5}
+                                        />
+                                    </button>
+                                </div>
                                 {currentProvider.listModelsEndpoint && !isCustomProvider && (
                                     <Button
                                         variant="ghost"

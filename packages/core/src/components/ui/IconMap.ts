@@ -27,6 +27,8 @@ export const iconMap = {
     'sunset': LucideIcons.Sunset,
     'history': LucideIcons.History,
     'moon': LucideIcons.Moon,
+    'eye-off': LucideIcons.EyeOff,
+    'eye': LucideIcons.Eye,
     'calendar-plus': LucideIcons.CalendarPlus,
     'edit': LucideIcons.Edit3,
     'network': LucideIcons.Network,
