@@ -609,7 +609,7 @@ const AboutSettings: React.FC = memo(() => {
                         variant="ghost"
                         size="sm"
                         icon="external-link"
-                        onClick={() => window.open('https://github.com/tada-app/issues')}
+                        onClick={() => window.open('https://github.com/LoadShine/tada/issues')}
                         className="text-[13px]"
                     >
                         {t('settings.about.reportButton')}
