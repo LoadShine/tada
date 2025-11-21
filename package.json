@@ -8,7 +8,7 @@
     "dev": "pnpm --filter @tada/web dev",
     "dev:desktop": "pnpm --filter @tada/desktop tauri dev",
     "build": "pnpm --filter @tada/web build",
-    "build:desktop": "pnpm --filter @tada/desktop tauri build --verbose",
+    "build:desktop": "pnpm --filter @tada/desktop build:custom",
     "lint": "pnpm --filter \"./packages/**\" lint"
   },
   "keywords": [],

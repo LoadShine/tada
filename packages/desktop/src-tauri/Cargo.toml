@@ -1,9 +1,9 @@
 [package]
-name = "tada-desktop"
-version = "1.0.0"
+name = "Tada"
+version = "0.0.2"
 description = "A task management application"
-authors = ["you"]
-edition = "2021"
+authors = ["Loadshine"]
+edition = "2024"
 
 [lib]
 name = "tada_desktop_lib"
