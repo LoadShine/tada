@@ -664,7 +664,7 @@ const TaskDetail: React.FC = () => {
     return (
         <>
             <div className={mainPanelClass}>
-                <div className={headerClass}>
+                <div className={headerClass} data-tauri-drag-region="true">
                     <div className="flex items-center flex-1 min-w-0 gap-x-2.5 mr-3">
                         <ProgressIndicator
                             percentage={selectedTask.completePercentage}

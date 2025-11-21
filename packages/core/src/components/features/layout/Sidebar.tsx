@@ -327,7 +327,10 @@ const Sidebar: React.FC = () => {
 
     return (
         <>
-            <aside className="w-full h-full flex flex-col shrink-0 z-10 pt-2.5 pb-2 px-2 bg-transparent">
+            <aside
+                className="w-full h-full flex flex-col shrink-0 z-10 pt-4 pb-2 px-2 bg-transparent"
+                data-tauri-drag-region="true"
+            >
                 <div className="mb-3 flex-shrink-0">
                     <div className="relative flex items-center">
                         <label htmlFor="sidebar-search" className="sr-only">Search Tasks</label>

@@ -681,8 +681,8 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     return (
         <TaskItemMenuProvider>
             <div className="h-full flex flex-col bg-transparent overflow-hidden relative">
-                <div className={headerClass}>
-                    <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate pr-2"
+                <div className={headerClass} data-tauri-drag-region="true">
+                    <h1 className="text-[18px] font-light text-grey-dark dark:text-neutral-100 truncate pr-2 pointer-events-none"
                         title={pageTitle}>{pageTitle}</h1>
                     {shouldShowAiButton && (
                         <div className={twMerge(

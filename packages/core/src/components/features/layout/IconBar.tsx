@@ -56,12 +56,13 @@ const IconBar: React.FC = memo(() => {
     return (
         <div
             className={twMerge(
-                "w-16 flex flex-col items-center py-4 flex-shrink-0 z-20 border-r border-grey-light/50 dark:border-grey-deep/50",
+                "w-[80px] flex flex-col items-center pt-10 pb-4 flex-shrink-0 z-20 border-r border-grey-light/50 dark:border-grey-deep/50",
                 "bg-white/80 dark:bg-grey-deep/80 backdrop-blur-md transition-colors duration-300"
             )}
+            data-tauri-drag-region="true"
         >
             <div
-                className="mb-6 mt-1 flex items-center justify-center w-9 h-9 select-none"
+                className="mb-6 flex items-center justify-center w-9 h-9 select-none pointer-events-none"
                 aria-label="Tada App Logo" title="Tada">
                 <svg
                     viewBox="0 0 509 811"
@@ -92,7 +93,7 @@ const IconBar: React.FC = memo(() => {
                 </svg>
             </div>
 
-            <nav className="flex flex-col items-center space-y-2 flex-1">
+            <nav className="flex flex-col items-center space-y-2 flex-1 w-full">
                 {navigationItems.map((item) => (
                     <SortTooltip.Root key={item.path} delayDuration={200}>
                         <SortTooltip.Trigger asChild>

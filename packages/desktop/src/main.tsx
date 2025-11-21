@@ -10,7 +10,6 @@ import { SqliteStorageService } from './services/sqliteStorageService';
 import '@tada/core/locales';
 import '@tada/core/styles/index.css';
 
-// 创建一个包装组件来处理异步初始化
 const DesktopAppLauncher = () => {
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -19,13 +18,10 @@ const DesktopAppLauncher = () => {
         const init = async () => {
             try {
                 const storageService = new SqliteStorageService();
-                // 1. 初始化数据库连接
                 await storageService.initialize();
 
-                // 2. 注册服务
                 storageManager.register(storageService);
 
-                // 3. 预加载数据
                 await storageService.preloadData();
 
                 setIsReady(true);
