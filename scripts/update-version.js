@@ -68,6 +68,4 @@ if (fs.existsSync(appConfigPath)) {
     console.log(`✅ Updated ${path.relative(rootDir, appConfigPath)}`);
 }
 
-execSync(`git tag v${newVersion}`)
-
 console.log(`🎉 Version sync complete! Run 'pnpm install' to update lockfiles if needed.`);
