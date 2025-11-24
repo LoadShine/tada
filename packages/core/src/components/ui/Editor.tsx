@@ -1,7 +1,7 @@
 import React, {forwardRef, memo, useEffect, useImperativeHandle, useRef, useMemo, useCallback} from 'react';
 import {twMerge} from 'tailwind-merge';
-import {useAtomValue} from 'jotai';
-import {aiSettingsAtom, appearanceSettingsAtom} from '@/store/jotai.ts';
+import {useAtomValue, useSetAtom} from 'jotai';
+import {aiSettingsAtom, appearanceSettingsAtom, isSettingsOpenAtom, settingsSelectedTabAtom} from '@/store/jotai.ts';
 import {EditorView} from '@codemirror/view';
 import {useTranslation} from "react-i18next";
 import {AI_PROVIDERS} from "@/config/aiProviders";
@@ -35,6 +35,8 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
         const moondownInstanceRef = useRef<Moondown | null>(null);
         const appearance = useAtomValue(appearanceSettingsAtom);
         const aiSettings = useAtomValue(aiSettingsAtom);
+        const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
+        const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
         const { t, i18n } = useTranslation();
 
         const theme = useMemo(() => {
@@ -66,12 +68,18 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
             userPrompt: string,
             signal: AbortSignal
         ): Promise<ReadableStream<string>> => {
-            if (!aiSettings || !aiSettings.provider || (AI_PROVIDERS.find(p => p.id === aiSettings.provider)?.requiresApiKey && !aiSettings.apiKey) || !aiSettings.model) {
-                throw new Error("AI is not configured. Please check your AI settings.");
+            const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
+            const missingKey = currentProvider?.requiresApiKey && !aiSettings?.apiKey;
+            const missingModel = !aiSettings?.model;
+
+            if (!aiSettings || !aiSettings.provider || missingKey || missingModel) {
+                setSettingsTab('ai');
+                setIsSettingsOpen(true);
+                throw new Error("AI configuration required");
             }
             const contextualizedUserPrompt = `Task Title: ${taskTitle}\n\n${userPrompt}`;
             return streamChatCompletionForEditor(aiSettings, systemPrompt, contextualizedUserPrompt, signal);
-        }, [aiSettings, taskTitle]);
+        }, [aiSettings, taskTitle, setIsSettingsOpen, setSettingsTab]);
 
         useImperativeHandle(ref, () => ({
             focus: () => moondownInstanceRef.current?.focus(),

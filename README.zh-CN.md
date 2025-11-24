@@ -44,6 +44,20 @@
 
 -----
 
+## 📷 应用截图
+
+<div align="center">
+
+<br />
+
+<img src="./Screenshot.zh-CN.png" alt="应用截图" />
+
+<br />
+
+</div>
+
+-----
+
 ## ✨ 核心特性
 
 ### 🔒 极致隐私与数据主权

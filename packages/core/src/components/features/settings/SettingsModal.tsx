@@ -583,24 +583,6 @@ const AboutSettings: React.FC = memo(() => {
 
             <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
 
-            {/*<SettingsRow*/}
-            {/*    label={t('settings.about.feedback')}*/}
-            {/*    description={t('settings.about.feedbackDescription')}*/}
-            {/*    action={*/}
-            {/*        <Button*/}
-            {/*            variant="ghost"*/}
-            {/*            size="sm"*/}
-            {/*            icon="mail"*/}
-            {/*            onClick={() => window.open('mailto:feedback@tada-app.com')}*/}
-            {/*            className="text-[13px]"*/}
-            {/*        >*/}
-            {/*            {t('settings.about.sendEmail')}*/}
-            {/*        </Button>*/}
-            {/*    }*/}
-            {/*/>*/}
-
-            {/*<div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>*/}
-
             <SettingsRow
                 label={t('settings.about.reportIssue')}
                 description={t('settings.about.reportIssueDescription')}

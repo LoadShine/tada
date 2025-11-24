@@ -43,6 +43,20 @@ Engineered as a modern Monorepo, Tada leverages **React** and **Jotai** for a fl
 
 -----
 
+## 📷 Screenshots
+
+<div align="center">
+
+<br />
+
+<img src="./Screenshot.png" alt="Screenshot" />
+
+<br />
+
+</div>
+
+-----
+
 ## ✨ Key Features
 
 ### 🔒 Privacy & Data Sovereignty

@@ -7,11 +7,13 @@ import {
     currentFilterAtom,
     defaultPreferencesSettingsForApi,
     groupedAllTasksAtom,
+    isSettingsOpenAtom,
     preferencesSettingsAtom,
     preferencesSettingsLoadingAtom,
     rawSearchResultsAtom,
     searchTermAtom,
     selectedTaskIdAtom,
+    settingsSelectedTabAtom,
     tasksAtom,
     tasksLoadingAtom,
     userListsAtom,
@@ -137,6 +139,9 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     const isLoadingPreferences = useAtomValue(preferencesSettingsLoadingAtom);
     const preferences = useMemo(() => preferencesData ?? defaultPreferencesSettingsForApi(), [preferencesData]);
     const addNotification = useSetAtom(addNotificationAtom);
+
+    const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
+    const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
 
     const isAiEnabled = useMemo(() => {
         return !!(aiSettings && aiSettings.provider && (aiSettings.apiKey || !AI_PROVIDERS.find(p => p.id === aiSettings.provider)?.requiresApiKey));
@@ -464,6 +469,17 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
     const toggleAiTaskInput = useCallback(() => {
         if (isAiProcessing) return;
+
+        const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
+        const requiresApiKey = currentProvider?.requiresApiKey;
+        const hasApiKey = !!aiSettings?.apiKey;
+
+        if (requiresApiKey && !hasApiKey) {
+            setSettingsTab('ai');
+            setIsSettingsOpen(true);
+            return;
+        }
+
         const nextState = !isAiTaskInputVisible;
         setIsAiTaskInputVisible(nextState);
         if (nextState) {
@@ -490,7 +506,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             }
             setTimeout(() => newTaskTitleInputRef.current?.focus(), 0);
         }
-    }, [isAiTaskInputVisible, isAiProcessing, currentFilterGlobal, allUserLists, preferences]);
+    }, [isAiTaskInputVisible, isAiProcessing, currentFilterGlobal, allUserLists, preferences, aiSettings, setIsSettingsOpen, setSettingsTab]);
 
 
     const handleAiTaskCommit = useCallback(async () => {
@@ -704,7 +720,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                 )}
                                 title={t('taskList.aiTaskButton.label')}
                                 aria-expanded={isAiTaskInputVisible}
-                                disabled={isAiProcessing || !isAiEnabled}
+                                disabled={isAiProcessing}
                             >
                                 {isAiProcessing ? (
                                     <Icon name="loader" size={14} strokeWidth={1.5} className="mr-1 animate-spin"/>
