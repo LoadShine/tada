@@ -10,7 +10,6 @@ import {
     searchTermAtom,
     selectedTaskIdAtom,
     taskCountsAtom,
-    tasksAtom,
     userListsAtom,
     userTagNamesAtom
 } from '@/store/jotai.ts';
@@ -21,11 +20,10 @@ import {IconName} from "@/components/ui/IconMap.ts";
 import Highlighter from "react-highlight-words";
 import {AnimatePresence, motion} from 'framer-motion';
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import storageManager from '@/services/storageManager.ts';
-import {RESET} from "jotai/utils";
 import {useTranslation} from "react-i18next";
 import AddListModal from "@/components/features/layout/AddListModal.tsx";
 import ConfirmDeleteModalRadix from "@/components/ui/ConfirmDeleteModal.tsx";
+import { useListOperations } from '@/hooks/useListOperations';
 
 /**
  * A custom hook to debounce a value.
@@ -176,12 +174,12 @@ const Sidebar: React.FC = () => {
     const searchResults = useAtomValue(rawSearchResultsAtom);
     const [searchTerm, setSearchTerm] = useAtom(searchTermAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
-    const setListsAtom = useSetAtom(userListsAtom);
-    const setTasksAtom = useSetAtom(tasksAtom);
     const [isAddListModalOpen, setIsAddListModalOpen] = useAtom(isAddListModalOpenAtom);
     const [currentFilter, setCurrentFilter] = useAtom(currentFilterAtom);
 
     const preferences = useAtomValue(preferencesSettingsAtom);
+
+    const { updateList, deleteList } = useListOperations();
 
     const navigate = useNavigate();
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -209,8 +207,7 @@ const Sidebar: React.FC = () => {
 
     const handleListAdded = useCallback(() => {
         setIsAddListModalOpen(false);
-        setListsAtom(RESET); // Resync with storage
-    }, [setListsAtom, setIsAddListModalOpen]);
+    }, [setIsAddListModalOpen]);
 
     const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
@@ -237,7 +234,6 @@ const Sidebar: React.FC = () => {
 
     const handleSaveRename = useCallback(() => {
         if (!editingListId) return;
-        const service = storageManager.get();
         const originalList = userLists?.find(l => l.id === editingListId);
         const trimmedName = editingListName.trim();
 
@@ -247,18 +243,16 @@ const Sidebar: React.FC = () => {
         }
 
         try {
-            service.updateList(editingListId, {name: trimmedName});
+            updateList(editingListId, {name: trimmedName});
             if (currentFilter === `list-${encodeURIComponent(originalList.name)}`) {
                 navigate(`/list/${encodeURIComponent(trimmedName)}`);
             }
-            setListsAtom(RESET);
-            setTasksAtom(RESET);
         } catch (e: any) {
             alert(`Error renaming list: ${e.message}`);
         } finally {
             handleCancelRename();
         }
-    }, [editingListId, editingListName, userLists, currentFilter, navigate, setListsAtom, setTasksAtom, handleCancelRename]);
+    }, [editingListId, editingListName, userLists, currentFilter, navigate, updateList, handleCancelRename]);
 
     const handleRenameInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
@@ -272,7 +266,6 @@ const Sidebar: React.FC = () => {
 
     const handleConfirmDelete = useCallback(() => {
         if (!listToDelete) return;
-        const service = storageManager.get();
         if (listToDelete.name === 'Inbox') {
             alert("The 'Inbox' list cannot be deleted.");
             setListToDelete(null);
@@ -280,18 +273,16 @@ const Sidebar: React.FC = () => {
         }
 
         try {
-            service.deleteList(listToDelete.id);
+            deleteList(listToDelete.id);
             if (currentFilter === `list-${encodeURIComponent(listToDelete.name)}`) {
                 navigate('/all');
             }
-            setListsAtom(RESET);
-            setTasksAtom(RESET);
         } catch (e: any) {
             alert(`Error deleting list: ${e.message}`);
         } finally {
             setListToDelete(null);
         }
-    }, [listToDelete, currentFilter, navigate, setListsAtom, setTasksAtom]);
+    }, [listToDelete, currentFilter, navigate, deleteList]);
 
     const myListsToDisplay = useMemo(() => userLists?.filter(list => list.name !== 'Inbox') ?? [], [userLists]);
     const inboxList = useMemo(() => userLists?.find(list => list.name === 'Inbox'), [userLists]);
@@ -469,14 +460,14 @@ const Sidebar: React.FC = () => {
                                                                                    onSelect={() => handleStartRename(list)}>
                                                                     <Icon name="edit" size={14}
                                                                           className="mr-2 opacity-80"
-                                                                          strokeWidth={1.5}/> Rename
+                                                                          strokeWidth={1.5}/> {t('common.edit')}
                                                                 </DropdownMenu.Item>
                                                                 <DropdownMenu.Item
                                                                     className={twMerge(dropdownItemClasses, "text-error dark:text-red-400 data-[highlighted]:bg-red-500/10 dark:data-[highlighted]:bg-red-500/20")}
                                                                     onSelect={() => setTimeout(() => setListToDelete(list), 0)}>
                                                                     <Icon name="trash" size={14}
                                                                           className="mr-2 opacity-80"
-                                                                          strokeWidth={1.5}/> Delete
+                                                                          strokeWidth={1.5}/> {t('common.delete')}
                                                                 </DropdownMenu.Item>
                                                             </DropdownMenu.Content>
                                                         </DropdownMenu.Portal>

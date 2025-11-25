@@ -1,11 +1,11 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {useAtom, useAtomValue, useSetAtom} from 'jotai';
-import {isAddListModalOpenAtom, tasksAtom, userListNamesAtom, userListsAtom} from '@/store/jotai.ts';
+import {useAtom, useAtomValue} from 'jotai';
+import {isAddListModalOpenAtom, userListNamesAtom} from '@/store/jotai.ts';
 import Button from '@/components/ui/Button.tsx';
 import {twMerge} from 'tailwind-merge';
 import * as Dialog from '@radix-ui/react-dialog';
-import storageManager from '@/services/storageManager.ts';
 import {useTranslation} from "react-i18next";
+import { useListOperations } from '@/hooks/useListOperations';
 
 interface AddListModalProps {
     onAddSuccess: () => void;
@@ -22,6 +22,8 @@ const AddListModal: React.FC<AddListModalProps> = ({onAddSuccess}) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const { createList } = useListOperations();
 
     useEffect(() => {
         if (isOpen) {
@@ -71,7 +73,7 @@ const AddListModal: React.FC<AddListModalProps> = ({onAddSuccess}) => {
         setIsLoading(true);
 
         try {
-            storageManager.get().createList({name: trimmedName});
+            createList({name: trimmedName});
             onAddSuccess();
             handleOpenChange(false);
         } catch (e: any) {
@@ -80,7 +82,7 @@ const AddListModal: React.FC<AddListModalProps> = ({onAddSuccess}) => {
             setIsLoading(false);
         }
 
-    }, [listName, allListNames, onAddSuccess, handleOpenChange, t]);
+    }, [listName, allListNames, onAddSuccess, handleOpenChange, t, createList]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setListName(e.target.value);

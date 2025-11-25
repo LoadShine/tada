@@ -118,7 +118,7 @@ export const userListsAtom: LocalDataAtom<List[]> = atom(
     (get, set, update) => {
         if (update === RESET) {
             const service = storageManager.get();
-            set(baseUserListsAtom, service.fetchLists());
+            set(baseUserListsAtom, [...service.fetchLists()]);
             return;
         }
         const nextLists = typeof update === 'function'
