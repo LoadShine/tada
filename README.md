@@ -23,7 +23,7 @@
 > [!IMPORTANT]
 > **⚠️ macOS Users: Read Before Installing**
 >
-> Since this is an open-source project without a paid Apple Developer ID ($99/year), macOS Gatekeeper may falsely report that **"Tada.app is damaged and can't be opened. You should move it to the Trash."**
+> Since this is an open-source project without a paid Apple Developer ID, macOS Gatekeeper may falsely report that **"Tada.app is damaged and can't be opened. You should move it to the Trash."**
 >
 > This is not a bug. To bypass this security check, please open your **Terminal** and run the following command after moving the app to your Applications folder:
 >
@@ -146,7 +146,7 @@ graph TD
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/your-org/tada.git
+    git clone https://github.com/LoadShine/tada.git
     cd tada
     ```
 
