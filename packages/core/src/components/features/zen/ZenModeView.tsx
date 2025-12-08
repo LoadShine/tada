@@ -530,29 +530,70 @@ const ZenModeView: React.FC = () => {
 
     return (
         <>
-            <div className="relative w-full h-full overflow-hidden bg-[#F8F7F4] text-[#2A2A2A] font-serif cursor-default select-none">
-                {/* 1. Background Layers */}
-                <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.07] bg-repeat"
-                     style={{backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")`}}/>
+            <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-[#fdfcfb] via-[#faf9f7] to-[#f7f6f3] text-[#2A2A2A] font-serif cursor-default select-none">
 
-                <div className="fixed inset-0 z-0 opacity-30 contrast-125 brightness-105 pointer-events-none"
-                     style={{
-                         background: `
-                            radial-gradient(circle at 20% 30%, rgba(200, 190, 180, 0.15), transparent 40%),
-                            radial-gradient(circle at 80% 70%, rgba(180, 190, 200, 0.15), transparent 40%),
-                            url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='cloud'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01' numOctaves='5'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23cloud)' opacity='0.3'/%3E%3C/svg%3E")
-                         `
-                     }}/>
+                <div
+                    className="fixed inset-0 pointer-events-none z-10 opacity-[0.08] mix-blend-multiply"
+                    style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 1000 1000' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paperTexture'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.8 0 0 0 0.1 0 0.7 0 0 0.05 0 0 0.6 0 0 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paperTexture)'/%3E%3C/svg%3E")`,
+                        backgroundSize: '400px 400px',
+                        backgroundRepeat: 'repeat'
+                    }}
+                />
 
-                <div className="fixed -top-[20%] -left-[20%] w-[140%] h-[140%] z-[1] pointer-events-none animate-breathe"
-                     style={{background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.8), transparent 60%)'}}/>
+                <div
+                    className="fixed inset-0 z-0 pointer-events-none"
+                    style={{
+                        background: `
+                            radial-gradient(circle at 25% 25%, rgba(255, 249, 240, 0.8), transparent 50%),
+                            radial-gradient(circle at 75% 75%, rgba(245, 242, 235, 0.6), transparent 50%),
+                            linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%, rgba(248, 246, 240, 0.2) 100%)
+                        `
+                    }}
+                />
+
+                <div className="fixed inset-0 z-[1] pointer-events-none">
+                    <div
+                        className="absolute w-full h-full animate-zen-breathe"
+                        style={{
+                            background: `
+                                radial-gradient(ellipse at 30% 20%, rgba(255, 211, 202, 0.4), transparent 40%),
+                                radial-gradient(ellipse at 70% 80%, rgba(250, 204, 200, 0.3), transparent 40%)
+                            `
+                        }}
+                    />
+                </div>
 
                 <style>{`
-                    @keyframes breathe {
-                        0% { transform: scale(1); opacity: 0.5; }
-                        100% { transform: scale(1.1); opacity: 0.8; }
+                    @keyframes zen-breathe {
+                        0%, 100% { 
+                            transform: scale(1) rotate(0deg); 
+                            opacity: 0.4; 
+                        }
+                        50% { 
+                            transform: scale(1.05) rotate(0.5deg); 
+                            opacity: 0.6; 
+                        }
                     }
-                    .animate-breathe { animation: breathe 15s infinite ease-in-out alternate; }
+                    
+                    @keyframes zen-noise {
+                        0% { transform: translateX(0) translateY(0); }
+                        10% { transform: translateX(-1px) translateY(1px); }
+                        20% { transform: translateX(1px) translateY(0px); }
+                        30% { transform: translateX(0px) translateY(-1px); }
+                        40% { transform: translateX(-1px) translateY(-1px); }
+                        50% { transform: translateX(1px) translateY(1px); }
+                        60% { transform: translateX(0px) translateY(0px); }
+                        70% { transform: translateX(-1px) translateY(0px); }
+                        80% { transform: translateX(1px) translateY(-1px); }
+                        90% { transform: translateX(0px) translateY(1px); }
+                        100% { transform: translateX(0) translateY(0); }
+                    }
+                    
+                    .animate-zen-breathe { 
+                        animation: zen-breathe 20s infinite ease-in-out; 
+                    }
+                    
                     .font-display { font-family: 'Italiana', serif; }
                     .font-body { font-family: 'Noto Serif SC', serif; }
                     .mask-gradient-bottom { mask-image: linear-gradient(to bottom, black 70%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%); }
