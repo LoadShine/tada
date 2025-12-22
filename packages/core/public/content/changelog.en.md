@@ -1,6 +1,20 @@
 # Changelog
 
-## Version 0.1.3 (Current)
+## Version 0.2.0 (Current)
+*Release Date: December 22, 2025*
+
+### ✨ New Features
+- **Tada Zen Mode**: Added a quick delete button for tasks.
+- **Tada Zen Mode**: Supported moving expired tasks to "Today" with one click.
+
+### 🐛 Bug Fixes
+- Fixed the issue where the "month and day" display in Tada Zen Mode would wrap lines on certain screen resolutions.
+- Fixed the issue where the Tada Zen Mode page could not be dragged.
+- Fixed the problem where images could not be dragged into the desktop app.
+
+---
+
+## Version 0.1.3
 *Released: December 8, 2025*
 
 ### ✨ New Features
