@@ -96,6 +96,16 @@ const ZenTaskItem = ({task, type, isOverlay, t}: { task: Task, type: 'todo' | 'd
         }
     };
 
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        // Soft delete: move to Trash
+        updateTask(task.id, {
+            listName: 'Trash',
+            completed: false,
+            completePercentage: null
+        });
+    };
+
     const baseClasses = twMerge(
         "w-full relative font-serif select-none outline-none touch-none truncate px-4 flex-shrink-0 flex items-center justify-center group",
         type === 'todo' ? "py-3 text-[#2A2A2A] max-w-[600px] mx-auto" : "",
@@ -158,24 +168,45 @@ const ZenTaskItem = ({task, type, isOverlay, t}: { task: Task, type: 'todo' | 'd
                 </span>
 
                 {(type === 'todo' || type === 'done') && (
-                    <button
-                        onClick={toggleComplete}
-                        className={twMerge(
-                            "absolute right-0 p-2 rounded-full",
-                            "bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 shadow-sm",
-                            "opacity-0 group-hover:opacity-100 transition-all duration-300",
-                            "hover:bg-white/60 dark:hover:bg-black/60",
-                            "text-[#707070] dark:text-neutral-300",
-                            "z-20 flex items-center justify-center"
-                        )}
-                        title={type === 'todo' ? t('common.complete') : t('common.undo')}
-                    >
-                        <Icon
-                            name={type === 'todo' ? 'check' : 'undo'}
-                            size={16}
-                            strokeWidth={type === 'todo' ? 2 : 1.5}
-                        />
-                    </button>
+                    <div className={twMerge(
+                        "absolute right-0 flex items-center gap-2",
+                        "opacity-0 group-hover:opacity-100 transition-all duration-300",
+                        "z-20"
+                    )}>
+                        {/* Delete Button */}
+                        <button
+                            onClick={handleDelete}
+                            className={twMerge(
+                                "p-2 rounded-full",
+                                "bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 shadow-sm",
+                                "hover:bg-red-500/10 hover:text-red-500 hover:border-red-200",
+                                "text-[#707070] dark:text-neutral-300",
+                                "flex items-center justify-center"
+                            )}
+                            title={t('common.delete')}
+                        >
+                            <Icon name="trash" size={16} strokeWidth={1.5} />
+                        </button>
+
+                        {/* Complete/Undo Button */}
+                        <button
+                            onClick={toggleComplete}
+                            className={twMerge(
+                                "p-2 rounded-full",
+                                "bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 shadow-sm",
+                                "hover:bg-white/60 dark:hover:bg-black/60",
+                                "text-[#707070] dark:text-neutral-300",
+                                "flex items-center justify-center"
+                            )}
+                            title={type === 'todo' ? t('common.complete') : t('common.undo')}
+                        >
+                            <Icon
+                                name={type === 'todo' ? 'check' : 'undo'}
+                                size={16}
+                                strokeWidth={type === 'todo' ? 2 : 1.5}
+                            />
+                        </button>
+                    </div>
                 )}
 
                 {type === 'done' && task.completedAt && (
@@ -218,7 +249,7 @@ const ZenModeView: React.FC = () => {
     const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
     const [isFullScreen, setIsFullScreen] = useAtom(isZenFullScreenAtom);
 
-    const {updateTask, createTask, createSubtask} = useTaskOperations();
+    const {updateTask, createTask, createSubtask, batchUpdateTasks} = useTaskOperations();
 
     const [activeId, setActiveId] = useState<string | null>(null);
     const [draggingTaskData, setDraggingTaskData] = useState<{task: Task, origin: string} | null>(null);
@@ -556,9 +587,22 @@ const ZenModeView: React.FC = () => {
         inputRef.current?.focus();
     };
 
+    // Move Overdue Tasks to Today
+    const handleRescheduleOverdue = () => {
+        if (overdueTasks.length === 0) return;
+        const todayStart = startOfDay(new Date()).getTime();
+        const updates = overdueTasks.map(t => ({...t, dueDate: todayStart}));
+        batchUpdateTasks(updates);
+        addNotification({ type: 'success', message: tZen('taskList.rescheduleAll') + ' ' + tZen('common.ok') });
+    };
+
     return (
         <>
-            <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-[#fdfcfb] via-[#faf9f7] to-[#f7f6f3] text-[#2A2A2A] font-serif cursor-default select-none">
+            {/* Added data-tauri-drag-region="true" to the root container to enable window dragging */}
+            <div
+                className="relative w-full h-full overflow-hidden bg-gradient-to-br from-[#fdfcfb] via-[#faf9f7] to-[#f7f6f3] text-[#2A2A2A] font-serif cursor-default select-none"
+                data-tauri-drag-region="true"
+            >
 
                 <div
                     className="fixed inset-0 pointer-events-none z-10 opacity-[0.08] mix-blend-multiply"
@@ -642,7 +686,11 @@ const ZenModeView: React.FC = () => {
                 >
 
                     {/* 3. Layout Axis */}
-                    <div className="relative z-10 w-full h-full flex flex-col items-center justify-between py-[5vh]">
+                    {/* Added data-tauri-drag-region="true" to the layout container as well to ensure full coverage */}
+                    <div
+                        className="relative z-10 w-full h-full flex flex-col items-center justify-between py-[5vh]"
+                        data-tauri-drag-region="true"
+                    >
 
                         {/* Full Screen Toggle Button */}
                         <div className="absolute top-6 left-6 z-50">
@@ -680,7 +728,7 @@ const ZenModeView: React.FC = () => {
                             <div className="font-display text-[9rem] leading-[0.9] text-[#2A2A2A] mb-5 -tracking-[4px] select-none pointer-events-none">
                                 {currentTime.toLocaleTimeString(zenLanguage === 'zh-CN' ? 'zh-CN' : 'en-GB', {hour: '2-digit', minute: '2-digit'})}
                             </div>
-                            <div className="font-display text-[1.1rem] tracking-[0.3em] text-[#707070] mb-10 uppercase select-none pointer-events-none">
+                            <div className="font-display text-[1.1rem] tracking-[0.3em] text-[#707070] mb-10 uppercase select-none pointer-events-none whitespace-nowrap text-center">
                                 {currentTime.toLocaleDateString(zenLanguage, {month: 'long', day: 'numeric'})}
                             </div>
 
@@ -711,7 +759,7 @@ const ZenModeView: React.FC = () => {
                                     <button
                                         onClick={toggleAiMode}
                                         className={twMerge(
-                                            "absolute right-[2%] md:right-[5%] top-1/2 -translate-y-1/2 p-2 rounded-full transition-all duration-300 hover:bg-black/5",
+                                            "absolute right-[2%] md:right-[5%] top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-black/5",
                                             isAiMode ? "text-primary scale-110" : "text-[#C0C0C0]"
                                         )}
                                         title={tZen('taskList.aiTaskButton.label')}
@@ -762,7 +810,18 @@ const ZenModeView: React.FC = () => {
 
                     {/* 4. Memories (Overdue) Sidebar */}
                     <aside className="fixed left-[4vw] bottom-[5vh] z-20 hidden lg:block max-w-[200px]">
-                        <div className="font-display text-[1rem] tracking-[0.2em] text-[#C0C0C0] mb-3 select-none">{tZen('zen.expired')}</div>
+                        <div className="flex items-center justify-between mb-3 w-full pr-4">
+                            <div className="font-display text-[1rem] tracking-[0.2em] text-[#C0C0C0] select-none">{tZen('zen.expired')}</div>
+                            {overdueTasks.length > 0 && (
+                                <button
+                                    onClick={handleRescheduleOverdue}
+                                    title={tZen('taskList.rescheduleAll')}
+                                    className="text-[#C0C0C0] hover:text-[#707070] transition-colors w-7 h-7 flex items-center justify-center rounded-full hover:bg-black/5"
+                                >
+                                    <Icon name="calendar-plus" size={14} strokeWidth={1.5} />
+                                </button>
+                            )}
+                        </div>
                         <div className="flex flex-col items-start max-h-[40vh] overflow-y-auto no-scrollbar">
                             {overdueTasks.map(task => (
                                 <ZenTaskItem key={task.id} task={task} type="overdue" t={tZen} />
