@@ -1,6 +1,14 @@
 # Changelog
 
-## Version 0.3.0 (Current)
+## Version 0.3.1 (Current)
+*Release Date: December 30, 2025*
+
+### 🐛 Bug Fixes
+- **Echo Function**: The echo function is enabled by default
+
+---
+
+## Version 0.3.0
 *Release Date: December 30, 2025*
 
 ### ✨ New Features
