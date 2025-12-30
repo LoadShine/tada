@@ -1,6 +1,20 @@
 # Changelog
 
-## Version 0.2.1 (Current)
+## Version 0.3.0 (Current)
+*Release Date: December 30, 2025*
+
+### ✨ New Features
+- **Echo Function**: Added the new "Echo" function.
+- **Context**: Images no longer participate in the model context.
+- **UI Update**: Modified and improved the display interface for the Echo function.
+
+### 🐛 Bug Fixes
+- Fixed a bug where the `includeEcho` attribute was missing from `importOptions` when importing data.
+- Fixed an issue where images would incorrectly turn into strings when deleted.
+
+---
+
+## Version 0.2.1
 *Release Date: December 24, 2025*
 
 ### 🐛 Bug Fixes

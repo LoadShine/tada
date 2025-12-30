@@ -1,6 +1,6 @@
 [package]
 name = "Tada"
-version = "0.2.1"
+version = "0.3.0"
 description = "A task management application"
 authors = ["Loadshine"]
 edition = "2024"
