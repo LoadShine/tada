@@ -3,6 +3,7 @@ import { EditorSelection, StateEffect, StateField } from "@codemirror/state";
 import { slashCommandPlugin } from "./slash-command";
 import { CSS_CLASSES, TIMING } from "../../core/constants";
 import {onAIStreamState, translationsState} from "../default-extensions";
+import { stripBase64Images } from "../../core/utils/string-utils";
 
 /**
  * Loading widget displayed during AI text generation
@@ -93,8 +94,15 @@ export async function ghostWriterExecutor(view: EditorView): Promise<AbortContro
     const { state, dispatch } = view;
     const { from, to } = state.selection.ranges[0];
     const text = state.doc.toString();
-    const prefix = text.slice(0, to);
-    const suffix = text.slice(from);
+
+    // Get raw prefix and suffix
+    const rawPrefix = text.slice(0, to);
+    const rawSuffix = text.slice(from);
+
+    // Sanitize Base64 images to avoid token overflow
+    const prefix = stripBase64Images(rawPrefix);
+    const suffix = stripBase64Images(rawSuffix);
+
     const pos = state.selection.main.from;
 
     const onAIStream = state.field(onAIStreamState);

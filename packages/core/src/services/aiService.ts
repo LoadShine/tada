@@ -1,6 +1,7 @@
 import {AISettings, StoredSummary, Task, EchoReport} from '@/types';
 import storageManager from './storageManager.ts';
 import {AI_PROVIDERS, AIModel, AIProvider} from "@/config/aiProviders";
+import {stripBase64Images} from "@/lib/moondown/core/utils/string-utils";
 
 export interface AiTaskAnalysis {
     title: string;
@@ -348,7 +349,7 @@ export const generateAiSummary = async (
 
     const tasksString = tasksToSummarize.length > 0
         ? "## Tasks from the summary period:\n" + tasksToSummarize.map(t =>
-        `- Task: "${t.title}" (Status: ${t.completed ? 'Completed' : 'Incomplete'}${t.completePercentage ? `, ${t.completePercentage}% done` : ''})\n  Notes: ${t.content || 'N/A'}`
+        `- Task: "${t.title}" (Status: ${t.completed ? 'Completed' : 'Incomplete'}${t.completePercentage ? `, ${t.completePercentage}% done` : ''})\n  Notes: ${stripBase64Images(t.content || 'N/A')}`
     ).join('\n')
         : "No tasks were selected for the primary summary period.";
 
@@ -404,7 +405,8 @@ export const generateEchoReport = async (
 
     // Construct Context
     const taskContext = recentTasks.map(t => `- ${t.title} (${t.completed ? 'Done' : 'In Progress'})`).join('\n');
-    const summaryContext = recentSummaries.map(s => s.summaryText).join('\n---\n');
+    // Strip Base64 from previous summaries to avoid massive context
+    const summaryContext = recentSummaries.map(s => stripBase64Images(s.summaryText)).join('\n---\n');
 
     // Get Job Persona Instructions dynamically from translation files
     const personas = jobTypes.map(job => {

@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for string manipulation
  */
@@ -9,7 +8,7 @@
  * @returns Escaped string safe for use in RegExp
  */
 export function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -18,7 +17,7 @@ export function escapeRegExp(str: string): string {
  * @returns True if text is an image markdown
  */
 export function isMarkdownImage(text: string): boolean {
-  return /^!\[.*?\]\(.*?\)$/.test(text.trim());
+    return /^!\[.*?\]\(.*?\)$/.test(text.trim());
 }
 
 /**
@@ -27,10 +26,10 @@ export function isMarkdownImage(text: string): boolean {
  * @returns Heading prefix string (e.g., "# ", "## ")
  */
 export function createHeadingPrefix(level: number): string {
-  if (level < 1 || level > 6) {
-    throw new Error('Heading level must be between 1 and 6');
-  }
-  return '#'.repeat(level) + ' ';
+    if (level < 1 || level > 6) {
+        throw new Error('Heading level must be between 1 and 6');
+    }
+    return '#'.repeat(level) + ' ';
 }
 
 /**
@@ -39,8 +38,8 @@ export function createHeadingPrefix(level: number): string {
  * @returns Heading level (1-6) or null if not a heading
  */
 export function getHeadingLevel(text: string): number | null {
-  const match = text.match(/^(#{1,6})\s/);
-  return match ? match[1].length : null;
+    const match = text.match(/^(#{1,6})\s/);
+    return match ? match[1].length : null;
 }
 
 /**
@@ -49,7 +48,7 @@ export function getHeadingLevel(text: string): number | null {
  * @returns True if the line is an ordered list item
  */
 export function isOrderedListItem(text: string): boolean {
-  return /^\d+\.\s/.test(text);
+    return /^\d+\.\s/.test(text);
 }
 
 /**
@@ -58,7 +57,7 @@ export function isOrderedListItem(text: string): boolean {
  * @returns True if the line is an unordered list item
  */
 export function isUnorderedListItem(text: string): boolean {
-  return /^-\s/.test(text);
+    return /^-\s/.test(text);
 }
 
 /**
@@ -67,6 +66,21 @@ export function isUnorderedListItem(text: string): boolean {
  * @returns The list number or null if not an ordered list item
  */
 export function extractListNumber(text: string): number | null {
-  const match = text.match(/^(\d+)\.\s/);
-  return match ? parseInt(match[1], 10) : null;
+    const match = text.match(/^(\d+)\.\s/);
+    return match ? parseInt(match[1], 10) : null;
+}
+
+/**
+ * Strips Base64 image data from markdown text to save tokens for AI processing.
+ * Replaces `![Alt](data:image/...)` with `[Image: Alt]`.
+ * @param text - The raw markdown text
+ * @returns The sanitized text with Base64 data removed
+ */
+export function stripBase64Images(text: string): string {
+    if (!text) return '';
+    // Matches markdown images where the URL starts with "data:"
+    // Captures the Alt text ($1) and replaces the whole thing with a placeholder
+    return text.replace(/!\[([^\]]*)\]\((data:[^)]+)\)/g, (_match, alt) => {
+        return `[Image${alt ? ': ' + alt : ''}]`;
+    });
 }
