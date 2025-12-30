@@ -64,7 +64,7 @@ export const defaultAppearanceSettingsForApi = (): AppearanceSettings => ({
 export const defaultPreferencesSettingsForApi = (): PreferencesSettings => ({
     language: 'zh-CN', defaultNewTaskDueDate: null, defaultNewTaskPriority: null,
     defaultNewTaskList: 'Inbox', confirmDeletions: true, zenModeShyNative: false,
-    enableEcho: false, echoJobTypes: [], echoPastExamples: ''
+    enableEcho: true, echoJobTypes: [], echoPastExamples: ''
 });
 export const defaultAISettingsForApi = (): AISettings => ({
     provider: 'openai',
