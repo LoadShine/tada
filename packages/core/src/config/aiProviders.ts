@@ -211,7 +211,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         requiresApiKey: false,
         requiresBaseUrl: true,
         defaultBaseUrl: 'http://localhost:11434',
-        apiEndpoint: '/v1/chat/completions', // Assuming OpenAI compatibility
+        apiEndpoint: '/api/chat',
         listModelsEndpoint: '/api/tags',
         getHeaders: () => ({ 'Content-Type': 'application/json' }),
         parseModels: (data) => data.models.map((m: any) => ({
