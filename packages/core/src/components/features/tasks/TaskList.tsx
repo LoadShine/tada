@@ -52,7 +52,7 @@ import {
 import {twMerge} from 'tailwind-merge';
 import {TaskItemMenuProvider} from '@/context/TaskItemMenuContext';
 import {IconName} from '@/components/ui/IconMap.ts';
-import {analyzeTaskInputWithAI} from '@/services/aiService';
+import {analyzeTaskInputWithAI, isAIConfigValid} from '@/services/aiService';
 import {useTranslation} from "react-i18next";
 import CustomDatePickerContent from "@/components/ui/DatePicker.tsx";
 import {AI_PROVIDERS} from "@/config/aiProviders.ts";
@@ -178,6 +178,8 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
     const availableListsForNewTask = useMemo(() => allUserLists?.map(l => l.name).filter(n => n !== 'Trash') ?? [], [allUserLists]);
 
+    const isAIConfigured = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
+
     useEffect(() => {
         if (isLoadingPreferences) return;
         let defaultDate: Date | null = null;
@@ -200,13 +202,19 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
     }, [preferences, availableListsForNewTask, isLoadingPreferences]);
 
-    // Auto-enable AI task input when alwaysUseAITask is enabled and on the "all" page
+    // Auto-enable AI task input when alwaysUseAITask is enabled AND config is valid
     useEffect(() => {
         if (isLoadingPreferences) return;
-        if (preferences.alwaysUseAITask && currentFilterGlobal === 'all') {
+        if (preferences.alwaysUseAITask && currentFilterGlobal === 'all' && isAIConfigured) {
             setIsAiTaskInputVisible(true);
         }
-    }, [preferences.alwaysUseAITask, currentFilterGlobal, isLoadingPreferences]);
+    }, [preferences.alwaysUseAITask, currentFilterGlobal, isLoadingPreferences, isAIConfigured]);
+
+    useEffect(() => {
+        if (isAiTaskInputVisible && !isAIConfigured) {
+            setIsAiTaskInputVisible(false);
+        }
+    }, [isAIConfigured, isAiTaskInputVisible]);
 
     const {tasksToDisplay, isGroupedView, isSearching} = useMemo(() => {
         const searching = searchTerm.trim().length > 0;
@@ -471,13 +479,8 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     const toggleAiTaskInput = useCallback(() => {
         if (isAiProcessing) return;
 
-        const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
-        const requiresApiKey = currentProvider?.requiresApiKey;
-        const hasApiKey = !!aiSettings?.apiKey;
-        const hasModel = !!aiSettings?.model;
-
-        // Check for missing configuration (Key or Model)
-        if (!currentProvider || (requiresApiKey && !hasApiKey) || !hasModel) {
+        // Check for missing configuration
+        if (!isAIConfigured) {
             setSettingsTab('ai');
             setIsSettingsOpen(true);
             return;
@@ -509,7 +512,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             }
             setTimeout(() => newTaskTitleInputRef.current?.focus(), 0);
         }
-    }, [isAiTaskInputVisible, isAiProcessing, currentFilterGlobal, allUserLists, preferences, aiSettings, setIsSettingsOpen, setSettingsTab]);
+    }, [isAiTaskInputVisible, isAiProcessing, currentFilterGlobal, allUserLists, preferences, isAIConfigured, setIsSettingsOpen, setSettingsTab]);
 
 
     const handleAiTaskCommit = useCallback(async () => {
@@ -517,8 +520,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         if (!sentence || isAiProcessing || !aiSettings) return;
 
         // Double check configuration before sending request
-        const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
-        if (!currentProvider || (currentProvider.requiresApiKey && !aiSettings.apiKey) || !aiSettings.model) {
+        if (!isAIConfigured) {
             setSettingsTab('ai');
             setIsSettingsOpen(true);
             return;
@@ -589,7 +591,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         }
     }, [
         newTaskTitle, newTaskDueDate, newTaskPriority, newTaskListState,
-        createTask, createSubtask, allTasks, isAiProcessing, isRegularNewTaskModeAllowed, preferences, allUserLists, t, aiSettings, addNotification, setIsSettingsOpen, setSettingsTab
+        createTask, createSubtask, allTasks, isAiProcessing, isRegularNewTaskModeAllowed, preferences, allUserLists, t, aiSettings, addNotification, setIsSettingsOpen, setSettingsTab, isAIConfigured
     ]);
 
 

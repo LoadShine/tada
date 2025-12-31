@@ -45,7 +45,7 @@ import {twMerge} from 'tailwind-merge';
 import useDebounce from '@/hooks/useDebounce';
 import SummaryHistoryModal from './SummaryHistoryModal';
 import {AnimatePresence, motion} from 'framer-motion';
-import {generateAiSummary} from '@/services/aiService';
+import {generateAiSummary, isAIConfigValid} from '@/services/aiService';
 import {useTranslation} from "react-i18next";
 import storageManager from '@/services/storageManager.ts';
 import CodeMirrorEditor, {CodeMirrorEditorRef} from "@/components/ui/Editor.tsx";
@@ -63,7 +63,7 @@ const getSummaryMenuRadioItemStyle = (checked?: boolean) => twMerge(
     "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light",
     "dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700",
     checked
-        ? "bg-grey-ultra-light text-primary dark:bg-primary-dark/30 dark:text-primary-light"
+        ? "bg-grey-ultra-light text-primary dark:bg-primary-dark/20 dark:text-primary-light"
         : "text-grey-dark data-[highlighted]:text-grey-dark dark:text-neutral-200 dark:data-[highlighted]:text-neutral-100",
     "data-[disabled]:opacity-50"
 );
@@ -99,9 +99,7 @@ const SummaryView: React.FC = () => {
     const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
     const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
 
-    const isAiEnabled = useMemo(() => {
-        return !!(aiSettings && aiSettings.provider && (aiSettings.apiKey || !AI_PROVIDERS.find(p => p.id === aiSettings.provider)?.requiresApiKey));
-    }, [aiSettings]);
+    const isAiEnabled = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
 
     const [summaryDisplayContent, setSummaryDisplayContent] = useState('');
     const [summaryEditorContent, setSummaryEditorContent] = useState('');
@@ -158,14 +156,8 @@ const SummaryView: React.FC = () => {
     const handleGenerateClick = useCallback(async () => {
         if (isGenerating) return;
 
-        // Check for AI configuration if user tries to generate
-        const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
-        const requiresApiKey = currentProvider?.requiresApiKey;
-        const hasApiKey = !!aiSettings?.apiKey;
-        const hasModel = !!aiSettings?.model;
-
-        // If configuration is incomplete, open settings and stop
-        if (!currentProvider || (requiresApiKey && !hasApiKey) || !hasModel) {
+        // Check for AI configuration
+        if (!isAiEnabled) {
             setSettingsTab('ai');
             setIsSettingsOpen(true);
             return;
@@ -220,7 +212,7 @@ const SummaryView: React.FC = () => {
     }, [
         isGenerating, forceSaveCurrentSummary, allTasks, selectedTaskIds, selectedFutureTaskIds,
         filterKey, setStoredSummaries, setCurrentIndex, setIsGenerating, aiSettings, addNotification,
-        t, setIsSettingsOpen, setSettingsTab
+        t, setIsSettingsOpen, setSettingsTab, isAiEnabled
     ]);
 
     const handleEditorChange = useCallback((newValue: string) => {
@@ -371,10 +363,13 @@ const SummaryView: React.FC = () => {
 
     const isGenerateDisabled = useMemo(() => {
         if (isGenerating) return true;
-        if (selectedTaskIds.size === 0 && selectedFutureTaskIds.size === 0) return true;
-        const tasksForSummary = allTasks.filter(t => selectedTaskIds.has(t.id));
-        return !tasksForSummary.some(t => t.listName !== 'Trash') && selectedFutureTaskIds.size === 0;
-    }, [isGenerating, selectedTaskIds, selectedFutureTaskIds, allTasks]);
+        if (isAiEnabled) {
+            if (selectedTaskIds.size === 0 && selectedFutureTaskIds.size === 0) return true;
+            const tasksForSummary = allTasks.filter(t => selectedTaskIds.has(t.id));
+            return !tasksForSummary.some(t => t.listName !== 'Trash') && selectedFutureTaskIds.size === 0;
+        }
+        return false;
+    }, [isGenerating, selectedTaskIds, selectedFutureTaskIds, allTasks, isAiEnabled]);
 
 
     const tasksUsedCount = useMemo(() => currentSummary?.taskIds.length ?? 0, [currentSummary]);

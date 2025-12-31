@@ -35,11 +35,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         parseModels: (data) => data.data
             .filter((m: any) => m.id.includes('gpt'))
             .map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'gpt-4o', name: 'GPT-4o'},
-            {id: 'gpt-4-turbo', name: 'GPT-4 Turbo'},
-            {id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo'},
-        ],
+        models: [],
     },
     {
         id: 'claude',
@@ -51,11 +47,7 @@ export const AI_PROVIDERS: AIProvider[] = [
             'anthropic-version': '2023-06-01',
             'Content-Type': 'application/json',
         }),
-        models: [
-            {id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet'},
-            {id: 'claude-3-opus-20240229', name: 'Claude 3 Opus'},
-            {id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku'},
-        ],
+        models: [],
     },
     {
         id: 'gemini',
@@ -73,10 +65,7 @@ export const AI_PROVIDERS: AIProvider[] = [
                 id: m.name.replace('models/', ''),
                 name: m.displayName
             })),
-        models: [
-            {id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro'},
-            {id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash'},
-        ],
+        models: [],
     },
     {
         id: 'xai',
@@ -86,10 +75,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://api.x.ai/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'grok-1.5-flash', name: 'Grok 1.5 Flash'},
-            {id: 'grok-1.5', name: 'Grok 1.5'},
-        ]
+        models: []
     },
     {
         id: 'cohere',
@@ -101,11 +87,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         parseModels: (data) => data.models
             .filter((m: any) => m.endpoints?.includes('chat'))
             .map((m: any) => ({ id: m.name, name: m.name })),
-        models: [
-            {id: 'command-r-plus', name: 'Command R+'},
-            {id: 'command-r', name: 'Command R'},
-            {id: 'command', name: 'Command'},
-        ]
+        models: []
     },
     {
         id: 'groq',
@@ -115,11 +97,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://api.groq.com/openai/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B'},
-            {id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B'},
-            {id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B'},
-        ]
+        models: []
     },
 
     // Aggregator Services
@@ -131,11 +109,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://openrouter.ai/api/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.name })),
-        models: [
-            {id: 'openrouter/auto', name: 'Auto (Recommended)'},
-            {id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash'},
-            {id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku'},
-        ]
+        models: []
     },
     {
         id: 'siliconflow',
@@ -145,11 +119,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://api.siliconflow.cn/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'deepseek-ai/DeepSeek-V2-Chat', name: 'DeepSeek V2'},
-            {id: 'Qwen/Qwen2-72B-Instruct', name: 'Qwen2 72B'},
-            {id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', name: 'Llama 3.1 70B'},
-        ]
+        models: []
     },
     {
         id: '302',
@@ -159,11 +129,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://api.302.ai/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'gpt-4o', name: 'GPT-4o'},
-            {id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet'},
-            {id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro'},
-        ]
+        models: []
     },
 
     // Chinese Providers
@@ -175,11 +141,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://api.moonshot.cn/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'moonshot-v1-8k', name: 'moonshot-v1-8k'},
-            {id: 'moonshot-v1-32k', name: 'moonshot-v1-32k'},
-            {id: 'moonshot-v1-128k', name: 'moonshot-v1-128k'},
-        ]
+        models: []
     },
     {
         id: 'deepseek',
@@ -189,10 +151,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://api.deepseek.com/v1/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'deepseek-chat', name: 'DeepSeek Chat'},
-            {id: 'deepseek-coder', name: 'DeepSeek Coder'},
-        ]
+        models: []
     },
     {
         id: 'qwen',
@@ -200,11 +159,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         requiresApiKey: true,
         apiEndpoint: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        models: [
-            {id: 'qwen-turbo', name: 'Qwen Turbo'},
-            {id: 'qwen-plus', name: 'Qwen Plus'},
-            {id: 'qwen-max', name: 'Qwen Max'},
-        ]
+        models: []
     },
     {
         id: 'zhipu',
@@ -214,11 +169,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         listModelsEndpoint: 'https://open.bigmodel.cn/api/paas/v4/models',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
         parseModels: (data) => data.data.map((m: any) => ({ id: m.id, name: m.id })),
-        models: [
-            {id: 'glm-4-flash', name: 'GLM-4 Flash'},
-            {id: 'glm-4', name: 'GLM-4'},
-            {id: 'glm-4-air', name: 'GLM-4 Air'},
-        ]
+        models: []
     },
     {
         id: 'baidu',
@@ -226,11 +177,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         requiresApiKey: true,
         apiEndpoint: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
         getHeaders: (apiKey) => ({ 'Content-Type': 'application/json' }),
-        models: [
-            {id: 'ernie-4.0-8k', name: 'Wenxin 4.0'},
-            {id: 'ernie-3.5-8k', name: 'Wenxin 3.5'},
-            {id: 'ernie-speed-8k', name: 'ERNIE Speed'},
-        ]
+        models: []
     },
     {
         id: 'tencent',
@@ -238,11 +185,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         requiresApiKey: true,
         apiEndpoint: 'https://hunyuan.tencentcloudapi.com',
         getHeaders: (apiKey) => ({ 'Content-Type': 'application/json' }),
-        models: [
-            {id: 'hunyuan-pro', name: 'Hunyuan Pro'},
-            {id: 'hunyuan-standard', name: 'Hunyuan Standard'},
-            {id: 'hunyuan-lite', name: 'Hunyuan Lite'},
-        ]
+        models: []
     },
     {
         id: 'bytedance',
@@ -250,11 +193,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         requiresApiKey: true,
         apiEndpoint: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        models: [
-            {id: 'doubao-pro-32k', name: 'Doubao Pro'},
-            {id: 'doubao-lite-32k', name: 'Doubao Lite'},
-            {id: 'doubao-pro-4k', name: 'Doubao Pro 4K'},
-        ]
+        models: []
     },
     {
         id: 'minimax',
@@ -262,11 +201,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         requiresApiKey: true,
         apiEndpoint: 'https://api.minimax.chat/v1/text/chatcompletion_v2',
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        models: [
-            {id: 'abab6.5s-chat', name: 'abab6.5s'},
-            {id: 'abab6.5-chat', name: 'abab6.5'},
-            {id: 'abab5.5-chat', name: 'abab5.5'},
-        ]
+        models: []
     },
 
     // Local/Self-hosted
@@ -284,11 +219,7 @@ export const AI_PROVIDERS: AIProvider[] = [
             name: m.name,
             description: `Size: ${m.size ? (m.size / 1e9).toFixed(1) + 'GB' : 'Unknown'}`
         })),
-        models: [
-            {id: 'llama3', name: 'Llama 3'},
-            {id: 'qwen2', name: 'Qwen 2'},
-            {id: 'mistral', name: 'Mistral'},
-        ]
+        models: []
     },
     {
         id: 'custom',
@@ -300,7 +231,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         getHeaders: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}` }),
         parseModels: (data) => data.data?.map((m: any) => ({ id: m.id, name: m.id })) || [],
         models: [
-            {id: 'custom-model', name: 'Custom Model'},
+            {id: 'custom-model', name: 'Custom Model'}, // Keep custom default
         ]
     }
 ];

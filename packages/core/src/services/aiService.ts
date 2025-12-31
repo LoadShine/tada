@@ -13,6 +13,21 @@ export interface AiTaskAnalysis {
 }
 
 /**
+ * Validates if the current AI settings are sufficient to make requests.
+ * Checks provider existence, API key requirement, and model selection.
+ * @param settings The AI settings to validate.
+ * @returns true if valid, false otherwise.
+ */
+export const isAIConfigValid = (settings: AISettings | null | undefined): boolean => {
+    if (!settings) return false;
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
+    if (!provider) return false;
+    if (provider.requiresApiKey && !settings.apiKey) return false;
+    if (!settings.model) return false;
+    return true;
+};
+
+/**
  * Constructs the full API endpoint URL based on AI settings.
  * @param settings The current AI settings.
  * @param type The type of endpoint to construct ('chat' or 'models').
@@ -177,11 +192,10 @@ const extractContentFromResponse = (data: any, providerId: AISettings['provider'
  * @returns A promise that resolves to an `AiTaskAnalysis` object.
  */
 export const analyzeTaskInputWithAI = async (prompt: string, settings: AISettings, systemPrompt: string): Promise<AiTaskAnalysis> => {
-    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
-    if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
-    if (provider.requiresApiKey && !settings.apiKey) {
-        throw new Error("API key is not set for the selected provider.");
+    if (!isAIConfigValid(settings)) {
+        throw new Error("AI configuration is incomplete or invalid.");
     }
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider)!;
 
     const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom'].includes(provider.id);
     let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, prompt, useJsonFormat, false);
@@ -264,8 +278,10 @@ async function* streamResponse(reader: ReadableStreamDefaultReader<Uint8Array>, 
 export const streamChatCompletionForEditor = async (
     settings: AISettings, systemPrompt: string, userPrompt: string, signal: AbortSignal
 ): Promise<ReadableStream<string>> => {
-    const provider = AI_PROVIDERS.find(p => p.id === settings.provider);
-    if (!provider) throw new Error(`Provider ${settings.provider} not found.`);
+    if (!isAIConfigValid(settings)) {
+        throw new Error("AI configuration is incomplete or invalid.");
+    }
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider)!;
 
     let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, userPrompt, false, true);
     if (provider.requestBodyTransformer) {
@@ -338,6 +354,11 @@ export const generateAiSummary = async (
     taskIds: string[], futureTaskIds: string[], periodKey: string, listKey: string,
     settings: AISettings, systemPrompt: string, onDelta: (chunk: string) => void
 ): Promise<StoredSummary> => {
+    // Basic validation
+    if (!isAIConfigValid(settings)) {
+        throw new Error("AI configuration is incomplete or invalid.");
+    }
+
     const service = storageManager.get();
     const allTasks = service.fetchTasks();
     const tasksToSummarize = allTasks.filter(t => taskIds.includes(t.id));
@@ -394,6 +415,11 @@ export const generateEchoReport = async (
     userInput: string = '',
     onDelta: (chunk: string) => void
 ): Promise<EchoReport> => {
+    // Basic validation
+    if (!isAIConfigValid(settings)) {
+        throw new Error("AI configuration is incomplete or invalid.");
+    }
+
     const service = storageManager.get();
     const allTasks = service.fetchTasks();
     const summaries = service.fetchSummaries();

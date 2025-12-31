@@ -18,7 +18,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as RadioGroup from '@radix-ui/react-radio-group';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {twMerge} from 'tailwind-merge';
-import {generateEchoReport} from '@/services/aiService';
+import {generateEchoReport, isAIConfigValid} from '@/services/aiService';
 import {formatDistanceToNow} from 'date-fns';
 import {zhCN, enUS} from 'date-fns/locale';
 import {AI_PROVIDERS} from "@/config/aiProviders";
@@ -416,13 +416,8 @@ const EchoView: React.FC = () => {
     const showConfigModal = needsOnboarding || isConfigOpen;
 
     const handleGenerate = async (style: 'balanced' | 'exploration' | 'reflection' = 'balanced', input: string = '') => {
-        const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
-        const requiresApiKey = currentProvider?.requiresApiKey;
-        const hasApiKey = !!aiSettings?.apiKey;
-        const hasModel = !!aiSettings?.model;
-
         // Ensure configuration is complete before generating
-        if (!currentProvider || (requiresApiKey && !hasApiKey) || !hasModel) {
+        if (!isAIConfigValid(aiSettings)) {
             setSettingsTab('ai');
             setIsSettingsOpen(true);
             return;

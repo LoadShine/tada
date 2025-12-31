@@ -127,7 +127,8 @@
       "enableEcho": "Enable Echo",
       "enableEchoDescription": "Enable the creative daily report generator.",
       "alwaysUseAITask": "Always Use AI Task",
-      "alwaysUseAITaskDescription": "Automatically enable AI task input when opening the All Tasks page"
+      "alwaysUseAITaskDescription": "Automatically enable AI task input when opening the All Tasks page",
+      "alwaysUseAITaskDisabledHint": "Configure AI Provider and API Key to enable this feature."
     },
     "ai": {
       "title": "AI Settings",
@@ -150,7 +151,9 @@
       "connectionSuccessful": "Connection test successful!",
       "connectionFailed": "Connection test failed.",
       "statusReady": "AI features are ready to use",
-      "statusIncomplete": "Complete configuration to enable AI features"
+      "statusIncomplete": "Complete configuration to enable AI features",
+      "statusVerified": "Verified & Ready to use",
+      "statusFailed": "Connection verification failed"
     },
     "data": {
       "title": "Data",

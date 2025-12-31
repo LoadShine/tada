@@ -127,7 +127,8 @@
       "enableEcho": "启用回响",
       "enableEchoDescription": "启用创意日报生成器。",
       "alwaysUseAITask": "始终使用 AI 任务",
-      "alwaysUseAITaskDescription": "打开「所有任务」页面时自动启用 AI 任务输入"
+      "alwaysUseAITaskDescription": "打开「所有任务」页面时自动启用 AI 任务输入",
+      "alwaysUseAITaskDisabledHint": "需配置 AI 提供商和 API 密钥后才可启用此功能。"
     },
     "ai": {
       "title": "AI 设置",
@@ -150,7 +151,9 @@
       "connectionSuccessful": "连接测试成功！",
       "connectionFailed": "连接测试失败。",
       "statusReady": "AI 功能已就绪",
-      "statusIncomplete": "请完成配置以启用 AI 功能"
+      "statusIncomplete": "请完成配置以启用 AI 功能",
+      "statusVerified": "已验证并可使用",
+      "statusFailed": "连接验证失败"
     },
     "data": {
       "title": "数据管理",
@@ -433,7 +436,7 @@
   },
   "moondown": {
     "ai": {
-      "thinking": "AI 思考中..."
+      "thinking": "AI is thinking..."
     },
     "slash": {
       "aiContinue": "AI 继续写作",

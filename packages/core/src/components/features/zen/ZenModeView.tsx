@@ -38,7 +38,7 @@ import {useTaskOperations} from '@/hooks/useTaskOperations';
 import {twMerge} from 'tailwind-merge';
 import {useTranslation} from 'react-i18next';
 import {AI_PROVIDERS} from "@/config/aiProviders";
-import {analyzeTaskInputWithAI} from "@/services/aiService";
+import {analyzeTaskInputWithAI, isAIConfigValid} from "@/services/aiService";
 import Icon from "@/components/ui/Icon";
 import Button from "@/components/ui/Button";
 import {ProgressIndicator} from "@/components/features/tasks/TaskItem";
@@ -282,6 +282,14 @@ const ZenModeView: React.FC = () => {
         }
     };
 
+    const isAIConfigured = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
+
+    useEffect(() => {
+        if (isAiMode && !isAIConfigured) {
+            setIsAiMode(false);
+        }
+    }, [isAIConfigured, isAiMode]);
+
     // Clock effect
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -518,12 +526,7 @@ const ZenModeView: React.FC = () => {
     const handleAiCreation = async (prompt: string) => {
         if (isAiProcessing) return;
 
-        const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
-        const requiresApiKey = currentProvider?.requiresApiKey;
-        const hasApiKey = !!aiSettings?.apiKey;
-        const hasModel = !!aiSettings?.model;
-
-        if (!currentProvider || (requiresApiKey && !hasApiKey) || !hasModel) {
+        if (!isAIConfigured) {
             setSettingsTab('ai');
             setIsSettingsOpen(true);
             return;
@@ -588,13 +591,8 @@ const ZenModeView: React.FC = () => {
     };
 
     const toggleAiMode = () => {
-        // Validation check before even toggling
-        const currentProvider = AI_PROVIDERS.find(p => p.id === aiSettings?.provider);
-        const requiresApiKey = currentProvider?.requiresApiKey;
-        const hasApiKey = !!aiSettings?.apiKey;
-        const hasModel = !!aiSettings?.model;
-
-        if (!currentProvider || (requiresApiKey && !hasApiKey) || !hasModel) {
+        // Validation check before toggling
+        if (!isAIConfigured) {
             setSettingsTab('ai');
             setIsSettingsOpen(true);
             return;
@@ -777,9 +775,11 @@ const ZenModeView: React.FC = () => {
                                         onClick={toggleAiMode}
                                         className={twMerge(
                                             "absolute right-[2%] md:right-[5%] top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-black/5",
-                                            isAiMode ? "text-primary scale-110" : "text-[#C0C0C0]"
+                                            isAiMode ? "text-primary scale-110" : "text-[#C0C0C0]",
+                                            !isAIConfigured && "opacity-50 cursor-not-allowed"
                                         )}
                                         title={tZen('taskList.aiTaskButton.label')}
+                                        disabled={isAiProcessing}
                                     >
                                         {isAiProcessing ? <Icon name="loader" className="animate-spin" size={18} strokeWidth={2}/> : <Icon name="sparkles" size={18} strokeWidth={1.5} />}
                                     </button>

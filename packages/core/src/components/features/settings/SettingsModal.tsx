@@ -2,6 +2,7 @@ import React, {memo, useCallback, useMemo, useState, useEffect} from 'react';
 import {useAtom, useAtomValue, useSetAtom} from 'jotai';
 import {
     addNotificationAtom,
+    aiConnectionStatusAtom,
     aiSettingsAtom,
     appearanceSettingsAtom,
     DarkModeOption,
@@ -23,6 +24,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as Select from '@radix-ui/react-select';
 import * as RadioGroup from '@radix-ui/react-radio-group';
 import * as RadixSwitch from '@radix-ui/react-switch';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import {
     APP_THEMES,
     APP_VERSION,
@@ -32,7 +34,7 @@ import {
 } from '@/config/app.ts';
 import {useTranslation} from "react-i18next";
 import {AIProvider, AI_PROVIDERS} from "@/config/aiProviders";
-import {fetchProviderModels, testConnection} from "@/services/aiService";
+import {fetchProviderModels, testConnection, isAIConfigValid} from "@/services/aiService";
 import DataSettings from './DataSettings';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from "react-markdown";
@@ -206,12 +208,13 @@ const defaultPreferencesFromAtoms = defaultPreferencesSettingsForApi();
 const renderSelect = (id: string, value: string | null, onChange: (value: string) => void, options: {
     value: string,
     label: string
-}[], placeholder: string, triggerClassName?: string, viewportClassName?: string) => (
-    <Select.Root value={value ?? undefined} onValueChange={onChange}>
+}[], placeholder: string, triggerClassName?: string, viewportClassName?: string, disabled?: boolean) => (
+    <Select.Root value={value ?? undefined} onValueChange={onChange} disabled={disabled}>
         <Select.Trigger
             id={id}
             className={twMerge(
                 "flex items-center justify-between w-[160px] h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 hover:bg-grey-light dark:hover:bg-neutral-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                disabled && "opacity-50 cursor-not-allowed",
                 triggerClassName
             )}
             aria-label={placeholder}
@@ -251,12 +254,25 @@ const renderSelect = (id: string, value: string | null, onChange: (value: string
 const PreferencesSettings: React.FC = memo(() => {
     const {t} = useTranslation();
     const [preferences, setPreferences] = useAtom(preferencesSettingsAtom);
+    const aiSettings = useAtomValue(aiSettingsAtom);
     const userLists = useAtomValue(userListNamesAtom) ?? [];
+
+    const isAIConfigured = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
 
     if (!preferences) {
         return <div className="p-4 text-center text-grey-medium">Loading preferences...</div>;
     }
     const currentPreferences = preferences ?? defaultPreferencesFromAtoms;
+
+    // Effect to auto-disable "Always Use AI Task" if AI is not configured
+    useEffect(() => {
+        if (!isAIConfigured && currentPreferences.alwaysUseAITask) {
+            setPreferences(p => ({
+                ...(p ?? defaultPreferencesFromAtoms),
+                alwaysUseAITask: false
+            }));
+        }
+    }, [isAIConfigured, currentPreferences.alwaysUseAITask, setPreferences]);
 
     const handleLanguageChange = (value: string) => setPreferences(p => ({
         ...(p ?? defaultPreferencesFromAtoms),
@@ -304,6 +320,8 @@ const PreferencesSettings: React.FC = memo(() => {
             label: l === 'Inbox' ? t('sidebar.inbox') : l
         }));
     }, [userLists, t]);
+
+    const tooltipContentClass = "text-[11px] bg-grey-dark dark:bg-neutral-900 text-white dark:text-neutral-100 px-2 py-1 rounded-base shadow-md select-none z-[60] data-[state=delayed-open]:animate-fadeIn data-[state=closed]:animate-fadeOut";
 
     return (
         <div className="space-y-0">
@@ -373,19 +391,37 @@ const PreferencesSettings: React.FC = memo(() => {
             <SettingsRow label={t('settings.preferences.alwaysUseAITask')}
                          description={t('settings.preferences.alwaysUseAITaskDescription')}
                          htmlFor="alwaysUseAITaskToggle">
-                <RadixSwitch.Root
-                    id="alwaysUseAITaskToggle"
-                    checked={currentPreferences.alwaysUseAITask}
-                    onCheckedChange={handleAlwaysUseAITaskToggle}
-                    aria-label="Toggle always use AI task"
-                    className={twMerge(
-                        "custom-switch-track",
-                        currentPreferences.alwaysUseAITask ? "custom-switch-track-on" : "custom-switch-track-off"
-                    )}
-                >
-                    <RadixSwitch.Thumb
-                        className={twMerge("custom-switch-thumb", currentPreferences.alwaysUseAITask ? "custom-switch-thumb-on" : "custom-switch-thumb-off")}/>
-                </RadixSwitch.Root>
+                <Tooltip.Provider>
+                    <Tooltip.Root delayDuration={0}>
+                        <Tooltip.Trigger asChild>
+                            <div className="inline-flex">
+                                <RadixSwitch.Root
+                                    id="alwaysUseAITaskToggle"
+                                    checked={currentPreferences.alwaysUseAITask}
+                                    onCheckedChange={handleAlwaysUseAITaskToggle}
+                                    disabled={!isAIConfigured}
+                                    aria-label="Toggle always use AI task"
+                                    className={twMerge(
+                                        "custom-switch-track",
+                                        currentPreferences.alwaysUseAITask ? "custom-switch-track-on" : "custom-switch-track-off",
+                                        !isAIConfigured && "opacity-50 cursor-not-allowed"
+                                    )}
+                                >
+                                    <RadixSwitch.Thumb
+                                        className={twMerge("custom-switch-thumb", currentPreferences.alwaysUseAITask ? "custom-switch-thumb-on" : "custom-switch-thumb-off")}/>
+                                </RadixSwitch.Root>
+                            </div>
+                        </Tooltip.Trigger>
+                        {!isAIConfigured && (
+                            <Tooltip.Portal>
+                                <Tooltip.Content className={tooltipContentClass} side="left" sideOffset={5}>
+                                    {t('settings.preferences.alwaysUseAITaskDisabledHint')}
+                                    <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900" />
+                                </Tooltip.Content>
+                            </Tooltip.Portal>
+                        )}
+                    </Tooltip.Root>
+                </Tooltip.Provider>
             </SettingsRow>
         </div>
     );
@@ -657,6 +693,7 @@ const AISettings: React.FC = memo(() => {
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [isTestingConnection, setIsTestingConnection] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useAtom(aiConnectionStatusAtom);
 
     if (!aiSettings) {
         return <div className="p-4 text-center text-grey-medium">Loading AI settings...</div>;
@@ -750,18 +787,47 @@ const AISettings: React.FC = memo(() => {
             const success = await testConnection(currentSettings);
             if (success) {
                 addNotification({ type: 'success', message: t('settings.ai.connectionSuccessful') });
+                setConnectionStatus('success');
             } else {
                 addNotification({ type: 'error', message: t('settings.ai.connectionFailed') });
+                setConnectionStatus('error');
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : t('settings.ai.connectionFailed');
             addNotification({ type: 'error', message: errorMessage });
+            setConnectionStatus('error');
         } finally {
             setIsTestingConnection(false);
         }
-    }, [currentProvider, currentSettings, isTestingConnection, addNotification, t]);
+    }, [currentProvider, currentSettings, isTestingConnection, addNotification, t, setConnectionStatus]);
 
     const modelOptions = availableModels.map(m => ({ value: m.id, label: m.name }));
+
+    let modelPlaceholder = "Select Model";
+    if (!isCustomProvider && availableModels.length === 0) {
+        if (currentProvider.requiresApiKey && !currentSettings.apiKey) {
+            modelPlaceholder = "Enter API Key & Refresh ->";
+        } else {
+            modelPlaceholder = "Refresh to fetch models ->";
+        }
+    }
+
+    const isConfigurallyReady = (currentProvider.requiresApiKey ? !!currentSettings.apiKey : true) && !!currentSettings.model;
+    let statusColor = "bg-orange-400";
+    let statusText = t('settings.ai.statusIncomplete');
+
+    if (isConfigurallyReady) {
+        if (connectionStatus === 'error') {
+            statusColor = "bg-error";
+            statusText = t('settings.ai.statusFailed');
+        } else if (connectionStatus === 'success') {
+            statusColor = "bg-success";
+            statusText = t('settings.ai.statusVerified');
+        } else {
+            statusColor = "bg-green-500";
+            statusText = t('settings.ai.statusReady');
+        }
+    }
 
     return (
         <div className="space-y-6">
@@ -911,9 +977,10 @@ const AISettings: React.FC = memo(() => {
                                     currentSettings.model,
                                     handleModelChange,
                                     modelOptions,
-                                    "Select Model",
+                                    modelPlaceholder,
                                     "w-[240px]",
-                                    "max-h-[224px] styled-scrollbar"
+                                    "max-h-[224px] styled-scrollbar",
+                                    availableModels.length === 0
                                 )}
                                 {currentProvider.listModelsEndpoint && !currentProvider.requiresApiKey && (
                                     <Button
@@ -958,15 +1025,10 @@ const AISettings: React.FC = memo(() => {
                 <div className="flex items-center space-x-2">
                     <div className={twMerge(
                         "w-2 h-2 rounded-full",
-                        (currentProvider.requiresApiKey ? currentSettings.apiKey : true) && currentSettings.model
-                            ? "bg-green-500"
-                            : "bg-orange-400"
+                        statusColor
                     )} />
                     <span className="text-[11px] text-grey-medium dark:text-neutral-400">
-                        {(currentProvider.requiresApiKey ? currentSettings.apiKey : true) && currentSettings.model
-                            ? t('settings.ai.statusReady')
-                            : t('settings.ai.statusIncomplete')
-                        }
+                        {statusText}
                     </span>
                 </div>
             </div>
