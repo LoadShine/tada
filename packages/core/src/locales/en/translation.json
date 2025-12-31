@@ -152,6 +152,9 @@
       "connectionFailed": "Connection test failed.",
       "statusReady": "AI features are ready to use",
       "statusIncomplete": "Complete configuration to enable AI features",
+      "searchModels": "Search models...",
+      "noModelsFound": "No models found",
+      "modelDescriptionCustom": "Enter a custom model name for your provider.",
       "statusVerified": "Verified & Ready to use",
       "statusFailed": "Connection verification failed"
     },

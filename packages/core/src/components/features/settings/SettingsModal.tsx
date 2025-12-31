@@ -18,6 +18,7 @@ import {
 import {AISettings as AISettingsType, SettingsTab} from '@/types';
 import Icon from '@/components/ui/Icon.tsx';
 import Button from '@/components/ui/Button.tsx';
+import ModelCombobox from '@/components/ui/ModelCombobox.tsx';
 import {twMerge} from 'tailwind-merge';
 import {IconName} from "@/components/ui/IconMap.ts";
 import * as Dialog from '@radix-ui/react-dialog';
@@ -801,17 +802,6 @@ const AISettings: React.FC = memo(() => {
         }
     }, [currentProvider, currentSettings, isTestingConnection, addNotification, t, setConnectionStatus]);
 
-    const modelOptions = availableModels.map(m => ({ value: m.id, label: m.name }));
-
-    let modelPlaceholder = "Select Model";
-    if (!isCustomProvider && availableModels.length === 0) {
-        if (currentProvider.requiresApiKey && !currentSettings.apiKey) {
-            modelPlaceholder = "Enter API Key & Refresh ->";
-        } else {
-            modelPlaceholder = "Refresh to fetch models ->";
-        }
-    }
-
     const isConfigurallyReady = (currentProvider.requiresApiKey ? !!currentSettings.apiKey : true) && !!currentSettings.model;
     let statusColor = "bg-orange-400";
     let statusText = t('settings.ai.statusIncomplete');
@@ -972,16 +962,15 @@ const AISettings: React.FC = memo(() => {
                             />
                         ) : (
                             <>
-                                {renderSelect(
-                                    'modelSelect',
-                                    currentSettings.model,
-                                    handleModelChange,
-                                    modelOptions,
-                                    modelPlaceholder,
-                                    "w-[240px]",
-                                    "max-h-[224px] styled-scrollbar",
-                                    availableModels.length === 0
-                                )}
+                                <ModelCombobox
+                                    id="modelSelect"
+                                    value={currentSettings.model}
+                                    onChange={handleModelChange}
+                                    models={availableModels}
+                                    placeholder={t('settings.ai.model')}
+                                    searchPlaceholder={t('settings.ai.searchModels')}
+                                    noResultsText={t('settings.ai.noModelsFound')}
+                                />
                                 {currentProvider.listModelsEndpoint && !currentProvider.requiresApiKey && (
                                     <Button
                                         variant="ghost"
