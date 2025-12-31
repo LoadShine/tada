@@ -17,6 +17,7 @@ import {
 import {AISettings as AISettingsType, SettingsTab} from '@/types';
 import Icon from '@/components/ui/Icon.tsx';
 import Button from '@/components/ui/Button.tsx';
+import ModelCombobox from '@/components/ui/ModelCombobox.tsx';
 import {twMerge} from 'tailwind-merge';
 import {IconName} from "@/components/ui/IconMap.ts";
 import * as Dialog from '@radix-ui/react-dialog';
@@ -739,8 +740,6 @@ const AISettings: React.FC = memo(() => {
         }
     }, [currentProvider, currentSettings, isTestingConnection, addNotification, t]);
 
-    const modelOptions = availableModels.map(m => ({ value: m.id, label: m.name }));
-
     return (
         <div className="space-y-6">
             {/* Provider Selection */}
@@ -884,15 +883,13 @@ const AISettings: React.FC = memo(() => {
                             />
                         ) : (
                             <>
-                                {renderSelect(
-                                    'modelSelect',
-                                    currentSettings.model,
-                                    handleModelChange,
-                                    modelOptions,
-                                    "Select Model",
-                                    "w-[240px]",
-                                    "max-h-[224px] styled-scrollbar"
-                                )}
+                                <ModelCombobox
+                                    id="modelSelect"
+                                    value={currentSettings.model}
+                                    onChange={handleModelChange}
+                                    models={availableModels}
+                                    placeholder="Select Model"
+                                />
                                 {currentProvider.listModelsEndpoint && !currentProvider.requiresApiKey && (
                                     <Button
                                         variant="ghost"
