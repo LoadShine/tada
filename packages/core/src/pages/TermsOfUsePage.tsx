@@ -1,4 +1,3 @@
-// TermsOfUsePage.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -38,6 +37,18 @@ const TermsOfUsePage: React.FC = () => {
         loadContent();
     }, [i18n.language]);
 
+    const BackButton = () => (
+        <Button asChild variant="ghost" className="gap-2 pl-0 hover:bg-transparent hover:text-primary transition-colors">
+            <Link to="/">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5" />
+                    <path d="M12 19l-7-7 7-7" />
+                </svg>
+                {t('common.backToApp')}
+            </Link>
+        </Button>
+    );
+
     if (loading) {
         return (
             <div className="min-h-screen bg-white dark:bg-neutral-800 flex items-center justify-center">
@@ -48,34 +59,28 @@ const TermsOfUsePage: React.FC = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-white dark:bg-neutral-800 flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-grey-medium dark:text-neutral-400 mb-4">{error}</p>
-                    <Button asChild variant="ghost">
-                        <Link to="/">{t('common.backToApp')}</Link>
-                    </Button>
-                </div>
+            <div className="min-h-screen bg-white dark:bg-neutral-800 flex flex-col items-center justify-center p-6">
+                <p className="text-grey-medium dark:text-neutral-400 mb-6">{error}</p>
+                <BackButton />
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-white dark:bg-neutral-800">
-            <div className="max-w-4xl mx-auto px-6 py-12">
-                <div className="prose prose-sm dark:prose-invert max-w-none">
+            <nav className="sticky top-0 z-50 w-full px-6 py-4 bg-white/80 dark:bg-neutral-800/80 backdrop-blur-md border-b border-transparent transition-all">
+                <div className="max-w-4xl mx-auto flex items-center">
+                    <BackButton />
+                </div>
+            </nav>
+
+            <main className="max-w-4xl mx-auto px-6 py-8 md:py-12 animate-in fade-in duration-500">
+                <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {content}
                     </ReactMarkdown>
                 </div>
-
-                <div className="mt-12 pt-8 border-t border-grey-light dark:border-neutral-700">
-                    <div className="text-center">
-                        <Button asChild variant="ghost">
-                            <Link to="/">{t('common.backToApp')}</Link>
-                        </Button>
-                    </div>
-                </div>
-            </div>
+            </main>
         </div>
     );
 };
