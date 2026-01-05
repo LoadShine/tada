@@ -1,7 +1,24 @@
 # Changelog
 
-## Version 0.3.2 (Current)
-*Release Date: May 21, 2024*
+## Version 0.3.3 (Current)
+*Release Date: Jan 5, 2026*
+
+### ✨ New Features & Improvements
+- **Accessibility**: Introduced adjustable text size and font weight settings for improved accessibility (fixes #5, #7).
+- **Proxy Configuration**: Added support for configuring a proxy connection.
+- **Custom Models**: Allowed users to manually input custom model IDs (fixes #1).
+- **UI Adjustment**: Moved the "Back to Application" button on the "View Full Version" page to the upper left corner (fixes #14).
+- **AI Optimization**: Optimized the logic for AI services usability testing and updated the prompt for generating AI tasks.
+- **UI Tweak**: Adjusted the placeholder text for the custom service URL (fixes #12).
+
+### 🐛 Bug Fixes
+- **Subtasks**: Fixed an issue that caused duplicate subtask creation.
+- **Input Handling**: Resolved an issue with IME composition (e.g., Pinyin/Kana input) in input fields to prevent premature task creation while typing.
+
+---
+
+## Version 0.3.2
+*Release Date: December 31, 2025*
 
 ### ✨ New Features
 - **AI Task Option**: Added a toggle option for "Always use AI task".
