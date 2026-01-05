@@ -68,6 +68,7 @@ export type SettingsTab =
     | 'appearance'
     | 'preferences'
     | 'ai'
+    | 'proxy'
     | 'data'
     | 'about';
 
@@ -143,6 +144,19 @@ export interface AISettings {
 }
 
 /**
+ * Defines the structure for Proxy settings.
+ */
+export interface ProxySettings {
+    enabled: boolean;
+    protocol: 'http' | 'https' | 'socks5';
+    host: string;
+    port: number;
+    auth: boolean;
+    username?: string;
+    password?: string;
+}
+
+/**
  * Defines the structure for exported data.
  */
 export interface ExportedData {
@@ -154,6 +168,7 @@ export interface ExportedData {
             appearance: AppearanceSettings;
             preferences: PreferencesSettings;
             ai: AISettings;
+            proxy?: ProxySettings;
         };
         lists: List[];
         tasks: Task[];

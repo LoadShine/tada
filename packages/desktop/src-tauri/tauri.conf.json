@@ -28,7 +28,20 @@
             "core:window:allow-destroy",
             "core:window:allow-set-fullscreen",
             "core:default",
-            "core:tray:default"
+            "core:tray:default",
+            "http:default",
+            {
+              "identifier": "http:default",
+              "allow": [
+                {
+                  "url": "http://**"
+                },
+                {
+                  "url": "https://**"
+                }
+              ],
+              "deny": []
+            }
           ]
         }
       ]

@@ -8,10 +8,12 @@ import {
     DarkModeOption,
     defaultAISettingsForApi,
     defaultAppearanceSettingsForApi,
+    defaultProxySettingsForApi,
     DefaultNewTaskDueDate,
     defaultPreferencesSettingsForApi,
     isSettingsOpenAtom,
     preferencesSettingsAtom,
+    proxySettingsAtom,
     settingsSelectedTabAtom,
     userListNamesAtom,
 } from '@/store/jotai.ts';
@@ -40,6 +42,7 @@ import DataSettings from './DataSettings';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {fetchWithProxy, isTauri} from "@/utils/networkUtils";
 
 interface SettingsItem {
     id: SettingsTab;
@@ -51,6 +54,7 @@ const settingsSections: SettingsItem[] = [
     {id: 'appearance', labelKey: 'settings.appearance.title', icon: 'settings'},
     {id: 'preferences', labelKey: 'settings.preferences.title', icon: 'sliders'},
     {id: 'ai', labelKey: 'settings.ai.title', icon: 'sparkles'},
+    {id: 'proxy', labelKey: 'settings.proxy.title', icon: 'network'},
     {id: 'data', labelKey: 'settings.data.title', icon: 'hard-drive'},
     {id: 'about', labelKey: 'settings.about.title', icon: 'info'},
 ];
@@ -1011,6 +1015,231 @@ const AISettings: React.FC = memo(() => {
 AISettings.displayName = 'AISettings';
 
 /**
+ * Settings panel for managing proxy configuration.
+ */
+const ProxySettings: React.FC = memo(() => {
+    const { t } = useTranslation();
+    const [proxySettings, setProxySettings] = useAtom(proxySettingsAtom);
+    const [isTesting, setIsTesting] = useState(false);
+    const addNotification = useSetAtom(addNotificationAtom);
+
+    if (!proxySettings) {
+        return <div className="p-4 text-center text-grey-medium">{t('settings.proxy.loading')}</div>;
+    }
+
+    const currentSettings = proxySettings ?? defaultProxySettingsForApi();
+    const isDesktop = isTauri();
+
+    const handleEnableChange = (enabled: boolean) => setProxySettings(s => ({
+        ...(s ?? defaultProxySettingsForApi()),
+        enabled
+    }));
+
+    const handleProtocolChange = (protocol: string) => setProxySettings(s => ({
+        ...(s ?? defaultProxySettingsForApi()),
+        protocol: protocol as 'http' | 'https' | 'socks5'
+    }));
+
+    const handleHostChange = (e: React.ChangeEvent<HTMLInputElement>) => setProxySettings(s => ({
+        ...(s ?? defaultProxySettingsForApi()),
+        host: e.target.value
+    }));
+
+    const handlePortChange = (e: React.ChangeEvent<HTMLInputElement>) => setProxySettings(s => ({
+        ...(s ?? defaultProxySettingsForApi()),
+        port: parseInt(e.target.value) || 0
+    }));
+
+    const handleAuthChange = (auth: boolean) => setProxySettings(s => ({
+        ...(s ?? defaultProxySettingsForApi()),
+        auth
+    }));
+
+    const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => setProxySettings(s => ({
+        ...(s ?? defaultProxySettingsForApi()),
+        username: e.target.value
+    }));
+
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => setProxySettings(s => ({
+        ...(s ?? defaultProxySettingsForApi()),
+        password: e.target.value
+    }));
+
+    const handleTestProxy = async () => {
+        setIsTesting(true);
+        try {
+            console.log('[Proxy Test] Starting test with:', currentSettings);
+            const response = await fetchWithProxy('https://www.google.com', {
+                method: 'HEAD',
+                cache: 'no-cache'
+            }, currentSettings);
+
+            console.log('[Proxy Test] Response:', response.status, response.statusText);
+
+            if (response.ok || (response.status >= 200 && response.status < 400)) {
+                addNotification({ type: 'success', message: t('settings.proxy.test.success') });
+            } else {
+                throw new Error(`HTTP Status: ${response.status} ${response.statusText}`);
+            }
+        } catch (e: any) {
+            console.error('[Proxy Test] Failed:', e);
+            const errorMessage = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
+            addNotification({ type: 'error', message: t('settings.proxy.test.failed', { error: errorMessage }) });
+        } finally {
+            setIsTesting(false);
+        }
+    };
+
+    if (!isDesktop) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                <Icon name="alert-circle" size={32} className="text-grey-medium dark:text-neutral-500 mb-4" />
+                <h3 className="text-lg font-medium text-grey-dark dark:text-neutral-200 mb-2">
+                    {t('settings.proxy.unavailable.title')}
+                </h3>
+                <p className="text-sm text-grey-medium dark:text-neutral-400 max-w-sm">
+                    {t('settings.proxy.unavailable.description')}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-0">
+            <div className="p-4 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/10 dark:border-primary/20 mb-6 flex items-start gap-3">
+                <Icon name="info" size={18} className="text-primary dark:text-primary-light mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-grey-dark dark:text-neutral-200">
+                    <p className="mb-1 font-medium">{t('settings.proxy.about.title')}</p>
+                    <p className="opacity-80">
+                        {t('settings.proxy.about.description')}
+                    </p>
+                </div>
+            </div>
+
+            <SettingsRow
+                label={t('settings.proxy.enable.label')}
+                description={t('settings.proxy.enable.description')}
+                htmlFor="proxyToggle"
+            >
+                <RadixSwitch.Root
+                    id="proxyToggle"
+                    checked={currentSettings.enabled}
+                    onCheckedChange={handleEnableChange}
+                    className={twMerge(
+                        "custom-switch-track",
+                        currentSettings.enabled ? "custom-switch-track-on" : "custom-switch-track-off"
+                    )}
+                >
+                    <RadixSwitch.Thumb
+                        className={twMerge("custom-switch-thumb", currentSettings.enabled ? "custom-switch-thumb-on" : "custom-switch-thumb-off")}
+                    />
+                </RadixSwitch.Root>
+            </SettingsRow>
+
+            <div className={twMerge(
+                "transition-all duration-300 ease-in-out overflow-hidden",
+                currentSettings.enabled ? "max-h-[500px] opacity-100" : "max-h-0 opacity-50"
+            )}>
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+                <SettingsRow label={t('settings.proxy.protocol.label')} htmlFor="protocolSelect">
+                    {renderSelect('protocolSelect', currentSettings.protocol, handleProtocolChange, [
+                        {value: 'http', label: 'HTTP'},
+                        {value: 'https', label: 'HTTPS'},
+                        {value: 'socks5', label: 'SOCKS5'},
+                    ], t('settings.proxy.protocol.placeholder'))}
+                </SettingsRow>
+
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+                <SettingsRow label={t('settings.proxy.host')} htmlFor="hostInput">
+                    <input
+                        id="hostInput"
+                        type="text"
+                        value={currentSettings.host}
+                        onChange={handleHostChange}
+                        placeholder="127.0.0.1"
+                        className="w-[200px] h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    />
+                </SettingsRow>
+
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+                <SettingsRow label={t('settings.proxy.port')} htmlFor="portInput">
+                    <input
+                        id="portInput"
+                        type="number"
+                        value={currentSettings.port}
+                        onChange={handlePortChange}
+                        placeholder="7890"
+                        className="w-[100px] h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    />
+                </SettingsRow>
+
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+                <SettingsRow label={t('settings.proxy.auth.label')} description={t('settings.proxy.auth.description')}>
+                    <RadixSwitch.Root
+                        checked={currentSettings.auth}
+                        onCheckedChange={handleAuthChange}
+                        className={twMerge(
+                            "custom-switch-track",
+                            currentSettings.auth ? "custom-switch-track-on" : "custom-switch-track-off"
+                        )}
+                    >
+                        <RadixSwitch.Thumb
+                            className={twMerge("custom-switch-thumb", currentSettings.auth ? "custom-switch-thumb-on" : "custom-switch-thumb-off")}
+                        />
+                    </RadixSwitch.Root>
+                </SettingsRow>
+
+                {currentSettings.auth && (
+                    <div className="bg-grey-ultra-light/50 dark:bg-neutral-800/50 rounded-lg p-3 mt-2 mb-2 border border-grey-light dark:border-neutral-700 animate-fadeIn">
+                        <div className="space-y-3">
+                            <div className="flex items-center">
+                                <label className="w-24 text-[12px] text-grey-medium dark:text-neutral-400">{t('settings.proxy.auth.username')}</label>
+                                <input
+                                    type="text"
+                                    value={currentSettings.username}
+                                    onChange={handleUsernameChange}
+                                    className="flex-1 h-8 px-3 text-[13px] font-light rounded-base bg-white dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary border border-grey-light dark:border-neutral-600"
+                                />
+                            </div>
+                            <div className="flex items-center">
+                                <label className="w-24 text-[12px] text-grey-medium dark:text-neutral-400">{t('settings.proxy.auth.password')}</label>
+                                <input
+                                    type="password"
+                                    value={currentSettings.password}
+                                    onChange={handlePasswordChange}
+                                    className="flex-1 h-8 px-3 text-[13px] font-light rounded-base bg-white dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary border border-grey-light dark:border-neutral-600"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+                <SettingsRow label={t('settings.proxy.test.label')} description={t('settings.proxy.test.description')}>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="wifi"
+                        onClick={handleTestProxy}
+                        disabled={isTesting}
+                        loading={isTesting}
+                        className="text-[13px]"
+                    >
+                        {t('settings.proxy.test.button')}
+                    </Button>
+                </SettingsRow>
+            </div>
+        </div>
+    );
+});
+ProxySettings.displayName = 'ProxySettings';
+
+/**
  * The main modal component for application settings, containing tabs for
  * Appearance, Preferences, AI, Data, and About sections.
  */
@@ -1030,6 +1259,8 @@ const SettingsModal: React.FC = () => {
                 return <PreferencesSettings/>;
             case 'ai':
                 return <AISettings />;
+            case 'proxy':
+                return <ProxySettings />;
             case 'data':
                 return <DataSettings />;
             case 'about':

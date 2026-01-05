@@ -11,7 +11,8 @@ import {
     ImportResult,
     DataConflict,
     ConflictResolution,
-    EchoReport
+    EchoReport,
+    ProxySettings
 } from '@/types';
 
 /**
@@ -25,10 +26,12 @@ export interface IStorageService {
         appearance: AppearanceSettings;
         preferences: PreferencesSettings;
         ai: AISettings;
+        proxy?: ProxySettings;
     };
     updateAppearanceSettings(settings: AppearanceSettings): AppearanceSettings;
     updatePreferencesSettings(settings: PreferencesSettings): PreferencesSettings;
     updateAISettings(settings: AISettings): AISettings;
+    updateProxySettings(settings: ProxySettings): ProxySettings;
 
     // Lists
     fetchLists(): List[];

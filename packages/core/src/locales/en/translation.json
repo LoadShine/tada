@@ -158,6 +158,41 @@
       "statusVerified": "Verified & Ready to use",
       "statusFailed": "Connection verification failed"
     },
+    "proxy": {
+      "title": "Proxy Settings",
+      "loading": "Loading proxy settings...",
+      "unavailable": {
+        "title": "Proxy Settings Unavailable",
+        "description": "Custom proxy configuration is only available in the Desktop application. In the web version, please use your browser's proxy settings or system settings."
+      },
+      "about": {
+        "title": "About Proxy Settings",
+        "description": "These settings apply specifically to AI features and external integrations within Tada. They utilize a separate network stack to bypass system limitations."
+      },
+      "enable": {
+        "label": "Enable Proxy",
+        "description": "Route AI requests through a custom proxy server."
+      },
+      "protocol": {
+        "label": "Protocol",
+        "placeholder": "Select Protocol"
+      },
+      "host": "Host",
+      "port": "Port",
+      "auth": {
+        "label": "Authentication",
+        "description": "Enable if your proxy requires a username and password.",
+        "username": "Username",
+        "password": "Password"
+      },
+      "test": {
+        "label": "Connection Test",
+        "description": "Verify if Tada can connect to the internet through this proxy.",
+        "button": "Test Proxy",
+        "success": "Proxy connection successful!",
+        "failed": "Proxy test failed: {{error}}"
+      }
+    },
     "data": {
       "title": "Data",
       "export": {

@@ -158,6 +158,41 @@
       "statusVerified": "已验证并可使用",
       "statusFailed": "连接验证失败"
     },
+    "proxy": {
+      "title": "代理设置",
+      "loading": "正在加载代理设置...",
+      "unavailable": {
+        "title": "代理设置不可用",
+        "description": "自定义代理配置仅在桌面版应用中可用。在网页版中，请使用浏览器的代理设置或系统设置。"
+      },
+      "about": {
+        "title": "关于代理设置",
+        "description": "这些设置专门应用于 Tada 内的 AI 功能和外部集成。它们使用独立的网络堆栈来绕过系统限制。"
+      },
+      "enable": {
+        "label": "启用代理",
+        "description": "通过自定义代理服务器路由 AI 请求。"
+      },
+      "protocol": {
+        "label": "协议",
+        "placeholder": "选择协议"
+      },
+      "host": "主机 (Host)",
+      "port": "端口 (Port)",
+      "auth": {
+        "label": "身份验证",
+        "description": "如果您的代理需要用户名和密码，请启用此选项。",
+        "username": "用户名",
+        "password": "密码"
+      },
+      "test": {
+        "label": "连接测试",
+        "description": "验证 Tada 是否可以通过此代理连接到互联网。",
+        "button": "测试代理",
+        "success": "代理连接成功！",
+        "failed": "代理测试失败: {{error}}"
+      }
+    },
     "data": {
       "title": "数据管理",
       "export": {
@@ -439,7 +474,7 @@
   },
   "moondown": {
     "ai": {
-      "thinking": "AI is thinking..."
+      "thinking": "AI 正在思考..."
     },
     "slash": {
       "aiContinue": "AI 继续写作",

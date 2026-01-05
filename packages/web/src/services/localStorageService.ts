@@ -12,12 +12,14 @@ import {
     ImportResult,
     DataConflict,
     ConflictResolution,
-    EchoReport
+    EchoReport,
+    ProxySettings
 } from '@tada/core/types';
 import {
     defaultAISettingsForApi,
     defaultAppearanceSettingsForApi,
     defaultPreferencesSettingsForApi,
+    defaultProxySettingsForApi,
     getTaskGroupCategory
 } from '@tada/core/store/jotai';
 
@@ -32,6 +34,7 @@ const KEYS = {
     APPEARANCE_SETTINGS: 'tada-appearanceSettings',
     PREFERENCES_SETTINGS: 'tada-preferencesSettings',
     AI_SETTINGS: 'tada-aiSettings',
+    PROXY_SETTINGS: 'tada-proxySettings',
 };
 
 /**
@@ -161,6 +164,7 @@ export class LocalStorageService implements IStorageService {
     private appearanceCache = new MemoryCache<AppearanceSettings>();
     private preferencesCache = new MemoryCache<PreferencesSettings>();
     private aiCache = new MemoryCache<AISettings>();
+    private proxyCache = new MemoryCache<ProxySettings>();
 
     private pendingWrites = new Set<string>();
     private flushTimeout: NodeJS.Timeout | null = null;
@@ -185,6 +189,7 @@ export class LocalStorageService implements IStorageService {
             appearance: getItem(KEYS.APPEARANCE_SETTINGS, defaultAppearanceSettingsForApi(), this.appearanceCache),
             preferences: getItem(KEYS.PREFERENCES_SETTINGS, defaultPreferencesSettingsForApi(), this.preferencesCache),
             ai: getItem(KEYS.AI_SETTINGS, defaultAISettingsForApi(), this.aiCache),
+            proxy: getItem(KEYS.PROXY_SETTINGS, defaultProxySettingsForApi(), this.proxyCache),
         };
     }
 
@@ -209,6 +214,14 @@ export class LocalStorageService implements IStorageService {
      */
     updateAISettings(settings: AISettings) {
         setItem(KEYS.AI_SETTINGS, settings, this.aiCache);
+        return settings;
+    }
+
+    /**
+     * Update Proxy settings in cache and localStorage
+     */
+    updateProxySettings(settings: ProxySettings) {
+        setItem(KEYS.PROXY_SETTINGS, settings, this.proxyCache);
         return settings;
     }
 
@@ -422,6 +435,7 @@ export class LocalStorageService implements IStorageService {
                     else if (key === KEYS.APPEARANCE_SETTINGS) cache = this.appearanceCache;
                     else if (key === KEYS.PREFERENCES_SETTINGS) cache = this.preferencesCache;
                     else if (key === KEYS.AI_SETTINGS) cache = this.aiCache;
+                    else if (key === KEYS.PROXY_SETTINGS) cache = this.proxyCache;
 
                     if (cache && cache.isDirtyFlag()) {
                         const value = cache.get();
@@ -451,6 +465,7 @@ export class LocalStorageService implements IStorageService {
             { key: KEYS.APPEARANCE_SETTINGS, cache: this.appearanceCache },
             { key: KEYS.PREFERENCES_SETTINGS, cache: this.preferencesCache },
             { key: KEYS.AI_SETTINGS, cache: this.aiCache },
+            { key: KEYS.PROXY_SETTINGS, cache: this.proxyCache },
         ];
 
         caches.forEach(({ key, cache }) => {
@@ -767,6 +782,10 @@ export class LocalStorageService implements IStorageService {
                 }
                 if (data.data.settings.ai) {
                     this.updateAISettings(data.data.settings.ai);
+                    result.imported.settings++;
+                }
+                if (data.data.settings.proxy) {
+                    this.updateProxySettings(data.data.settings.proxy);
                     result.imported.settings++;
                 }
             }

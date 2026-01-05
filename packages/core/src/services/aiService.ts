@@ -1,7 +1,8 @@
-import {AISettings, StoredSummary, Task, EchoReport} from '@/types';
+import {AISettings, StoredSummary, Task, EchoReport, ProxySettings} from '@/types';
 import storageManager from './storageManager.ts';
 import {AI_PROVIDERS, AIModel, AIProvider} from "@/config/aiProviders";
 import {stripBase64Images} from "@/lib/moondown/core/utils/string-utils";
+import {fetchWithProxy} from "@/utils/networkUtils";
 
 export interface AiTaskAnalysis {
     title: string;
@@ -73,6 +74,16 @@ const getApiHeaders = (settings: AISettings): Record<string, string> => {
     return baseHeaders;
 };
 
+const getProxySettings = (): ProxySettings | undefined => {
+    try {
+        const service = storageManager.get();
+        return service.fetchSettings().proxy;
+    } catch (e) {
+        console.warn("Could not fetch proxy settings from storage service:", e);
+        return undefined;
+    }
+};
+
 /**
  * Fetches the list of available models from the configured AI provider's API.
  * @param settings The current AI settings.
@@ -89,12 +100,13 @@ export const fetchProviderModels = async (settings: AISettings): Promise<AIModel
 
     const endpoint = getApiEndpoint(settings, 'models');
     const headers = (provider.id === 'gemini') ? { 'Content-Type': 'application/json' } : provider.getHeaders(settings.apiKey);
+    const proxySettings = getProxySettings();
 
     try {
-        const response = await fetch(endpoint, {
+        const response = await fetchWithProxy(endpoint, {
             method: 'GET',
             headers,
-        });
+        }, proxySettings);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -129,6 +141,8 @@ export const testConnection = async (settings: AISettings): Promise<boolean> => 
         throw new Error("Model is required to test connection.");
     }
 
+    const proxySettings = getProxySettings();
+
     try {
         let payload: any = {
             model: settings.model,
@@ -142,11 +156,11 @@ export const testConnection = async (settings: AISettings): Promise<boolean> => 
 
         const endpoint = getApiEndpoint(settings, 'chat');
 
-        const response = await fetch(endpoint, {
+        const response = await fetchWithProxy(endpoint, {
             method: 'POST',
             headers: getApiHeaders(settings),
             body: JSON.stringify(payload),
-        });
+        }, proxySettings);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -200,6 +214,48 @@ const extractContentFromResponse = (data: any, providerId: AISettings['provider'
 }
 
 /**
+ * A helper function to sanitize JSON strings that might contain unescaped newlines.
+ * It's common for LLMs (like Gemini) to output real newlines inside JSON string values,
+ * which is invalid JSON.
+ */
+function sanitizeJsonString(jsonString: string): string {
+    let cleaned = jsonString.replace(/^```json\s*|```\s*$/g, '').trim();
+    cleaned = cleaned.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+
+    let inString = false;
+    let escaped = false;
+    let result = '';
+
+    for (let i = 0; i < cleaned.length; i++) {
+        const char = cleaned[i];
+
+        if (char === '"' && !escaped) {
+            inString = !inString;
+        }
+
+        if (inString && (char === '\n' || char === '\r')) {
+            if (char === '\n') result += '\\n';
+        } else {
+            result += char;
+        }
+
+        if (char === '\\' && !escaped) {
+            escaped = true;
+        } else {
+            escaped = false;
+        }
+    }
+
+    return result;
+}
+
+/**
  * Sends a natural language prompt to the AI to get a structured task object.
  * @param prompt The user's natural language input for creating a task.
  * @param settings The current AI settings.
@@ -212,20 +268,22 @@ export const analyzeTaskInputWithAI = async (prompt: string, settings: AISetting
     }
     const provider = AI_PROVIDERS.find(p => p.id === settings.provider)!;
 
-    const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom'].includes(provider.id);
+    const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom', 'gemini'].includes(provider.id);
     let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, prompt, useJsonFormat, false);
     if (provider.requestBodyTransformer) {
         payload = provider.requestBodyTransformer(payload);
     }
 
     const endpoint = getApiEndpoint(settings, 'chat');
+    const proxySettings = getProxySettings();
 
     try {
-        const response = await fetch(endpoint, {
+        const response = await fetchWithProxy(endpoint, {
             method: 'POST',
             headers: getApiHeaders(settings),
             body: JSON.stringify(payload),
-        });
+        }, proxySettings);
+
         if (!response.ok) {
             const errorBody = await response.text();
             throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
@@ -233,14 +291,25 @@ export const analyzeTaskInputWithAI = async (prompt: string, settings: AISetting
 
         const data = await response.json();
         const content = extractContentFromResponse(data, provider.id);
-        // Remove markdown code blocks and extract JSON object
-        let cleanedContent = content.replace(/^```json\s*|```\s*$/g, '').trim();
-        // Try to extract JSON object if content contains non-JSON text
-        const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            cleanedContent = jsonMatch[0];
+
+        console.log('[AI Task Analysis] Raw content:', content);
+
+        const sanitizedContent = sanitizeJsonString(content);
+
+        try {
+            return JSON.parse(sanitizedContent) as AiTaskAnalysis;
+        } catch (parseError) {
+            console.error("[AI Task Analysis] JSON Parse Error. Raw:", content, "Sanitized:", sanitizedContent);
+
+            try {
+                const dumbSanitized = content
+                    .replace(/^```json\s*|```\s*$/g, '')
+                    .replace(/\n/g, '\\n');
+                return JSON.parse(dumbSanitized) as AiTaskAnalysis;
+            } catch (e) {
+                throw parseError;
+            }
         }
-        return JSON.parse(cleanedContent) as AiTaskAnalysis;
     } catch (error) {
         console.error("AI Task analysis failed:", error);
         throw error;
@@ -310,13 +379,14 @@ export const streamChatCompletionForEditor = async (
     }
 
     const endpoint = getApiEndpoint(settings, 'chat');
+    const proxySettings = getProxySettings();
 
-    const response = await fetch(endpoint, {
+    const response = await fetchWithProxy(endpoint, {
         method: 'POST',
         headers: getApiHeaders(settings),
         body: JSON.stringify(payload),
         signal,
-    });
+    }, proxySettings);
 
     if (!response.ok || !response.body) {
         const errorBody = await response.text();
@@ -423,8 +493,6 @@ export const generateAiSummary = async (
         summaryText: fullText,
     });
 };
-
-// --- Echo Report Generation ---
 
 export const generateEchoReport = async (
     jobTypes: string[],

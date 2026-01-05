@@ -128,11 +128,14 @@ const ModelCombobox: React.FC<ModelComboboxProps> = memo(({
             );
 
             if (!exactMatch) {
-                const customOption: AIModel = {
-                    id: searchValue.trim(),
-                    name: searchValue.trim()
-                };
-                return [{ ...customOption, isCustom: true } as any, ...filtered];
+                const customId = searchValue.trim();
+                if (customId) {
+                    const customOption: AIModel = {
+                        id: customId,
+                        name: customId
+                    };
+                    return [{ ...customOption, isCustom: true } as any, ...filtered];
+                }
             }
         }
 
@@ -277,7 +280,7 @@ const ModelCombobox: React.FC<ModelComboboxProps> = memo(({
                             {displayOptions.length > 0 ? (
                                 displayOptions.map((model, index) => (
                                     <ModelOption
-                                        key={model.id + (model as any).isCustom ? '_custom' : ''}
+                                        key={(model as any).isCustom ? `custom_${model.id}` : model.id}
                                         model={model}
                                         isSelected={model.id === value}
                                         isHighlighted={index === highlightedIndex}

@@ -13,12 +13,14 @@ import {
     ImportResult,
     DataConflict,
     ConflictResolution,
-    EchoReport
+    EchoReport,
+    ProxySettings
 } from '@tada/core/types';
 import {
     defaultAISettingsForApi,
     defaultAppearanceSettingsForApi,
     defaultPreferencesSettingsForApi,
+    defaultProxySettingsForApi,
     getTaskGroupCategory
 } from '@tada/core/store/jotai';
 
@@ -103,6 +105,7 @@ export class SqliteStorageService implements IStorageService {
         appearance: AppearanceSettings;
         preferences: PreferencesSettings;
         ai: AISettings;
+        proxy: ProxySettings;
     } | null = null;
     private isDataLoaded = false;
 
@@ -254,6 +257,7 @@ export class SqliteStorageService implements IStorageService {
                 appearance: defaultAppearanceSettingsForApi(),
                 preferences: defaultPreferencesSettingsForApi(),
                 ai: defaultAISettingsForApi(),
+                proxy: defaultProxySettingsForApi()
             };
         }
         return this.settingsCache;
@@ -261,11 +265,12 @@ export class SqliteStorageService implements IStorageService {
 
     async fetchSettingsAsync() {
         const db = this.getDb();
-        const settings = await db.select<DbSetting[]>('SELECT * FROM settings WHERE key IN (?, ?, ?)', ['appearance', 'preferences', 'ai']);
+        const settings = await db.select<DbSetting[]>('SELECT * FROM settings WHERE key IN (?, ?, ?, ?)', ['appearance', 'preferences', 'ai', 'proxy']);
         const result = {
             appearance: defaultAppearanceSettingsForApi(),
             preferences: defaultPreferencesSettingsForApi(),
             ai: defaultAISettingsForApi(),
+            proxy: defaultProxySettingsForApi()
         };
         settings.forEach(setting => {
             try {
@@ -273,6 +278,7 @@ export class SqliteStorageService implements IStorageService {
                 if (setting.key === 'appearance') result.appearance = { ...result.appearance, ...parsed };
                 else if (setting.key === 'preferences') result.preferences = { ...result.preferences, ...parsed };
                 else if (setting.key === 'ai') result.ai = { ...result.ai, ...parsed };
+                else if (setting.key === 'proxy') result.proxy = { ...result.proxy, ...parsed };
             } catch (error) {
                 console.error(`Failed to parse setting ${setting.key}:`, error);
             }
@@ -307,6 +313,16 @@ export class SqliteStorageService implements IStorageService {
             const db = this.getDb();
             const now = Date.now();
             await db.execute('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)', ['ai', JSON.stringify(settings), now]);
+        });
+        return settings;
+    }
+
+    updateProxySettings(settings: ProxySettings): ProxySettings {
+        if (this.settingsCache) this.settingsCache.proxy = settings;
+        this.queueWrite(async () => {
+            const db = this.getDb();
+            const now = Date.now();
+            await db.execute('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)', ['proxy', JSON.stringify(settings), now]);
         });
         return settings;
     }
@@ -872,6 +888,7 @@ export class SqliteStorageService implements IStorageService {
                 if (data.data.settings.appearance) { this.updateAppearanceSettings(data.data.settings.appearance); result.imported.settings++; }
                 if (data.data.settings.preferences) { this.updatePreferencesSettings(data.data.settings.preferences); result.imported.settings++; }
                 if (data.data.settings.ai) { this.updateAISettings(data.data.settings.ai); result.imported.settings++; }
+                if (data.data.settings.proxy) { this.updateProxySettings(data.data.settings.proxy); result.imported.settings++; }
             }
 
             if (options.includeLists && data.data.lists) {
@@ -949,8 +966,7 @@ export class SqliteStorageService implements IStorageService {
                     let reportToImport = importedReport;
                     if (existingReport) {
                         const resolution = conflictResolutions?.get(importedReport.id) || options.conflictResolution;
-                        if (resolution === 'keep-local') shouldImport = false;
-                        else if (resolution === 'skip') shouldImport = false;
+                        if (resolution === 'keep-local' || resolution === 'skip') shouldImport = false;
                     }
                     if (shouldImport) {
                         if (existingReport) reports[reports.findIndex(r => r.id === importedReport.id)] = reportToImport;
