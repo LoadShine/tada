@@ -121,7 +121,6 @@ const getAiGlowThemeClass = (priority: number | null): string => {
 
 /**
  * The main component for displaying and managing a list of tasks.
- * It handles task filtering, grouping, drag-and-drop reordering, and task creation.
  */
 const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     const {t} = useTranslation();
@@ -402,8 +401,6 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             return task;
         });
 
-        // Use batchUpdateTasks for reordering as it involves potential mass updates (though here only one changes,
-        // maintaining consistency is key, and batch update handles transactions)
         batchUpdateTasks(updatedTasks);
 
     }, [allTasks, currentFilterGlobal, sortableItems, batchUpdateTasks]);
@@ -702,6 +699,12 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         );
     }
 
+    const handleInputSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        if (newTaskTitle.trim()) {
+            isCurrentlyAiMode ? handleAiTaskCommit() : commitNewTask();
+        }
+    }, [newTaskTitle, isCurrentlyAiMode, handleAiTaskCommit, commitNewTask]);
 
     return (
         <TaskItemMenuProvider>
@@ -747,7 +750,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                 {shouldShowInputSection && (
                     <div className="bg-transparent">
                         <div className="px-4 py-2.5">
-                            <div className={newTaskInputWrapperClass}>
+                            <form className={newTaskInputWrapperClass} onSubmit={handleInputSubmit}>
                                 <div className="flex items-center h-full flex-shrink-0">
                                     <Popover.Root open={isNewTaskDatePickerOpen}
                                                   onOpenChange={setIsNewTaskDatePickerOpen}>
@@ -808,12 +811,6 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                     value={newTaskTitle}
                                     onChange={(e) => setNewTaskTitle(e.target.value)}
                                     onKeyDown={(e) => {
-                                        if (e.nativeEvent.isComposing) {
-                                            return;
-                                        }
-                                        if (e.key === 'Enter' && newTaskTitle.trim()) {
-                                            isCurrentlyAiMode ? handleAiTaskCommit() : commitNewTask();
-                                        }
                                         if (e.key === 'Escape') {
                                             if (isCurrentlyAiMode) {
                                                 setIsAiTaskInputVisible(false);
@@ -869,6 +866,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                         return (
                                                             <button
                                                                 key={pVal}
+                                                                type="button"
                                                                 onClick={() => handlePriorityFlagClick(pVal)}
                                                                 className={twMerge(
                                                                     "flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-150 ease-in-out focus:outline-none",
@@ -884,6 +882,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                         );
                                                     })}
                                                     <button
+                                                        type="button"
                                                         onClick={() => handlePriorityFlagClick(null)}
                                                         className={twMerge(
                                                             "flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-150 ease-in-out focus:outline-none",
@@ -951,7 +950,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                         </DropdownMenu.Portal>
                                     </DropdownMenu.Root>
                                 </div>
-                            </div>
+                            </form>
                         </div>
                         <div className="h-px bg-grey-ultra-light/50 dark:bg-neutral-700/30 mx-4"></div>
                     </div>

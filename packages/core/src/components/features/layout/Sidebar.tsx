@@ -193,7 +193,6 @@ const Sidebar: React.FC = () => {
 
     useEffect(() => {
         if (editingListId && listEditInputRef.current) {
-            // Use setTimeout to ensure the input is rendered and ready for focus.
             setTimeout(() => {
                 listEditInputRef.current?.focus();
                 listEditInputRef.current?.select();
@@ -232,7 +231,9 @@ const Sidebar: React.FC = () => {
         setEditingListName('');
     }, []);
 
-    const handleSaveRename = useCallback(() => {
+    const handleSaveRename = useCallback((e?: React.FormEvent) => {
+        if (e) e.preventDefault(); // Prevent form submission
+
         if (!editingListId) return;
         const originalList = userLists?.find(l => l.id === editingListId);
         const trimmedName = editingListName.trim();
@@ -255,10 +256,7 @@ const Sidebar: React.FC = () => {
     }, [editingListId, editingListName, userLists, currentFilter, navigate, updateList, handleCancelRename]);
 
     const handleRenameInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleSaveRename();
-        } else if (e.key === 'Escape') {
+        if (e.key === 'Escape') {
             e.preventDefault();
             handleCancelRename();
         }
@@ -415,8 +413,10 @@ const Sidebar: React.FC = () => {
                                             <div key={list.id}
                                                  className="group/listitem relative pr-7 flex items-center h-8 mb-0.5">
                                                 {isEditing ? (
-                                                    <div
-                                                        className="flex items-center w-full px-2 py-0 h-full rounded-base bg-black/5 dark:bg-white/10">
+                                                    <form
+                                                        onSubmit={handleSaveRename}
+                                                        className="flex items-center w-full px-2 py-0 h-full rounded-base bg-black/5 dark:bg-white/10"
+                                                    >
                                                         <Icon name={(list.icon as IconName) || 'list'} size={16}
                                                               strokeWidth={1}
                                                               className="mr-2 flex-shrink-0 opacity-90 text-primary dark:text-primary-light"/>
@@ -425,11 +425,11 @@ const Sidebar: React.FC = () => {
                                                             type="text"
                                                             value={editingListName}
                                                             onChange={(e) => setEditingListName(e.target.value)}
-                                                            onBlur={handleSaveRename}
+                                                            onBlur={() => handleSaveRename()}
                                                             onKeyDown={handleRenameInputKeyDown}
                                                             className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-primary dark:text-primary-light focus:outline-none p-0 h-full"
                                                         />
-                                                    </div>
+                                                    </form>
                                                 ) : (
                                                     <SidebarItem to={`/list/${encodeURIComponent(list.name)}`}
                                                                  filter={`list-${list.name}`}

@@ -430,25 +430,28 @@ const TaskDetail: React.FC = () => {
         setIsMoreActionsOpen(false);
     }, [selectedTask, createTask, createSubtask, setSelectedTaskId, t, savePendingChanges]);
 
+    const handleTitleSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        savePendingChanges();
+        titleInputRef.current?.blur();
+    }, [savePendingChanges]);
+
     const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            savePendingChanges();
-            titleInputRef.current?.blur();
-        } else if (e.key === 'Escape' && selectedTask) {
+        if (e.key === 'Escape' && selectedTask) {
             e.preventDefault();
             if (localTitle !== selectedTask.title) {
                 setLocalTitle(selectedTask.title);
             }
             titleInputRef.current?.blur();
         }
-    }, [selectedTask, localTitle, savePendingChanges]);
+    }, [selectedTask, localTitle]);
 
     const isTrash = useMemo(() => selectedTask?.listName === 'Trash', [selectedTask?.listName]);
     const isCompleted = useMemo(() => (selectedTask?.completed || (selectedTask?.completePercentage ?? 0) === 100) && !isTrash, [selectedTask?.completed, selectedTask?.completePercentage, isTrash]);
     const isInteractiveDisabled = useMemo(() => isTrash || isCompleted, [isTrash, isCompleted]);
 
-    const handleAddSubtask = useCallback(() => {
+    const handleSubtaskSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
         if (!selectedTask || !newSubtaskTitle.trim() || isInteractiveDisabled) return;
 
         const maxOrder = selectedTask.subtasks?.reduce((max, s) => Math.max(max, s.order), 0) || 0;
@@ -461,7 +464,7 @@ const TaskDetail: React.FC = () => {
         setNewSubtaskTitle('');
         setNewSubtaskDueDate(undefined);
         newSubtaskInputRef.current?.focus();
-    }, [selectedTask, newSubtaskTitle, createSubtask, isInteractiveDisabled, newSubtaskDueDate]);
+    }, [selectedTask, newSubtaskTitle, isInteractiveDisabled, createSubtask, newSubtaskDueDate]);
 
     const handleUpdateSubtask = useCallback((subtaskId: string, updates: Partial<Omit<Subtask, 'id' | 'parentId' | 'createdAt'>>) => {
         if (!selectedTask) return;
@@ -620,19 +623,21 @@ const TaskDetail: React.FC = () => {
                             </Tooltip.Provider>
                         )}
 
-                        <input
-                            ref={titleInputRef}
-                            type="text"
-                            value={localTitle}
-                            onChange={handleTitleChange}
-                            onKeyDown={handleTitleKeyDown}
-                            onBlur={handleMainContentBlur}
-                            className={titleInputClasses}
-                            placeholder={t('taskDetail.titlePlaceholder')}
-                            disabled={isTrash}
-                            aria-label="Task title"
-                            id={`task-title-input-${selectedTask.id}`}
-                        />
+                        <form onSubmit={handleTitleSubmit} className="flex-1 flex min-w-0">
+                            <input
+                                ref={titleInputRef}
+                                type="text"
+                                value={localTitle}
+                                onChange={handleTitleChange}
+                                onKeyDown={handleTitleKeyDown}
+                                onBlur={handleMainContentBlur}
+                                className={titleInputClasses}
+                                placeholder={t('taskDetail.titlePlaceholder')}
+                                disabled={isTrash}
+                                aria-label="Task title"
+                                id={`task-title-input-${selectedTask.id}`}
+                            />
+                        </form>
                     </div>
 
                     <div className="flex items-center space-x-1 flex-shrink-0">
@@ -675,6 +680,7 @@ const TaskDetail: React.FC = () => {
                                             return (
                                                 <button
                                                     key={item.label}
+                                                    type="button"
                                                     onClick={() => handleProgressChange(item.value)}
                                                     className={twMerge(
                                                         "flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-150 ease-in-out focus:outline-none",
@@ -701,6 +707,7 @@ const TaskDetail: React.FC = () => {
                                             return (
                                                 <button
                                                     key={pVal}
+                                                    type="button"
                                                     onClick={() => handlePriorityChange(pVal)}
                                                     className={twMerge(
                                                         "flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-150 ease-in-out focus:outline-none",
@@ -717,6 +724,7 @@ const TaskDetail: React.FC = () => {
                                             );
                                         })}
                                         <button
+                                            type="button"
                                             onClick={() => handlePriorityChange(null)}
                                             className={twMerge(
                                                 "flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-150 ease-in-out focus:outline-none",
@@ -974,7 +982,7 @@ const TaskDetail: React.FC = () => {
 
                             {!isInteractiveDisabled && (
                                 <div className={twMerge("flex items-center flex-shrink-0", "pt-1.5 pb-1.5", sortedSubtasks.length > 0 ? "border-t border-grey-light/50 dark:border-neutral-700/30 mt-auto" : "mt-0")}>
-                                    <div className="group relative flex items-center flex-1 h-8 bg-white/50 dark:bg-neutral-800/50 rounded-base transition-all duration-150 ease-in-out border border-transparent dark:border-transparent backdrop-blur-sm">
+                                    <form onSubmit={handleSubtaskSubmit} className="group relative flex items-center flex-1 h-8 bg-white/50 dark:bg-neutral-800/50 rounded-base transition-all duration-150 ease-in-out border border-transparent dark:border-transparent backdrop-blur-sm">
                                         <div className="absolute left-0.5 top-1/2 -translate-y-1/2 flex items-center h-full">
                                             <Popover.Root open={isNewSubtaskDatePickerOpen}
                                                           onOpenChange={setIsNewSubtaskDatePickerOpen}>
@@ -1028,10 +1036,6 @@ const TaskDetail: React.FC = () => {
                                             ref={newSubtaskInputRef} type="text" value={newSubtaskTitle}
                                             onChange={(e) => setNewSubtaskTitle(e.target.value)}
                                             onKeyDown={(e) => {
-                                                if (e.nativeEvent.isComposing) {
-                                                    return;
-                                                }
-                                                if (e.key === 'Enter' && newSubtaskTitle.trim()) handleAddSubtask();
                                                 if (e.key === 'Escape') {
                                                     setNewSubtaskTitle('');
                                                     setNewSubtaskDueDate(undefined);
@@ -1047,13 +1051,13 @@ const TaskDetail: React.FC = () => {
                                             style={{paddingLeft: `${newSubtaskInputPaddingLeft}px`}}
                                             aria-label="New subtask title"
                                         />
-                                    </div>
+                                    </form>
                                     <AnimatePresence>
                                         {newSubtaskTitle.trim() && (
                                             <motion.div initial={{opacity: 0, scale: 0.8}}
                                                         animate={{opacity: 1, scale: 1}}
                                                         exit={{opacity: 0, scale: 0.8}} transition={{duration: 0.15}}>
-                                                <Button variant="primary" size="sm" onClick={handleAddSubtask}
+                                                <Button variant="primary" size="sm" onClick={handleSubtaskSubmit}
                                                         className="!h-7 !px-2.5 ml-2 !text-xs">{t('taskDetail.addSubtaskButton')}</Button>
                                             </motion.div>
                                         )}

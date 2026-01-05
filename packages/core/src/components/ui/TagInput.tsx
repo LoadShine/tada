@@ -33,6 +33,9 @@ const AddTagsPopoverContent: React.FC<AddTagsPopoverContentProps> = ({
 
     useEffect(() => {
         setSelectedTags(new Set(initialTags));
+    }, [initialTags]);
+
+    useEffect(() => {
         setInputValue('');
         isInitialMountOrTaskChangeRef.current = true;
 
@@ -40,7 +43,7 @@ const AddTagsPopoverContent: React.FC<AddTagsPopoverContentProps> = ({
             const timer = setTimeout(() => inputRef.current?.focus(), 50);
             return () => clearTimeout(timer);
         }
-    }, [initialTags, taskId]);
+    }, [taskId]);
 
     useEffect(() => {
         // Prevent applying changes on initial render or when the task changes.
@@ -110,6 +113,34 @@ const AddTagsPopoverContent: React.FC<AddTagsPopoverContentProps> = ({
             !selectedTags.has(trimmedInput);
     }, [inputValue, allUserTags, selectedTags]);
 
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (canCreateCurrentInput) {
+            createNewTag();
+        } else if (inputValue.trim()) {
+            const existingTag = allUserTags.find(t => t.toLowerCase() === inputValue.trim().toLowerCase());
+            if (existingTag && !selectedTags.has(existingTag)) {
+                toggleTagInList(existingTag);
+                setInputValue('');
+            } else if (existingTag && selectedTags.has(existingTag)) {
+                setInputValue('');
+            }
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Backspace' && inputValue === '' && selectedTags.size > 0) {
+            const lastTag = Array.from(selectedTags).sort((a, b) => a.localeCompare(b)).pop();
+            if (lastTag) removeTagPill(lastTag);
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closePopover();
+        }
+    };
+
     return (
         <div
             className={twMerge(
@@ -121,7 +152,8 @@ const AddTagsPopoverContent: React.FC<AddTagsPopoverContentProps> = ({
             onClick={(e) => e.stopPropagation()}
         >
             <div className="p-2">
-                <div
+                <form
+                    onSubmit={handleSubmit}
                     className={twMerge(
                         "flex flex-wrap items-center gap-1.5 p-1.5 rounded-base min-h-[36px]",
                         "bg-grey-ultra-light dark:bg-neutral-750",
@@ -162,37 +194,13 @@ const AddTagsPopoverContent: React.FC<AddTagsPopoverContentProps> = ({
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder={selectedTags.size === 0 ? t('taskDetail.addTags') : ""}
                         className={twMerge(
-                            "flex-grow bg-transparent text-xs p-0 m-0 h-[22px]",
+                            "flex-grow bg-transparent text-xs p-0 m-0 h-[22px] min-w-[60px]",
                             "text-grey-dark dark:text-neutral-200 placeholder:text-grey-medium dark:placeholder:text-neutral-500",
                             "focus:outline-none"
                         )}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                if (canCreateCurrentInput) {
-                                    createNewTag();
-                                } else if (inputValue.trim()) {
-                                    const existingTag = allUserTags.find(t => t.toLowerCase() === inputValue.trim().toLowerCase());
-                                    if (existingTag && !selectedTags.has(existingTag)) {
-                                        toggleTagInList(existingTag);
-                                        setInputValue('');
-                                    } else if (existingTag && selectedTags.has(existingTag)) {
-                                        setInputValue('');
-                                    }
-                                }
-                            }
-                            if (e.key === 'Backspace' && inputValue === '' && selectedTags.size > 0) {
-                                e.preventDefault();
-                                const lastTag = Array.from(selectedTags).sort((a, b) => a.localeCompare(b)).pop();
-                                if (lastTag) removeTagPill(lastTag);
-                            }
-                            if (e.key === 'Escape') {
-                                e.preventDefault();
-                                closePopover();
-                            }
-                        }}
+                        onKeyDown={handleKeyDown}
                     />
-                </div>
+                </form>
             </div>
             <div className="px-2">
                 <div className="h-px bg-grey-light/70 dark:bg-neutral-700/50"></div>

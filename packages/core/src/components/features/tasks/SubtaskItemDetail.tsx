@@ -24,7 +24,6 @@ interface SubtaskItemDetailProps {
 
 /**
  * Renders a single subtask item within the TaskDetail view.
- * Supports inline title editing, completion toggle, due date setting, deletion, and drag-and-drop reordering.
  */
 const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                                                                       subtask,
@@ -91,13 +90,20 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
         }
         setIsEditingTitle(false);
     };
+
+    const handleTitleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        saveTitle();
+    };
+
     const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') saveTitle();
         if (e.key === 'Escape') {
+            e.preventDefault(); // Prevent bubbling
             setLocalTitle(subtask.title);
             setIsEditingTitle(false);
         }
     };
+
     const handleCompletionToggle = () => {
         if (!isDisabledByParent) {
             onUpdate(subtask.id, {
@@ -196,15 +202,22 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                     )}
                          onClick={() => !isEditingTitle && !isDisabled && setIsEditingTitle(true)}>
                         {isEditingTitle ? (
-                            <input ref={titleInputRef} type="text" value={localTitle} onChange={handleTitleChange}
-                                   onBlur={saveTitle} onKeyDown={handleTitleKeyDown}
-                                   className={twMerge(
-                                       "w-full text-[13px] bg-transparent focus:outline-none focus:ring-0 border-none p-0 leading-tight font-medium",
-                                       subtask.completed ? "line-through text-grey-medium dark:text-neutral-400/70" : "text-grey-dark dark:text-neutral-100"
-                                   )}
-                                   placeholder={t('common.untitledSubtask')}
-                                   disabled={isDisabled}
-                            />
+                            <form onSubmit={handleTitleSubmit} className="w-full">
+                                <input
+                                    ref={titleInputRef}
+                                    type="text"
+                                    value={localTitle}
+                                    onChange={handleTitleChange}
+                                    onBlur={saveTitle}
+                                    onKeyDown={handleTitleKeyDown}
+                                    className={twMerge(
+                                        "w-full text-[13px] bg-transparent focus:outline-none focus:ring-0 border-none p-0 leading-tight font-medium",
+                                        subtask.completed ? "line-through text-grey-medium dark:text-neutral-400/70" : "text-grey-dark dark:text-neutral-100"
+                                    )}
+                                    placeholder={t('common.untitledSubtask')}
+                                    disabled={isDisabled}
+                                />
+                            </form>
                         ) : (
                             <span
                                 className={twMerge(

@@ -485,16 +485,21 @@ const ZenModeView: React.FC = () => {
     };
 
     // Input Logic (Todolist)
-    const handleTodoKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && todoInputValue.trim()) {
+    const handleTodoSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (todoInputValue.trim()) {
             if (isAiMode) {
                 await handleAiCreation(todoInputValue.trim());
             } else {
                 handleStandardCreation(todoInputValue.trim(), false);
             }
         }
-        if (e.key === 'Escape' && isAiMode) {
-            setIsAiMode(false);
+    };
+
+    // Only handle Escape for clearing input/mode
+    const handleTodoKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Escape') {
+            if (isAiMode) setIsAiMode(false);
         }
     };
 
@@ -583,14 +588,19 @@ const ZenModeView: React.FC = () => {
     };
 
     // Input Logic (Done Log)
-    const handleDoneKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-            handleStandardCreation(e.currentTarget.value.trim(), true);
-            e.currentTarget.value = "";
+    const handleDoneSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const input = e.currentTarget.elements.namedItem('doneInput') as HTMLInputElement;
+        if (input && input.value.trim()) {
+            handleStandardCreation(input.value.trim(), true);
+            input.value = "";
         }
     };
 
-    const toggleAiMode = () => {
+    const toggleAiMode = (e: React.MouseEvent) => {
+        // Prevent form submission if button is inside form
+        e.preventDefault();
+
         // Validation check before toggling
         if (!isAIConfigured) {
             setSettingsTab('ai');
@@ -754,7 +764,7 @@ const ZenModeView: React.FC = () => {
                                     isAiMode ? "bg-primary/50" : "bg-[#0000000d]"
                                 )}></div>
 
-                                <div className="relative w-full flex items-center justify-center">
+                                <form onSubmit={handleTodoSubmit} className="relative w-full flex items-center justify-center">
                                     <input
                                         ref={inputRef}
                                         type="text"
@@ -772,6 +782,7 @@ const ZenModeView: React.FC = () => {
                                     />
                                     {/* Minimalist AI Toggle Button - Fixed to always show */}
                                     <button
+                                        type="button" // Important so it doesn't trigger submit on click
                                         onClick={toggleAiMode}
                                         className={twMerge(
                                             "absolute right-[2%] md:right-[5%] top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-black/5",
@@ -783,7 +794,7 @@ const ZenModeView: React.FC = () => {
                                     >
                                         {isAiProcessing ? <Icon name="loader" className="animate-spin" size={18} strokeWidth={2}/> : <Icon name="sparkles" size={18} strokeWidth={1.5} />}
                                     </button>
-                                </div>
+                                </form>
                             </div>
 
                             <DroppableListContainer
@@ -812,15 +823,15 @@ const ZenModeView: React.FC = () => {
                                 ))}
                             </DroppableListContainer>
 
-                            <div className="w-full relative px-4 md:px-0">
+                            <form onSubmit={handleDoneSubmit} className="w-full relative px-4 md:px-0">
                                 <div className="absolute top-0 left-[10%] w-[80%] h-[1px] bg-[#0000000d]"></div>
                                 <input
+                                    name="doneInput"
                                     type="text"
                                     className="w-full bg-transparent border-none text-center font-body text-[1.1rem] text-[#707070] py-[15px] focus:outline-none placeholder:text-[#C0C0C0] placeholder:italic truncate"
                                     placeholder={tZen('zen.logMemories')}
-                                    onKeyDown={handleDoneKeyDown}
                                 />
-                            </div>
+                            </form>
                         </div>
 
                     </div>
