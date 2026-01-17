@@ -1,8 +1,9 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TaskItem from './TaskItem';
-import {useAtomValue, useSetAtom} from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import {
     addNotificationAtom,
+    aiListAnalyzingTaskIdsAtom,
     aiSettingsAtom,
     currentFilterAtom,
     defaultPreferencesSettingsForApi,
@@ -22,7 +23,7 @@ import Icon from '@/components/ui/Icon.tsx';
 import Button from '@/components/ui/Button.tsx';
 import * as Popover from '@radix-ui/react-popover';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import {Task, TaskGroupCategory} from '@/types';
+import { Task, TaskGroupCategory } from '@/types';
 import {
     closestCenter,
     DndContext,
@@ -36,8 +37,8 @@ import {
     useSensor,
     useSensors
 } from '@dnd-kit/core';
-import {arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy} from '@dnd-kit/sortable';
-import {AnimatePresence} from 'framer-motion';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { AnimatePresence } from 'framer-motion';
 import {
     addDays,
     formatRelativeDate,
@@ -49,13 +50,13 @@ import {
     startOfDay,
     subDays,
 } from '@/utils/dateUtils';
-import {twMerge} from 'tailwind-merge';
-import {TaskItemMenuProvider} from '@/context/TaskItemMenuContext';
-import {IconName} from '@/components/ui/IconMap.ts';
-import {analyzeTaskInputWithAI, isAIConfigValid} from '@/services/aiService';
-import {useTranslation} from "react-i18next";
+import { twMerge } from 'tailwind-merge';
+import { TaskItemMenuProvider } from '@/context/TaskItemMenuContext';
+import { IconName } from '@/components/ui/IconMap.ts';
+import { analyzeTaskInputWithAI, isAIConfigValid, suggestListForTaskWithAI } from '@/services/aiService';
+import { useTranslation } from "react-i18next";
 import CustomDatePickerContent from "@/components/ui/DatePicker.tsx";
-import {AI_PROVIDERS} from "@/config/aiProviders.ts";
+import { AI_PROVIDERS } from "@/config/aiProviders.ts";
 import { useTaskOperations } from '@/hooks/useTaskOperations';
 
 /**
@@ -64,8 +65,8 @@ import { useTaskOperations } from '@/hooks/useTaskOperations';
 const TaskGroupHeader: React.FC<{
     title: string;
     groupKey: TaskGroupCategory;
-}> = React.memo(({title, groupKey}) => {
-    const {t} = useTranslation();
+}> = React.memo(({ title, groupKey }) => {
+    const { t } = useTranslation();
     return (
         <div
             className={twMerge(
@@ -82,7 +83,7 @@ const TaskGroupHeader: React.FC<{
                             variant="link" size="sm" icon="calendar-check"
                             className="text-[11px] !h-5 px-1 text-primary dark:text-primary-light hover:text-primary-dark dark:hover:text-primary -mr-1"
                             title="Reschedule all overdue tasks..."
-                            iconProps={{size: 12, strokeWidth: 1.5}}
+                            iconProps={{ size: 12, strokeWidth: 1.5 }}
                         >
                             {t('taskList.rescheduleAll')}
                         </Button>
@@ -122,8 +123,8 @@ const getAiGlowThemeClass = (priority: number | null): string => {
 /**
  * The main component for displaying and managing a list of tasks.
  */
-const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
-    const {t} = useTranslation();
+const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
+    const { t } = useTranslation();
     const allTasksData = useAtomValue(tasksAtom);
     const allTasks = useMemo(() => allTasksData ?? [], [allTasksData]);
     const isLoadingTasks = useAtomValue(tasksLoadingAtom);
@@ -142,7 +143,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
     const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
 
-    const { createTask, createSubtask, batchUpdateTasks } = useTaskOperations();
+    const { createTask, updateTask, createSubtask, batchUpdateTasks } = useTaskOperations();
 
     const groupTitles: Record<TaskGroupCategory, string> = useMemo(() => ({
         overdue: t('taskGroup.overdue'),
@@ -153,9 +154,9 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     }), [t]);
 
     const priorityMap: Record<number, { label: string; iconColor: string; bgColor: string; shortLabel: string; borderColor?: string; dotColor?: string; darkBorderColor?: string; }> = useMemo(() => ({
-        1: {label: t('priorityLabels.1'), iconColor: 'text-error', bgColor: 'bg-error', shortLabel: 'P1', borderColor: 'border-error', darkBorderColor: 'dark:border-error/70', dotColor: 'bg-error'},
-        2: {label: t('priorityLabels.2'), iconColor: 'text-warning', bgColor: 'bg-warning', shortLabel: 'P2', borderColor: 'border-warning', darkBorderColor: 'dark:border-warning/70', dotColor: 'bg-warning'},
-        3: {label: t('priorityLabels.3'), iconColor: 'text-info', bgColor: 'bg-info', shortLabel: 'P3', borderColor: 'border-info', darkBorderColor: 'dark:border-info/70', dotColor: 'bg-info'},
+        1: { label: t('priorityLabels.1'), iconColor: 'text-error', bgColor: 'bg-error', shortLabel: 'P1', borderColor: 'border-error', darkBorderColor: 'dark:border-error/70', dotColor: 'bg-error' },
+        2: { label: t('priorityLabels.2'), iconColor: 'text-warning', bgColor: 'bg-warning', shortLabel: 'P2', borderColor: 'border-warning', darkBorderColor: 'dark:border-warning/70', dotColor: 'bg-warning' },
+        3: { label: t('priorityLabels.3'), iconColor: 'text-info', bgColor: 'bg-info', shortLabel: 'P3', borderColor: 'border-info', darkBorderColor: 'dark:border-info/70', dotColor: 'bg-info' },
     }), [t]);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -197,7 +198,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                 targetList = listName;
             }
         }
-        
+
         if (availableListsForNewTask.includes(targetList)) {
             setNewTaskListState(targetList);
         } else if (availableListsForNewTask.length > 0) {
@@ -222,13 +223,13 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         }
     }, [isAIConfigured, isAiTaskInputVisible]);
 
-    const {tasksToDisplay, isGroupedView, isSearching} = useMemo(() => {
+    const { tasksToDisplay, isGroupedView, isSearching } = useMemo(() => {
         const searching = searchTerm.trim().length > 0;
         if (searching) {
-            return {tasksToDisplay: rawSearchResults, isGroupedView: false, isSearching: true};
+            return { tasksToDisplay: rawSearchResults, isGroupedView: false, isSearching: true };
         }
         if (currentFilterGlobal === 'all') {
-            return {tasksToDisplay: groupedTasks, isGroupedView: true, isSearching: false};
+            return { tasksToDisplay: groupedTasks, isGroupedView: true, isSearching: false };
         }
 
         const activeTasks = allTasks.filter(task => task.listName !== 'Trash');
@@ -261,7 +262,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         if (currentFilterGlobal !== 'completed' && currentFilterGlobal !== 'trash') {
             filtered.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         }
-        return {tasksToDisplay: filtered, isGroupedView: false, isSearching: false};
+        return { tasksToDisplay: filtered, isGroupedView: false, isSearching: false };
     }, [searchTerm, currentFilterGlobal, groupedTasks, rawSearchResults, allTasks]);
 
     const groupOrder: TaskGroupCategory[] = useMemo(() => ['overdue', 'today', 'next7days', 'later', 'nodate'], []);
@@ -277,12 +278,12 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     }, [tasksToDisplay, isGroupedView, groupOrder]);
 
     const sensors = useSensors(
-        useSensor(PointerSensor, {activationConstraint: {distance: 8}}),
-        useSensor(KeyboardSensor, {coordinateGetter: sortableKeyboardCoordinates})
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
     const handleDragStart = useCallback((event: DragStartEvent) => {
-        const {active} = event;
+        const { active } = event;
         const allVisibleTasks = isGroupedView
             ? Object.values(tasksToDisplay as Record<TaskGroupCategory, Task[]>).flat()
             : (tasksToDisplay as Task[]);
@@ -297,7 +298,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     }, [tasksToDisplay, isGroupedView, setSelectedTaskId, allTasks]);
 
     const handleDragEnd = useCallback((event: DragEndEvent) => {
-        const {active, over} = event;
+        const { active, over } = event;
         setDraggingTask(null);
 
         if (!over || !active.data.current?.task || active.id === over.id) {
@@ -399,11 +400,11 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
         const updatedTasks = currentTasks.map((task: Task) => {
             if (task.id === activeId) {
-                const updates: Partial<Task> = {order: newOrderValue,};
+                const updates: Partial<Task> = { order: newOrderValue, };
                 if (newDueDateValue !== undefined) {
                     updates.dueDate = newDueDateValue;
                 }
-                return {...task, ...updates};
+                return { ...task, ...updates };
             }
             return task;
         });
@@ -412,13 +413,17 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
     }, [allTasks, currentFilterGlobal, sortableItems, batchUpdateTasks]);
 
+    const setAiListAnalyzingTaskIds = useSetAtom(aiListAnalyzingTaskIdsAtom);
+
     const commitNewTask = useCallback(() => {
         const titleToSave = newTaskTitle.trim();
         if (!titleToSave) return;
 
-        const targetList = allUserLists?.find(l => l.name === newTaskListState);
+        const initialListName = newTaskListState;
+        const targetList = allUserLists?.find(l => l.name === initialListName);
         const inboxList = allUserLists?.find(l => l.name === 'Inbox');
         const listIdForNewTask = targetList?.id ?? inboxList?.id ?? null;
+
         if (!listIdForNewTask) {
             console.error("Could not determine a list ID for the new task.");
             alert("Error: Could not find a valid list for the new task.");
@@ -435,7 +440,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             title: titleToSave,
             completed: false,
             completedAt: null,
-            listName: newTaskListState,
+            listName: initialListName,
             listId: listIdForNewTask,
             completePercentage: null,
             dueDate: newTaskDueDate ? newTaskDueDate.getTime() : null,
@@ -446,7 +451,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             subtasks: []
         };
 
-        createTask(taskData);
+        const createdTask = createTask(taskData);
 
         setNewTaskTitle('');
         let defaultDate: Date | null = null;
@@ -465,18 +470,71 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             setNewTaskListState('Inbox');
         }
         newTaskTitleInputRef.current?.focus();
+
+        const shouldUseAIForListSuggestion = isAIConfigured
+            && !currentFilterGlobal.startsWith('list-')
+            && availableListsForNewTask.length > 1;
+
+        if (shouldUseAIForListSuggestion && aiSettings) {
+            setAiListAnalyzingTaskIds(prev => {
+                const newSet = new Set(prev);
+                newSet.add(createdTask.id);
+                return newSet;
+            });
+
+            (async () => {
+                try {
+                    const systemPrompt = t('prompts.listSuggestion');
+                    const suggestion = await suggestListForTaskWithAI(
+                        titleToSave,
+                        availableListsForNewTask,
+                        aiSettings,
+                        systemPrompt
+                    );
+
+                    console.log('[AI List Suggestion] Result:', suggestion);
+
+                    let suggestedListName: string | null = null;
+                    if (suggestion.listName && availableListsForNewTask.includes(suggestion.listName)) {
+                        suggestedListName = suggestion.listName;
+                    } else if (suggestion.listName === 'Inbox') {
+                        suggestedListName = 'Inbox';
+                    }
+
+                    if (suggestedListName && suggestedListName !== initialListName) {
+                        const newListObject = allUserLists?.find(l => l.name === suggestedListName);
+                        if (newListObject) {
+                            updateTask(createdTask.id, {
+                                listName: suggestedListName,
+                                listId: newListObject.id
+                            });
+                            console.log(`[AI List Suggestion] Moved task to "${suggestedListName}"`);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[AI List Suggestion] Failed:', error);
+                } finally {
+                    setAiListAnalyzingTaskIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(createdTask.id);
+                        return newSet;
+                    });
+                }
+            })();
+        }
     }, [
         newTaskTitle, newTaskDueDate, newTaskPriority, newTaskListState,
-        createTask, allTasks, preferences, availableListsForNewTask, allUserLists
+        createTask, updateTask, allTasks, preferences, availableListsForNewTask, allUserLists,
+        isAIConfigured, aiSettings, currentFilterGlobal, t, setAiListAnalyzingTaskIds
     ]);
 
     const isRegularNewTaskModeAllowed = useMemo(() =>
-            !['completed', 'trash'].includes(currentFilterGlobal) && !isSearching,
+        !['completed', 'trash'].includes(currentFilterGlobal) && !isSearching,
         [currentFilterGlobal, isSearching]
     );
 
     const shouldShowAiButton = useMemo(() =>
-            !['completed', 'trash'].includes(currentFilterGlobal),
+        !['completed', 'trash'].includes(currentFilterGlobal),
         [currentFilterGlobal]
     );
 
@@ -536,7 +594,8 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             const systemPrompt = t('prompts.taskAnalysis', { currentDate: new Date().toLocaleDateString() });
             const aiAnalysis = await analyzeTaskInputWithAI(sentence, aiSettings, systemPrompt);
 
-            const targetList = allUserLists?.find(l => l.name === newTaskListState);
+            const initialListName = newTaskListState;
+            const targetList = allUserLists?.find(l => l.name === initialListName);
             const inboxList = allUserLists?.find(l => l.name === 'Inbox');
             const listIdForNewTask = targetList?.id ?? inboxList?.id ?? null;
             if (!listIdForNewTask) {
@@ -550,7 +609,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                 title: aiAnalysis.title || sentence,
                 completed: false,
                 completedAt: null,
-                listName: newTaskListState,
+                listName: initialListName,
                 listId: listIdForNewTask,
                 completePercentage: null,
                 dueDate: aiAnalysis.dueDate ? new Date(aiAnalysis.dueDate).getTime() : (newTaskDueDate ? newTaskDueDate.getTime() : null),
@@ -580,9 +639,60 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
             setNewTaskPriority(preferences.defaultNewTaskPriority);
             setNewTaskListState(preferences.defaultNewTaskList);
 
+            const shouldUseAIForListSuggestion = !currentFilterGlobal.startsWith('list-')
+                && availableListsForNewTask.length > 1;
+
+            if (shouldUseAIForListSuggestion) {
+                setAiListAnalyzingTaskIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.add(createdTask.id);
+                    return newSet;
+                });
+
+                (async () => {
+                    try {
+                        const listSystemPrompt = t('prompts.listSuggestion');
+                        const suggestion = await suggestListForTaskWithAI(
+                            aiAnalysis.title || sentence,
+                            availableListsForNewTask,
+                            aiSettings,
+                            listSystemPrompt
+                        );
+
+                        console.log('[AI List Suggestion] Result:', suggestion);
+
+                        let suggestedListName: string | null = null;
+                        if (suggestion.listName && availableListsForNewTask.includes(suggestion.listName)) {
+                            suggestedListName = suggestion.listName;
+                        } else if (suggestion.listName === 'Inbox') {
+                            suggestedListName = 'Inbox';
+                        }
+
+                        if (suggestedListName && suggestedListName !== initialListName) {
+                            const newListObject = allUserLists?.find(l => l.name === suggestedListName);
+                            if (newListObject) {
+                                updateTask(createdTask.id, {
+                                    listName: suggestedListName,
+                                    listId: newListObject.id
+                                });
+                                console.log(`[AI List Suggestion] Moved task to "${suggestedListName}"`);
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[AI List Suggestion] Failed:', error);
+                    } finally {
+                        setAiListAnalyzingTaskIds(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(createdTask.id);
+                            return newSet;
+                        });
+                    }
+                })();
+            }
+
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            addNotification({type: 'error', message: t('taskList.aiCreationError', {message: errorMessage})});
+            addNotification({ type: 'error', message: t('taskList.aiCreationError', { message: errorMessage }) });
         } finally {
             setIsAiProcessing(false);
             // Keep AI task input visible if alwaysUseAITask is enabled
@@ -595,7 +705,8 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         }
     }, [
         newTaskTitle, newTaskDueDate, newTaskPriority, newTaskListState,
-        createTask, createSubtask, allTasks, isAiProcessing, isRegularNewTaskModeAllowed, preferences, allUserLists, t, aiSettings, addNotification, setIsSettingsOpen, setSettingsTab, isAIConfigured
+        createTask, updateTask, createSubtask, allTasks, isAiProcessing, isRegularNewTaskModeAllowed, preferences, allUserLists, t, aiSettings, addNotification, setIsSettingsOpen, setSettingsTab, isAIConfigured,
+        currentFilterGlobal, availableListsForNewTask, setAiListAnalyzingTaskIds
     ]);
 
 
@@ -614,7 +725,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                 isBefore(startOfDay(safeParseDate(task.dueDate)!), startOfDay(new Date()));
 
             if (isTaskOverdue) {
-                return {...task, dueDate: newDueDateTimestamp};
+                return { ...task, dueDate: newDueDateTimestamp };
             }
             return task;
         });
@@ -648,13 +759,13 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
     }, [tasksToDisplay, isGroupedView, isLoadingTasks]);
 
     const emptyStateTitle = useMemo(() => {
-        if (isSearching) return t('emptyState.title.search', {searchTerm});
+        if (isSearching) return t('emptyState.title.search', { searchTerm });
         if (currentFilterGlobal === 'trash') return t('emptyState.title.trash');
         if (currentFilterGlobal === 'completed') return t('emptyState.title.completed');
         if (currentFilterGlobal.startsWith('list-')) {
-            return t('emptyState.title.list', {pageTitle});
+            return t('emptyState.title.list', { pageTitle });
         }
-        return t('emptyState.title.default', {pageTitle});
+        return t('emptyState.title.default', { pageTitle });
     }, [isSearching, searchTerm, currentFilterGlobal, pageTitle, t]);
 
     const headerClass = useMemo(() => twMerge("px-6 py-0 h-[56px]", "border-b border-grey-light/50 dark:border-neutral-700/50", "flex justify-between items-center flex-shrink-0 z-10", "bg-transparent"), []);
@@ -695,13 +806,13 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         if (isCurrentlyAiMode) {
             return t('taskList.aiTaskPlaceholder');
         }
-        return t('taskList.addTaskPlaceholder', {listName: newTaskListState});
+        return t('taskList.addTaskPlaceholder', { listName: newTaskListState });
     }, [isCurrentlyAiMode, newTaskListState, t]);
 
     if (isLoadingTasks || isLoadingPreferences) {
         return (
             <div className="h-full flex items-center justify-center bg-transparent">
-                <Icon name="loader" size={24} className="text-primary animate-spin"/>
+                <Icon name="loader" size={24} className="text-primary animate-spin" />
             </div>
         );
     }
@@ -742,13 +853,13 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                 disabled={isAiProcessing}
                             >
                                 {isAiProcessing ? (
-                                    <Icon name="loader" size={14} strokeWidth={1.5} className="mr-1 animate-spin"/>
+                                    <Icon name="loader" size={14} strokeWidth={1.5} className="mr-1 animate-spin" />
                                 ) : (
-                                    <Icon name="sparkles" size={14} strokeWidth={1.5} className="mr-1"/>
+                                    <Icon name="sparkles" size={14} strokeWidth={1.5} className="mr-1" />
                                 )}
                                 <span className="text-[11px] font-medium">
-                                {isAiProcessing ? t('taskList.aiTaskButton.processing') : t('taskList.aiTaskButton.label')}
-                            </span>
+                                    {isAiProcessing ? t('taskList.aiTaskButton.processing') : t('taskList.aiTaskButton.label')}
+                                </span>
                             </Button>
                         </div>
                     )}
@@ -760,7 +871,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                             <form className={newTaskInputWrapperClass} onSubmit={handleInputSubmit}>
                                 <div className="flex items-center h-full flex-shrink-0">
                                     <Popover.Root open={isNewTaskDatePickerOpen}
-                                                  onOpenChange={setIsNewTaskDatePickerOpen}>
+                                        onOpenChange={setIsNewTaskDatePickerOpen}>
                                         <Popover.Trigger asChild>
                                             <button
                                                 type="button"
@@ -772,7 +883,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                 aria-label="Set due date"
                                                 disabled={(isCurrentlyAiMode && isAiProcessing) || isAiProcessing}
                                             >
-                                                <Icon name="calendar" size={16} strokeWidth={1.5}/>
+                                                <Icon name="calendar" size={16} strokeWidth={1.5} />
                                             </button>
                                         </Popover.Trigger>
                                         <Popover.Portal>
@@ -840,7 +951,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                     )}
                                 >
                                     <DropdownMenu.Root open={isNewTaskMoreOptionsOpen}
-                                                       onOpenChange={setIsNewTaskMoreOptionsOpen}>
+                                        onOpenChange={setIsNewTaskMoreOptionsOpen}>
                                         <DropdownMenu.Trigger asChild>
                                             <button
                                                 type="button"
@@ -848,7 +959,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                 aria-label={t('taskList.moreOptions')}
                                                 disabled={(isCurrentlyAiMode && isAiProcessing) || isAiProcessing}
                                             >
-                                                <Icon name="chevron-down" size={16} strokeWidth={1.5}/>
+                                                <Icon name="chevron-down" size={16} strokeWidth={1.5} />
                                             </button>
                                         </DropdownMenu.Trigger>
                                         <DropdownMenu.Portal>
@@ -884,7 +995,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                                 title={pData.label}
                                                                 aria-pressed={isSelected}
                                                             >
-                                                                <Icon name="flag" size={14} strokeWidth={1.5}/>
+                                                                <Icon name="flag" size={14} strokeWidth={1.5} />
                                                             </button>
                                                         );
                                                     })}
@@ -903,25 +1014,25 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                         title={t('priorityLabels.none')}
                                                         aria-pressed={newTaskPriority === null}
                                                     >
-                                                        <Icon name="minus" size={14} strokeWidth={1.5}/>
+                                                        <Icon name="minus" size={14} strokeWidth={1.5} />
                                                     </button>
                                                 </div>
 
                                                 <DropdownMenu.Separator
-                                                    className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                                    className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                                 <DropdownMenu.Sub>
                                                     <DropdownMenu.SubTrigger
                                                         className={getNewTaskMenuSubTriggerClasses()}>
                                                         <div className="flex items-center flex-1 min-w-0">
                                                             <Icon name="folder" size={14} strokeWidth={1}
-                                                                  className="mr-2 flex-shrink-0 opacity-80"/>
+                                                                className="mr-2 flex-shrink-0 opacity-80" />
                                                             <span className="truncate">{t('taskList.addToList')}</span>
                                                         </div>
                                                         <span
                                                             className="ml-2 mr-1 text-grey-medium dark:text-neutral-400 text-[11px] truncate max-w-[60px] text-right">{newTaskListState === 'Inbox' ? t('sidebar.inbox') : newTaskListState}</span>
                                                         <Icon name="chevron-right" size={14} strokeWidth={1}
-                                                              className="opacity-70 flex-shrink-0"/>
+                                                            className="opacity-70 flex-shrink-0" />
                                                     </DropdownMenu.SubTrigger>
                                                     <DropdownMenu.Portal>
                                                         <DropdownMenu.SubContent
@@ -929,23 +1040,23 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                             sideOffset={2} alignOffset={-5}
                                                         >
                                                             <DropdownMenu.RadioGroup value={newTaskListState}
-                                                                                     onValueChange={(list) => {
-                                                                                         setNewTaskListState(list);
-                                                                                         setIsNewTaskMoreOptionsOpen(false);
-                                                                                         newTaskTitleInputRef.current?.focus();
-                                                                                     }}>
+                                                                onValueChange={(list) => {
+                                                                    setNewTaskListState(list);
+                                                                    setIsNewTaskMoreOptionsOpen(false);
+                                                                    newTaskTitleInputRef.current?.focus();
+                                                                }}>
                                                                 {availableListsForNewTask.map(list => (
                                                                     <DropdownMenu.RadioItem key={list} value={list}
-                                                                                            className={getNewTaskMenuRadioItemListClasses()}>
+                                                                        className={getNewTaskMenuRadioItemListClasses()}>
                                                                         <Icon
                                                                             name={list === 'Inbox' ? 'inbox' : 'list' as IconName}
                                                                             size={14} strokeWidth={1}
-                                                                            className="mr-2 flex-shrink-0 opacity-80"/>
+                                                                            className="mr-2 flex-shrink-0 opacity-80" />
                                                                         {list === 'Inbox' ? t('sidebar.inbox') : list}
                                                                         <DropdownMenu.ItemIndicator
                                                                             className="absolute right-2 inline-flex items-center">
                                                                             <Icon name="check" size={12}
-                                                                                  strokeWidth={2}/>
+                                                                                strokeWidth={2} />
                                                                         </DropdownMenu.ItemIndicator>
                                                                     </DropdownMenu.RadioItem>
                                                                 ))}
@@ -965,16 +1076,16 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
 
                 <Popover.Root open={isBulkRescheduleOpen} onOpenChange={setIsBulkRescheduleOpen}>
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart}
-                                onDragEnd={handleDragEnd} measuring={{droppable: {strategy: MeasuringStrategy.Always}}}>
+                        onDragEnd={handleDragEnd} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}>
                         <div ref={scrollContainerRef}
-                             className="flex-1 overflow-y-auto styled-scrollbar relative px-4 py-2 bg-transparent">
+                            className="flex-1 overflow-y-auto styled-scrollbar relative px-4 py-2 bg-transparent">
                             {isEmpty ? (
                                 <div
                                     className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 px-4 text-center pt-10">
                                     <Icon
                                         name={currentFilterGlobal === 'trash' ? 'trash' : (currentFilterGlobal === 'completed' ? 'check-square' : (isSearching ? 'search' : 'archive'))}
                                         size={32} strokeWidth={1}
-                                        className="mb-3 text-grey-light/70 dark:text-neutral-500/70 opacity-80"/>
+                                        className="mb-3 text-grey-light/70 dark:text-neutral-500/70 opacity-80" />
                                     <p className="text-[13px] font-normal text-grey-dark dark:text-neutral-300">{emptyStateTitle}</p>
                                     {(isRegularNewTaskModeAllowed && !isCurrentlyAiMode) && (
                                         <p className="text-[11px] mt-1 text-grey-medium dark:text-neutral-400 font-light">{t('emptyState.addTaskHint')}</p>)}
@@ -989,7 +1100,7 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                                     return (
                                                         <div key={groupKey} className="mb-4 last:mb-0">
                                                             <TaskGroupHeader title={groupTitles[groupKey]}
-                                                                             groupKey={groupKey}/>
+                                                                groupKey={groupKey} />
                                                             {renderTaskGroup(groupTasks, groupKey)}
                                                         </div>
                                                     );
@@ -1010,16 +1121,16 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
                                 <div className="shadow-lg rounded-base bg-white dark:bg-neutral-700"><TaskItem
                                     task={draggingTask}
                                     isOverlay={true}
-                                    scrollContainerRef={scrollContainerRef}/>
+                                    scrollContainerRef={scrollContainerRef} />
                                 </div>) : null}
                         </DragOverlay>
                     </DndContext>
                     <Popover.Portal>
                         <Popover.Content sideOffset={5} align="end" className={datePickerPopoverWrapperClasses}
-                                         onOpenAutoFocus={(e) => e.preventDefault()}
-                                         onCloseAutoFocus={(e) => e.preventDefault()}>
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                            onCloseAutoFocus={(e) => e.preventDefault()}>
                             <CustomDatePickerContent initialDate={undefined} onSelect={handleBulkRescheduleDateSelect}
-                                                     closePopover={closeBulkReschedulePopover}/>
+                                closePopover={closeBulkReschedulePopover} />
                         </Popover.Content>
                     </Popover.Portal>
                 </Popover.Root>

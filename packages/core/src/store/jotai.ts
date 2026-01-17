@@ -1,5 +1,5 @@
-import {atom, WritableAtom} from 'jotai';
-import {RESET} from 'jotai/utils';
+import { atom, WritableAtom } from 'jotai';
+import { RESET } from 'jotai/utils';
 import {
     AISettings,
     AppearanceSettings,
@@ -102,7 +102,7 @@ export const tasksAtom: LocalDataAtom<Task[]> = atom(
         if (update === RESET) {
             const service = storageManager.get();
             const fetchedTasks = service.fetchTasks();
-            const tasksWithCategory = fetchedTasks.map(t => ({...t, groupCategory: getTaskGroupCategory(t)}));
+            const tasksWithCategory = fetchedTasks.map(t => ({ ...t, groupCategory: getTaskGroupCategory(t) }));
             set(baseTasksDataAtom, tasksWithCategory.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
             return;
         }
@@ -158,6 +158,8 @@ export const searchTermAtom = atom<string>('');
 export const notificationsAtom = atom<Notification[]>([]);
 export const isZenFullScreenAtom = atom<boolean>(false);
 export const aiConnectionStatusAtom = atom<'idle' | 'success' | 'error'>('idle');
+
+export const aiListAnalyzingTaskIdsAtom = atom<Set<string>>(new Set<string>());
 
 export const addNotificationAtom = atom(
     null,
@@ -392,7 +394,7 @@ export const taskCountsAtom = atom((get) => {
 export const groupedAllTasksAtom = atom((get): Record<TaskGroupCategory, Task[]> => {
     const tasksToGroup = (get(tasksAtom) ?? []).filter(t => t.listName !== 'Trash' && !t.completed)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.createdAt ?? 0) - (b.createdAt ?? 0));
-    const groups: Record<TaskGroupCategory, Task[]> = {overdue: [], today: [], next7days: [], later: [], nodate: []};
+    const groups: Record<TaskGroupCategory, Task[]> = { overdue: [], today: [], next7days: [], later: [], nodate: [] };
     tasksToGroup.forEach(task => {
         const category = task.groupCategory;
         if (Object.prototype.hasOwnProperty.call(groups, category)) {

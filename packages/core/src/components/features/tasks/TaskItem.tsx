@@ -1,8 +1,9 @@
-import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Task, TaskGroupCategory} from '@/types';
-import {formatDate, formatRelativeDate, isOverdue, isValid, safeParseDate} from '@/utils/dateUtils';
-import {useAtom, useAtomValue} from 'jotai';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Task, TaskGroupCategory } from '@/types';
+import { formatDate, formatRelativeDate, isOverdue, isValid, safeParseDate } from '@/utils/dateUtils';
+import { useAtom, useAtomValue } from 'jotai';
 import {
+    aiListAnalyzingTaskIdsAtom,
     defaultPreferencesSettingsForApi,
     preferencesSettingsAtom,
     preferencesSettingsLoadingAtom,
@@ -11,18 +12,18 @@ import {
     userListsAtom
 } from '@/store/jotai.ts';
 import Icon from '@/components/ui/Icon.tsx';
-import {twMerge} from 'tailwind-merge';
-import {clsx} from 'clsx';
-import {useSortable} from '@dnd-kit/sortable';
-import {CSS} from '@dnd-kit/utilities';
+import { twMerge } from 'tailwind-merge';
+import { clsx } from 'clsx';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Button from "@/components/ui/Button.tsx";
 import Highlighter from "react-highlight-words";
-import {IconName} from "@/components/ui/IconMap.ts";
+import { IconName } from "@/components/ui/IconMap.ts";
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Popover from '@radix-ui/react-popover';
-import {useTaskItemMenu} from '@/context/TaskItemMenuContext';
+import { useTaskItemMenu } from '@/context/TaskItemMenuContext';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import {useTranslation} from "react-i18next";
+import { useTranslation } from "react-i18next";
 import CustomDatePickerContent from "@/components/ui/DatePicker.tsx";
 import AddTagsPopoverContent from "@/components/ui/TagInput.tsx";
 import ConfirmDeleteModalRadix from "@/components/ui/ConfirmDeleteModal.tsx";
@@ -37,7 +38,7 @@ export const ProgressIndicator: React.FC<{
     onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
     onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
     ariaLabelledby?: string;
-}> = React.memo(({percentage, isTrash, size = 16, className, onClick, onKeyDown, ariaLabelledby}) => {
+}> = React.memo(({ percentage, isTrash, size = 16, className, onClick, onKeyDown, ariaLabelledby }) => {
     const normalizedPercentage = percentage ?? 0;
     const radius = size / 2 - 1.5;
     const circumference = 2 * Math.PI * radius;
@@ -68,25 +69,25 @@ export const ProgressIndicator: React.FC<{
 
     return (
         <button type="button" onClick={onClick} onKeyDown={onKeyDown} disabled={isTrash}
-                aria-labelledby={ariaLabelledby} aria-label={`Task progress: ${progressLabel}`}
-                aria-pressed={normalizedPercentage === 100}
-                className={twMerge(indicatorClasses, stateStyles, "border")}
-                style={{width: size, height: size}}>
+            aria-labelledby={ariaLabelledby} aria-label={`Task progress: ${progressLabel}`}
+            aria-pressed={normalizedPercentage === 100}
+            className={twMerge(indicatorClasses, stateStyles, "border")}
+            style={{ width: size, height: size }}>
             <svg viewBox={`0 0 ${size} ${size}`}
-                 className="absolute inset-0 w-full h-full transition-opacity duration-200 ease-in-out"
-                 style={{opacity: (normalizedPercentage > 0 && normalizedPercentage < 100) || normalizedPercentage === 100 ? 1 : 0}}
-                 aria-hidden="true">
+                className="absolute inset-0 w-full h-full transition-opacity duration-200 ease-in-out"
+                style={{ opacity: (normalizedPercentage > 0 && normalizedPercentage < 100) || normalizedPercentage === 100 ? 1 : 0 }}
+                aria-hidden="true">
                 {normalizedPercentage > 0 && normalizedPercentage < 100 && (
                     <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth}
-                            className={progressStrokeColor} strokeDasharray={circumference} strokeDashoffset={offset}
-                            transform={`rotate(-90 ${size / 2} ${size / 2})`} strokeLinecap="round"
-                            style={{transition: 'stroke-dashoffset 0.3s ease-out'}}/>
+                        className={progressStrokeColor} strokeDasharray={circumference} strokeDashoffset={offset}
+                        transform={`rotate(-90 ${size / 2} ${size / 2})`} strokeLinecap="round"
+                        style={{ transition: 'stroke-dashoffset 0.3s ease-out' }} />
                 )}
                 {normalizedPercentage === 100 && (
                     <path d={checkPath} fill="none" strokeWidth={strokeWidth + 0.5}
-                          className={progressStrokeColor}
-                          strokeLinecap="round" strokeLinejoin="round"
-                          style={{transition: 'opacity 0.2s ease-in 0.1s'}}/>
+                        className={progressStrokeColor}
+                        strokeLinecap="round" strokeLinejoin="round"
+                        style={{ transition: 'opacity 0.2s ease-in 0.1s' }} />
                 )}
             </svg>
         </button>
@@ -167,7 +168,7 @@ interface TaskItemRadixMenuItemProps extends DropdownMenu.DropdownMenuItemProps 
 const TaskItemRadixMenuItem = React.forwardRef<
     React.ElementRef<typeof DropdownMenu.Item>,
     TaskItemRadixMenuItemProps
->(({icon, iconColor, selected, children, className, isDanger = false, ...props}, ref) => (
+>(({ icon, iconColor, selected, children, className, isDanger = false, ...props }, ref) => (
     <DropdownMenu.Item
         ref={ref}
         className={twMerge(getTaskItemMenuItemStyle(selected, isDanger), className)}
@@ -175,8 +176,8 @@ const TaskItemRadixMenuItem = React.forwardRef<
     >
         {icon && (
             <Icon name={icon} size={14} strokeWidth={1.5}
-                  className={twMerge("mr-2 flex-shrink-0 opacity-80", iconColor)}
-                  aria-hidden="true"/>)}
+                className={twMerge("mr-2 flex-shrink-0 opacity-80", iconColor)}
+                aria-hidden="true" />)}
         <span className="flex-grow">{children}</span>
     </DropdownMenu.Item>
 ));
@@ -196,12 +197,12 @@ interface TaskItemProps {
  * It's draggable, selectable, and includes quick actions via a hover menu.
  */
 const TaskItem: React.FC<TaskItemProps> = memo(({
-                                                    task,
-                                                    groupCategory,
-                                                    isOverlay = false,
-                                                    style: overlayStyle
-                                                }) => {
-    const {t} = useTranslation();
+    task,
+    groupCategory,
+    isOverlay = false,
+    style: overlayStyle
+}) => {
+    const { t } = useTranslation();
     const [selectedTaskId, setSelectedTaskId] = useAtom(selectedTaskIdAtom);
     const [searchTerm] = useAtom(searchTermAtom);
     const allUserLists = useAtomValue(userListsAtom);
@@ -210,7 +211,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     const isLoadingPreferences = useAtomValue(preferencesSettingsLoadingAtom);
     const preferences = useMemo(() => preferencesData ?? defaultPreferencesSettingsForApi(), [preferencesData]);
 
-    const {openItemId, setOpenItemId} = useTaskItemMenu();
+    const { openItemId, setOpenItemId } = useTaskItemMenu();
 
     const { updateTask, createTask, createSubtask } = useTaskOperations();
 
@@ -223,6 +224,10 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     const moreActionsButtonRef = useRef<HTMLButtonElement>(null);
     const dateDisplayRef = useRef<HTMLButtonElement>(null);
     const taskItemRef = useRef<HTMLDivElement>(null);
+
+    // Check if this task is currently being analyzed by AI for list suggestion
+    const aiAnalyzingTaskIds = useAtomValue(aiListAnalyzingTaskIdsAtom);
+    const isAiAnalyzing = useMemo(() => aiAnalyzingTaskIds.has(task.id), [aiAnalyzingTaskIds, task.id]);
 
     const isTrashItem = useMemo(() => task.listName === 'Trash', [task.listName]);
     const isCompleted = useMemo(() => task.completed && !isTrashItem, [task.completed, isTrashItem]);
@@ -239,7 +244,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     } = useSortable({
         id: task.id,
         disabled: !isSortable,
-        data: {task, type: 'task-item', groupCategory: groupCategory ?? task.groupCategory}
+        data: { task, type: 'task-item', groupCategory: groupCategory ?? task.groupCategory }
     });
 
     const style = useMemo(() => {
@@ -315,18 +320,18 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     }, [cycleCompletionPercentage]);
 
     const handleProgressChange = useCallback((newPercentage: number | null) => {
-        updateTask(task.id, {completePercentage: newPercentage, completed: newPercentage === 100});
+        updateTask(task.id, { completePercentage: newPercentage, completed: newPercentage === 100 });
         if (newPercentage === 100 && isSelected) setSelectedTaskId(null);
         setIsMoreActionsOpen(false);
         setOpenItemId(null);
     }, [updateTask, task.id, isSelected, setSelectedTaskId, setOpenItemId]);
 
     const handleDateSelect = useCallback((dateWithTime: Date | undefined) => {
-        updateTask(task.id, {dueDate: dateWithTime ? dateWithTime.getTime() : null});
+        updateTask(task.id, { dueDate: dateWithTime ? dateWithTime.getTime() : null });
     }, [updateTask, task.id]);
 
     const handleTagsApply = useCallback((newTags: string[]) => {
-        updateTask(task.id, {tags: newTags});
+        updateTask(task.id, { tags: newTags });
     }, [updateTask, task.id]);
 
     const handleMoreActionsOpenChange = useCallback((open: boolean) => {
@@ -386,7 +391,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     }, [handleDateClickPickerOpenChange]);
 
     const handlePriorityChange = useCallback((newPriority: number | null) => {
-        updateTask(task.id, {priority: newPriority});
+        updateTask(task.id, { priority: newPriority });
         setIsMoreActionsOpen(false);
         setOpenItemId(null);
     }, [updateTask, task.id, setOpenItemId]);
@@ -394,7 +399,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     const handleListChange = useCallback((newListName: string) => {
         const listObject = allUserLists?.find(l => l.name === newListName);
         if (listObject) {
-            updateTask(task.id, {listName: newListName, listId: listObject.id});
+            updateTask(task.id, { listName: newListName, listId: listObject.id });
         }
         setIsMoreActionsOpen(false);
         setOpenItemId(null);
@@ -434,7 +439,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
 
     const closeDeleteConfirm = useCallback(() => setIsDeleteDialogOpen(false), []);
     const confirmDeleteTask = useCallback(() => {
-        updateTask(task.id, {listName: 'Trash', completed: false, completePercentage: null});
+        updateTask(task.id, { listName: 'Trash', completed: false, completePercentage: null });
         if (isSelected) setSelectedTaskId(null);
         closeDeleteConfirm();
     }, [updateTask, task.id, isSelected, setSelectedTaskId, closeDeleteConfirm]);
@@ -528,17 +533,17 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     ), []);
 
     const taskListPriorityMap: Record<number, { label: string; iconColor: string; bgColor: string; shortLabel: string; borderColor?: string; dotColor?: string; }> = useMemo(() => ({
-        1: {label: t('priorityLabels.1'), iconColor: 'text-error', bgColor: 'bg-error', shortLabel: 'P1', borderColor: 'border-error', dotColor: 'bg-error'},
-        2: {label: t('priorityLabels.2'), iconColor: 'text-warning', bgColor: 'bg-warning', shortLabel: 'P2', borderColor: 'border-warning', dotColor: 'bg-warning'},
-        3: {label: t('priorityLabels.3'), iconColor: 'text-info', bgColor: 'bg-info', shortLabel: 'P3', borderColor: 'border-info', dotColor: 'bg-info'},
+        1: { label: t('priorityLabels.1'), iconColor: 'text-error', bgColor: 'bg-error', shortLabel: 'P1', borderColor: 'border-error', dotColor: 'bg-error' },
+        2: { label: t('priorityLabels.2'), iconColor: 'text-warning', bgColor: 'bg-warning', shortLabel: 'P2', borderColor: 'border-warning', dotColor: 'bg-warning' },
+        3: { label: t('priorityLabels.3'), iconColor: 'text-info', bgColor: 'bg-info', shortLabel: 'P3', borderColor: 'border-info', dotColor: 'bg-info' },
     }), [t]);
     const noPriorityBgColor = 'bg-grey-light dark:bg-neutral-600';
 
     const progressMenuItems = useMemo(() => [
-        {label: t('taskDetail.progressLabels.notStarted'), value: null, icon: 'circle' as IconName, iconStroke: 1.5},
-        {label: t('taskDetail.progressLabels.inProgress'), value: 30, icon: 'circle-dot-dashed' as IconName, iconStroke: 1.5},
-        {label: t('taskDetail.progressLabels.mostlyDone'), value: 60, icon: 'circle-dot' as IconName, iconStroke: 1.5},
-        {label: t('taskDetail.progressLabels.completed'), value: 100, icon: 'circle-check' as IconName, iconStroke: 2},
+        { label: t('taskDetail.progressLabels.notStarted'), value: null, icon: 'circle' as IconName, iconStroke: 1.5 },
+        { label: t('taskDetail.progressLabels.inProgress'), value: 30, icon: 'circle-dot-dashed' as IconName, iconStroke: 1.5 },
+        { label: t('taskDetail.progressLabels.mostlyDone'), value: 60, icon: 'circle-dot' as IconName, iconStroke: 1.5 },
+        { label: t('taskDetail.progressLabels.completed'), value: 100, icon: 'circle-check' as IconName, iconStroke: 2 },
     ], [t]);
 
     const isDateClickable = isValidDueDate && isInteractive;
@@ -572,7 +577,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     if (isLoadingPreferences) {
         return (
             <div className={twMerge(baseClasses, "opacity-50 items-center justify-center")}>
-                <Icon name="loader" size={16} className="animate-spin text-primary"/>
+                <Icon name="loader" size={16} className="animate-spin text-primary" />
             </div>
         );
     }
@@ -580,33 +585,33 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
     return (
         <>
             <div ref={combinedRef}
-                 style={style}
-                 className={baseClasses} {...(isSortable ? attributes : {})} {...(isSortable ? listeners : {})}
-                 onClick={handleTaskClick}
-                 role={isSortable ? "listitem" : "button"}
-                 tabIndex={isInteractive || isSortable ? 0 : -1}
-                 onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
-                     if ((e.key === 'Enter' || e.key === ' ') && !(e.target as HTMLElement).closest('button, input, a, [role="menuitem"], [data-date-picker-trigger="true"], [data-tooltip-trigger]')) {
-                         e.preventDefault();
-                         handleTaskClick(e as unknown as React.MouseEvent<HTMLDivElement>);
-                     }
-                     if ((e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement).getAttribute('data-date-picker-trigger') === 'true' && isDateClickable) {
-                         e.preventDefault();
-                         e.stopPropagation();
-                         handleDateClickPickerOpenChange(true);
-                     }
-                     if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === taskItemRef.current && moreActionsButtonRef.current && isInteractive) {
-                         e.preventDefault();
-                         e.stopPropagation();
-                         moreActionsButtonRef.current.click();
-                     }
-                 }}
-                 aria-selected={isSelected} aria-labelledby={`task-title-${task.id}`}>
+                style={style}
+                className={baseClasses} {...(isSortable ? attributes : {})} {...(isSortable ? listeners : {})}
+                onClick={handleTaskClick}
+                role={isSortable ? "listitem" : "button"}
+                tabIndex={isInteractive || isSortable ? 0 : -1}
+                onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && !(e.target as HTMLElement).closest('button, input, a, [role="menuitem"], [data-date-picker-trigger="true"], [data-tooltip-trigger]')) {
+                        e.preventDefault();
+                        handleTaskClick(e as unknown as React.MouseEvent<HTMLDivElement>);
+                    }
+                    if ((e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement).getAttribute('data-date-picker-trigger') === 'true' && isDateClickable) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDateClickPickerOpenChange(true);
+                    }
+                    if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === taskItemRef.current && moreActionsButtonRef.current && isInteractive) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moreActionsButtonRef.current.click();
+                    }
+                }}
+                aria-selected={isSelected} aria-labelledby={`task-title-${task.id}`}>
                 <div className={twMerge("flex items-center w-full h-full", isOverlay ? "px-4" : "px-4 pr-3")}>
                     <div className="flex-shrink-0 mr-3">
                         <ProgressIndicator percentage={task.completePercentage} isTrash={isTrashItem}
-                                           onClick={cycleCompletionPercentage} onKeyDown={handleProgressIndicatorKeyDown}
-                                           ariaLabelledby={`task-title-${task.id}`} size={16}/>
+                            onClick={cycleCompletionPercentage} onKeyDown={handleProgressIndicatorKeyDown}
+                            ariaLabelledby={`task-title-${task.id}`} size={16} />
                     </div>
 
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -614,21 +619,21 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                             {!isCompleted && !isTrashItem && task.priority && (
                                 <Tooltip.Provider delayDuration={300}><Tooltip.Root>
                                     <Tooltip.Trigger asChild>
-                                     <span
-                                         className={twMerge("w-2 h-2 rounded-full flex-shrink-0 mr-2", priorityDotBgClass)}
-                                         data-tooltip-trigger="true"
-                                         aria-label={priorityDotLabel}
-                                     />
+                                        <span
+                                            className={twMerge("w-2 h-2 rounded-full flex-shrink-0 mr-2", priorityDotBgClass)}
+                                            data-tooltip-trigger="true"
+                                            aria-label={priorityDotLabel}
+                                        />
                                     </Tooltip.Trigger>
                                     <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="top"
-                                                                     sideOffset={4}>
+                                        sideOffset={4}>
                                         {priorityDotLabel} <Tooltip.Arrow
-                                        className="fill-grey-dark dark:fill-neutral-900/95"/>
+                                            className="fill-grey-dark dark:fill-neutral-900/95" />
                                     </Tooltip.Content></Tooltip.Portal>
                                 </Tooltip.Root></Tooltip.Provider>
                             )}
                             <Highlighter {...highlighterProps} textToHighlight={task.title || t('common.untitledTask')}
-                                         id={`task-title-${task.id}`} className={titleClasses}/>
+                                id={`task-title-${task.id}`} className={titleClasses} />
                         </div>
 
                         <div
@@ -638,18 +643,21 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                             {!isTrashItem && (
                                 <Tooltip.Provider delayDuration={200}><Tooltip.Root>
                                     <Tooltip.Trigger asChild>
-                                    <span className="flex items-center text-[11px] font-light cursor-default"
-                                          data-tooltip-trigger="true">
-                                         <Icon name={listIcon} size={12} strokeWidth={1.5}
-                                               className="mr-0.5 opacity-80 flex-shrink-0"/>
-                                        <span
-                                            className={clsx((isCompleted || isTrashItem) && 'line-through')}>{task.listName === 'Inbox' ? t('sidebar.inbox') : task.listName}</span>
-                                    </span>
+                                        <span className={twMerge(
+                                            "flex items-center text-[11px] font-light cursor-default rounded px-1 -mx-1",
+                                            isAiAnalyzing && "animate-ai-shimmer"
+                                        )}
+                                            data-tooltip-trigger="true">
+                                            <Icon name={listIcon} size={12} strokeWidth={1.5}
+                                                className="mr-0.5 opacity-80 flex-shrink-0" />
+                                            <span
+                                                className={clsx((isCompleted || isTrashItem) && 'line-through')}>{task.listName === 'Inbox' ? t('sidebar.inbox') : task.listName}</span>
+                                        </span>
                                     </Tooltip.Trigger>
                                     <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="bottom"
-                                                                     align="start" sideOffset={4}>
+                                        align="start" sideOffset={4}>
                                         List: {task.listName === 'Inbox' ? t('sidebar.inbox') : task.listName} <Tooltip.Arrow
-                                        className="fill-grey-dark dark:fill-neutral-900/95"/>
+                                            className="fill-grey-dark dark:fill-neutral-900/95" />
                                     </Tooltip.Content></Tooltip.Portal>
                                 </Tooltip.Root></Tooltip.Provider>
                             )}
@@ -657,63 +665,63 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                             {task.subtasks && task.subtasks.length > 0 && !subtaskSearchMatch && (
                                 <Tooltip.Provider delayDuration={200}><Tooltip.Root>
                                     <Tooltip.Trigger asChild>
-                                     <span className="flex items-center text-[11px] font-light cursor-default"
-                                           data-tooltip-trigger="true">
-                                          <Icon name="git-fork" size={12} strokeWidth={1.5}
-                                                className="mr-0.5 opacity-80 flex-shrink-0"/>
-                                         <span
-                                             className={clsx((isCompleted || isTrashItem) && 'line-through')}>{task.subtasks.length}</span>
-                                     </span>
+                                        <span className="flex items-center text-[11px] font-light cursor-default"
+                                            data-tooltip-trigger="true">
+                                            <Icon name="git-fork" size={12} strokeWidth={1.5}
+                                                className="mr-0.5 opacity-80 flex-shrink-0" />
+                                            <span
+                                                className={clsx((isCompleted || isTrashItem) && 'line-through')}>{task.subtasks.length}</span>
+                                        </span>
                                     </Tooltip.Trigger>
                                     <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="bottom"
-                                                                     align="start" sideOffset={4}>
+                                        align="start" sideOffset={4}>
                                         {task.subtasks.length} Subtask{task.subtasks.length > 1 ? 's' : ''} <Tooltip.Arrow
-                                        className="fill-grey-dark dark:fill-neutral-900/95"/>
+                                            className="fill-grey-dark dark:fill-neutral-900/95" />
                                     </Tooltip.Content></Tooltip.Portal>
                                 </Tooltip.Root></Tooltip.Provider>
                             )}
 
                             {isValidDueDate && !showContentHighlight && !subtaskSearchMatch && (
                                 <Popover.Root modal={true} open={isDateClickPickerOpen}
-                                              onOpenChange={handleDateClickPickerOpenChange}>
+                                    onOpenChange={handleDateClickPickerOpenChange}>
                                     <Popover.Trigger asChild disabled={!isDateClickable}>
                                         <button ref={dateDisplayRef} className={dueDateClasses}
-                                                title={isDateClickable ? `Due: ${formatDate(dueDate!)} (Click to change)` : `Due: ${formatDate(dueDate!)}`}
-                                                onClick={isDateClickable ? (e) => {
+                                            title={isDateClickable ? `Due: ${formatDate(dueDate!)} (Click to change)` : `Due: ${formatDate(dueDate!)}`}
+                                            onClick={isDateClickable ? (e) => {
+                                                e.stopPropagation();
+                                                handleDateClickPickerOpenChange(true);
+                                            } : undefined}
+                                            onKeyDown={isDateClickable ? (e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
                                                     e.stopPropagation();
                                                     handleDateClickPickerOpenChange(true);
-                                                } : undefined}
-                                                onKeyDown={isDateClickable ? (e) => {
-                                                    if (e.key === 'Enter' || e.key === ' ') {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        handleDateClickPickerOpenChange(true);
-                                                    }
-                                                } : undefined}
-                                                aria-label={isDateClickable ? `Change due date, currently ${formatRelativeDate(dueDate!, t, false, preferences?.language)}` : `Due date ${formatRelativeDate(dueDate!, t, false, preferences?.language)}`}
-                                                data-date-picker-trigger={isDateClickable ? "true" : "false"}
-                                                data-tooltip-trigger={!isDateClickable ? "true" : "false"}
+                                                }
+                                            } : undefined}
+                                            aria-label={isDateClickable ? `Change due date, currently ${formatRelativeDate(dueDate!, t, false, preferences?.language)}` : `Due date ${formatRelativeDate(dueDate!, t, false, preferences?.language)}`}
+                                            data-date-picker-trigger={isDateClickable ? "true" : "false"}
+                                            data-tooltip-trigger={!isDateClickable ? "true" : "false"}
                                         >
                                             <Icon name="calendar" size={12} strokeWidth={1.5}
-                                                  className="mr-0.5 opacity-80 flex-shrink-0"/>
+                                                className="mr-0.5 opacity-80 flex-shrink-0" />
                                             {formatRelativeDate(dueDate!, t, false, preferences?.language)}
                                         </button>
                                     </Popover.Trigger>
                                     {isDateClickable && (
                                         <Popover.Portal><Popover.Content side="bottom" align="start" sideOffset={5}
-                                                                         className={twMerge(popoverContentWrapperClasses, "p-0")}
-                                                                         onOpenAutoFocus={(e) => e.preventDefault()}
-                                                                         onCloseAutoFocus={(e) => {
-                                                                             e.preventDefault();
-                                                                             dateDisplayRef.current?.focus();
-                                                                         }}>
+                                            className={twMerge(popoverContentWrapperClasses, "p-0")}
+                                            onOpenAutoFocus={(e) => e.preventDefault()}
+                                            onCloseAutoFocus={(e) => {
+                                                e.preventDefault();
+                                                dateDisplayRef.current?.focus();
+                                            }}>
                                             <CustomDatePickerContent
                                                 initialDate={dueDate ?? undefined}
                                                 onSelect={(date) => {
-                                                    updateTask(task.id, {dueDate: date ? date.getTime() : null});
+                                                    updateTask(task.id, { dueDate: date ? date.getTime() : null });
                                                     closeDateClickPopover();
                                                 }}
-                                                closePopover={closeDateClickPopover}/>
+                                                closePopover={closeDateClickPopover} />
                                         </Popover.Content></Popover.Portal>)}
                                 </Popover.Root>
                             )}
@@ -721,21 +729,21 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                             {task.tags && task.tags.length > 0 && !showContentHighlight && !subtaskSearchMatch && (
                                 <Tooltip.Provider delayDuration={200}><Tooltip.Root>
                                     <Tooltip.Trigger asChild>
-                                    <span
-                                        className={clsx("flex items-center bg-black/5 dark:bg-white/5 text-grey-medium dark:text-neutral-400 px-1.5 py-[1px] rounded-base text-[10px] font-light cursor-default", (isCompleted || isTrashItem) && 'line-through opacity-60')}
-                                        data-tooltip-trigger="true"
-                                    >
-                                        <Icon name="tag" size={10} strokeWidth={1.5}
-                                              className="mr-1 opacity-80"/>
-                                        <span className="truncate max-w-[60px]">{task.tags[0]}</span>
-                                        {task.tags.length > 1 &&
-                                            <span className="ml-0.5 opacity-70">+{task.tags.length - 1}</span>}
-                                    </span>
+                                        <span
+                                            className={clsx("flex items-center bg-black/5 dark:bg-white/5 text-grey-medium dark:text-neutral-400 px-1.5 py-[1px] rounded-base text-[10px] font-light cursor-default", (isCompleted || isTrashItem) && 'line-through opacity-60')}
+                                            data-tooltip-trigger="true"
+                                        >
+                                            <Icon name="tag" size={10} strokeWidth={1.5}
+                                                className="mr-1 opacity-80" />
+                                            <span className="truncate max-w-[60px]">{task.tags[0]}</span>
+                                            {task.tags.length > 1 &&
+                                                <span className="ml-0.5 opacity-70">+{task.tags.length - 1}</span>}
+                                        </span>
                                     </Tooltip.Trigger>
                                     <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="bottom"
-                                                                     sideOffset={4}>
+                                        sideOffset={4}>
                                         Tags: {task.tags.join(', ')}<Tooltip.Arrow
-                                        className="fill-grey-dark dark:fill-neutral-900/95"/>
+                                            className="fill-grey-dark dark:fill-neutral-900/95" />
                                     </Tooltip.Content></Tooltip.Portal>
                                 </Tooltip.Root></Tooltip.Provider>
                             )}
@@ -744,10 +752,10 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                 <div
                                     className={clsx("flex items-center text-[11px] text-grey-medium dark:text-neutral-400 italic w-full font-light", (isCompleted || isTrashItem) && 'line-through')}>
                                     <Icon name="file-text" size={10} strokeWidth={1}
-                                          className="mr-1 opacity-70 flex-shrink-0 mt-px"/>
+                                        className="mr-1 opacity-70 flex-shrink-0 mt-px" />
                                     <Highlighter {...highlighterProps}
-                                                 textToHighlight={generateContentSnippet(task.content!, searchTerm)}
-                                                 className="truncate"/>
+                                        textToHighlight={generateContentSnippet(task.content!, searchTerm)}
+                                        className="truncate" />
                                 </div>
                             )}
 
@@ -755,11 +763,11 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                 <div
                                     className={clsx("flex items-center text-[11px] text-grey-medium dark:text-neutral-400 italic w-full font-light", (isCompleted || isTrashItem) && 'line-through')}>
                                     <Icon name="git-fork" size={10} strokeWidth={1.5}
-                                          className="mr-1 opacity-70 flex-shrink-0 mt-px"/>
+                                        className="mr-1 opacity-70 flex-shrink-0 mt-px" />
                                     <span className="mr-1">Sub:</span>
                                     <Highlighter {...highlighterProps}
-                                                 textToHighlight={subtaskSearchMatch.text}
-                                                 className="truncate"/>
+                                        textToHighlight={subtaskSearchMatch.text}
+                                        className="truncate" />
                                 </div>
                             )}
                         </div>
@@ -778,8 +786,8 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                         ref={moreActionsButtonRef} variant="ghost" size="icon"
                                         icon="more-horizontal"
                                         className="h-7 w-7 text-grey-medium dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-primary"
-                                        iconProps={{size: 16, strokeWidth: 1.5}}
-                                        aria-label={`More actions for ${task.title || 'task'}`}/>
+                                        iconProps={{ size: 16, strokeWidth: 1.5 }}
+                                        aria-label={`More actions for ${task.title || 'task'}`} />
                                 </DropdownMenu.Trigger>
                                 <DropdownMenu.Portal>
                                     <DropdownMenu.Content
@@ -818,13 +826,13 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                         aria-pressed={isCurrentlySelected}
                                                         disabled={!isInteractive}
                                                     >
-                                                        <Icon name={item.icon} size={14} strokeWidth={item.iconStroke}/>
+                                                        <Icon name={item.icon} size={14} strokeWidth={item.iconStroke} />
                                                     </button>
                                                 );
                                             })}
                                         </div>
 
-                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                         <div className="px-2.5 pt-1.5 pb-0.5 text-[11px] text-grey-medium dark:text-neutral-400 uppercase tracking-wider">{t('common.priority')}</div>
                                         <div className="flex justify-around items-center px-1.5 py-1">
@@ -846,7 +854,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                         aria-pressed={isCurrentlySelected}
                                                         disabled={!isInteractive}
                                                     >
-                                                        <Icon name="flag" size={14} strokeWidth={1.5}/>
+                                                        <Icon name="flag" size={14} strokeWidth={1.5} />
                                                     </button>
                                                 );
                                             })}
@@ -863,11 +871,11 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                 aria-pressed={task.priority === null}
                                                 disabled={!isInteractive}
                                             >
-                                                <Icon name="minus" size={14} strokeWidth={1.5}/>
+                                                <Icon name="minus" size={14} strokeWidth={1.5} />
                                             </button>
                                         </div>
 
-                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                         <DropdownMenu.Sub>
                                             <DropdownMenu.SubTrigger
@@ -882,9 +890,9 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                     if (isTagsPopoverOpen) handleMenuSubPopoverOpenChange(false, 'tags');
                                                 }}
                                             >
-                                                <Icon name="folder" size={14} strokeWidth={1.5} className="mr-2 flex-shrink-0 opacity-80"/>
+                                                <Icon name="folder" size={14} strokeWidth={1.5} className="mr-2 flex-shrink-0 opacity-80" />
                                                 {t('taskDetail.moveTo')}
-                                                <div className="ml-auto pl-5"><Icon name="chevron-right" size={14} strokeWidth={1.5} className="opacity-70"/></div>
+                                                <div className="ml-auto pl-5"><Icon name="chevron-right" size={14} strokeWidth={1.5} className="opacity-70" /></div>
                                             </DropdownMenu.SubTrigger>
                                             <DropdownMenu.Portal>
                                                 <DropdownMenu.SubContent
@@ -892,18 +900,18 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                     sideOffset={2} alignOffset={-5}
                                                 >
                                                     <DropdownMenu.RadioGroup value={task.listName}
-                                                                             onValueChange={handleListChange}>
+                                                        onValueChange={handleListChange}>
                                                         {availableLists.map(list => (
                                                             <DropdownMenu.RadioItem key={list.id} value={list.name}
-                                                                                    className={getTaskItemMenuRadioItemStyle(task.listName === list.name)}
-                                                                                    disabled={!isInteractive || isTrashItem}>
+                                                                className={getTaskItemMenuRadioItemStyle(task.listName === list.name)}
+                                                                disabled={!isInteractive || isTrashItem}>
                                                                 <Icon name={list.name === 'Inbox' ? 'inbox' : 'list'}
-                                                                      size={14} strokeWidth={1.5}
-                                                                      className="mr-2 flex-shrink-0 opacity-80"/>
+                                                                    size={14} strokeWidth={1.5}
+                                                                    className="mr-2 flex-shrink-0 opacity-80" />
                                                                 {list.name === 'Inbox' ? t('sidebar.inbox') : list.name}
                                                                 <DropdownMenu.ItemIndicator
                                                                     className="absolute right-2 inline-flex items-center">
-                                                                    <Icon name="check" size={12} strokeWidth={2}/>
+                                                                    <Icon name="check" size={12} strokeWidth={2} />
                                                                 </DropdownMenu.ItemIndicator>
                                                             </DropdownMenu.RadioItem>
                                                         ))}
@@ -912,10 +920,10 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                             </DropdownMenu.Portal>
                                         </DropdownMenu.Sub>
 
-                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                         <Popover.Root modal={false} open={isTagsPopoverOpen}
-                                                      onOpenChange={(open) => handleMenuSubPopoverOpenChange(open, 'tags')}>
+                                            onOpenChange={(open) => handleMenuSubPopoverOpenChange(open, 'tags')}>
                                             <Popover.Trigger asChild>
                                                 <TaskItemRadixMenuItem
                                                     icon="tag"
@@ -956,7 +964,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                         </Popover.Root>
 
                                         <Popover.Root modal={false} open={isDatePickerPopoverOpen}
-                                                      onOpenChange={(open) => handleMenuSubPopoverOpenChange(open, 'date')}>
+                                            onOpenChange={(open) => handleMenuSubPopoverOpenChange(open, 'date')}>
                                             <Popover.Trigger asChild>
                                                 <TaskItemRadixMenuItem
                                                     icon="calendar-plus"
@@ -992,15 +1000,15 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                             handleDateSelect(date);
                                                             closeMenuDatePickerPopover();
                                                         }}
-                                                        closePopover={closeMenuDatePickerPopover}/>
+                                                        closePopover={closeMenuDatePickerPopover} />
                                                 </Popover.Content>
                                             </Popover.Portal>
                                         </Popover.Root>
 
-                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                        <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                         <TaskItemRadixMenuItem icon="copy-plus" onSelect={handleDuplicateTask}
-                                                               disabled={!isInteractive || isTrashItem}>
+                                            disabled={!isInteractive || isTrashItem}>
                                             {t('taskDetail.duplicate')}
                                         </TaskItemRadixMenuItem>
 
@@ -1027,7 +1035,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                 onConfirm={confirmDeleteTask}
                 itemTitle={task.title || t('common.untitledTask')}
                 title={t('confirmDeleteModal.task.title')}
-                description={t('confirmDeleteModal.task.description', {itemTitle: task.title || t('common.untitledTask')})}
+                description={t('confirmDeleteModal.task.description', { itemTitle: task.title || t('common.untitledTask') })}
                 confirmText={t('confirmDeleteModal.task.confirmText')}
                 confirmVariant="danger"
             />

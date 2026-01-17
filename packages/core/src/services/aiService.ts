@@ -1,8 +1,8 @@
-import {AISettings, StoredSummary, Task, EchoReport, ProxySettings} from '@/types';
+import { AISettings, StoredSummary, Task, EchoReport, ProxySettings } from '@/types';
 import storageManager from './storageManager.ts';
-import {AI_PROVIDERS, AIModel, AIProvider} from "@/config/aiProviders";
-import {stripBase64Images} from "@/lib/moondown/core/utils/string-utils";
-import {fetchWithProxy} from "@/utils/networkUtils";
+import { AI_PROVIDERS, AIModel, AIProvider } from "@/config/aiProviders";
+import { stripBase64Images } from "@/lib/moondown/core/utils/string-utils";
+import { fetchWithProxy } from "@/utils/networkUtils";
 
 export interface AiTaskAnalysis {
     title: string;
@@ -11,6 +11,12 @@ export interface AiTaskAnalysis {
     tags: string[];
     priority: number | null;
     dueDate: string | null;
+}
+
+export interface AiListSuggestion {
+    listName: string;
+    confidence: 'high' | 'medium' | 'low';
+    reason?: string;
 }
 
 /**
@@ -190,10 +196,10 @@ export const testConnection = async (settings: AISettings): Promise<boolean> => 
 const createOpenAICompatiblePayload = (model: string, systemPrompt: string, userPrompt: string, useJsonFormat: boolean, stream: boolean = false) => ({
     model,
     messages: [
-        {role: "system", content: systemPrompt},
-        {role: "user", content: userPrompt}
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
     ],
-    ...(useJsonFormat && {response_format: {type: "json_object"}}),
+    ...(useJsonFormat && { response_format: { type: "json_object" } }),
     temperature: 0.5,
     stream,
 });
@@ -313,6 +319,72 @@ export const analyzeTaskInputWithAI = async (prompt: string, settings: AISetting
     } catch (error) {
         console.error("AI Task analysis failed:", error);
         throw error;
+    }
+};
+
+/**
+ * Suggests the best list for a task based on its title and the user's available lists.
+ * @param taskTitle The title of the task to categorize.
+ * @param availableLists Array of list names that the user has (excluding system lists like 'Trash').
+ * @param settings The current AI settings.
+ * @param systemPrompt The system prompt guiding the AI's JSON output format.
+ * @returns A promise that resolves to an `AiListSuggestion` object.
+ */
+export const suggestListForTaskWithAI = async (
+    taskTitle: string,
+    availableLists: string[],
+    settings: AISettings,
+    systemPrompt: string
+): Promise<AiListSuggestion> => {
+    if (!isAIConfigValid(settings)) {
+        throw new Error("AI configuration is incomplete or invalid.");
+    }
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider)!;
+
+    const userPrompt = `Task: "${taskTitle}"\nAvailable lists: ${availableLists.join(', ')}`;
+
+    const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom', 'gemini'].includes(provider.id);
+    let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, userPrompt, useJsonFormat, false);
+    if (provider.requestBodyTransformer) {
+        payload = provider.requestBodyTransformer(payload);
+    }
+
+    const endpoint = getApiEndpoint(settings, 'chat');
+    const proxySettings = getProxySettings();
+
+    try {
+        const response = await fetchWithProxy(endpoint, {
+            method: 'POST',
+            headers: getApiHeaders(settings),
+            body: JSON.stringify(payload),
+        }, proxySettings);
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+        }
+
+        const data = await response.json();
+        const content = extractContentFromResponse(data, provider.id);
+
+        console.log('[AI List Suggestion] Raw content:', content);
+
+        const sanitizedContent = sanitizeJsonString(content);
+
+        try {
+            const result = JSON.parse(sanitizedContent) as AiListSuggestion;
+            if (result.listName !== 'Inbox' && !availableLists.includes(result.listName)) {
+                console.warn(`[AI List Suggestion] Suggested list "${result.listName}" not found in available lists, defaulting to Inbox`);
+                return { listName: 'Inbox', confidence: 'low', reason: 'Suggested list not found' };
+            }
+            return result;
+        } catch (parseError) {
+            console.error("[AI List Suggestion] JSON Parse Error. Raw:", content, "Sanitized:", sanitizedContent);
+            return { listName: 'Inbox', confidence: 'low', reason: 'Failed to parse AI response' };
+        }
+    } catch (error) {
+        console.error("AI List suggestion failed:", error);
+        return { listName: 'Inbox', confidence: 'low', reason: 'AI request failed' };
     }
 };
 
@@ -461,14 +533,14 @@ export const generateAiSummary = async (
 
     const tasksString = tasksToSummarize.length > 0
         ? "## Tasks from the summary period:\n" + tasksToSummarize.map(t =>
-        `- Task: "${t.title}" (Status: ${t.completed ? 'Completed' : 'Incomplete'}${t.completePercentage ? `, ${t.completePercentage}% done` : ''})\n  Notes: ${stripBase64Images(t.content || 'N/A')}`
-    ).join('\n')
+            `- Task: "${t.title}" (Status: ${t.completed ? 'Completed' : 'Incomplete'}${t.completePercentage ? `, ${t.completePercentage}% done` : ''})\n  Notes: ${stripBase64Images(t.content || 'N/A')}`
+        ).join('\n')
         : "No tasks were selected for the primary summary period.";
 
     const futureTasksString = futureTasks.length > 0
         ? "\n\n## Upcoming tasks for future planning context:\n" + futureTasks.map(t =>
-        `- Task: "${t.title}" (Due: ${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'N/A'})`
-    ).join('\n')
+            `- Task: "${t.title}" (Due: ${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'N/A'})`
+        ).join('\n')
         : "\n\nNo specific upcoming tasks were provided for context.";
 
     const userPrompt = `${tasksString}${futureTasksString}`;

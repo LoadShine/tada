@@ -53,27 +53,35 @@ export default {
                 'modal': 'var(--shadow-modal)',
             },
             keyframes: {
-                fadeIn: {from: {opacity: '0'}, to: {opacity: '1'}},
-                fadeOut: {from: {opacity: '1'}, to: {opacity: '0'}},
+                fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
+                fadeOut: { from: { opacity: '1' }, to: { opacity: '0' } },
                 modalShow: {
-                    from: {opacity: '0', transform: 'translate(-50%, -48%) scale(0.98)'},
-                    to: {opacity: '1', transform: 'translate(-50%, -50%) scale(1)'},
+                    from: { opacity: '0', transform: 'translate(-50%, -48%) scale(0.98)' },
+                    to: { opacity: '1', transform: 'translate(-50%, -50%) scale(1)' },
                 },
                 modalHide: {
-                    from: {opacity: '1', transform: 'translate(-50%, -50%) scale(1)'},
-                    to: {opacity: '0', transform: 'translate(-50%, -48%) scale(0.98)'},
+                    from: { opacity: '1', transform: 'translate(-50%, -50%) scale(1)' },
+                    to: { opacity: '0', transform: 'translate(-50%, -48%) scale(0.98)' },
                 },
                 scaleIn: {
-                    '0%': {opacity: '0', transform: 'scale(0.95)'},
-                    '100%': {opacity: '1', transform: 'scale(1)'},
+                    '0%': { opacity: '0', transform: 'scale(0.95)' },
+                    '100%': { opacity: '1', transform: 'scale(1)' },
                 },
                 scaleOut: {
-                    '0%': {opacity: '1', transform: 'scale(1)'},
-                    '100%': {opacity: '0', transform: 'scale(0.95)'},
+                    '0%': { opacity: '1', transform: 'scale(1)' },
+                    '100%': { opacity: '0', transform: 'scale(0.95)' },
                 },
                 borderAnimation: {
-                    '0%': {backgroundPosition: '0% 0%'},
-                    '100%': {backgroundPosition: '300% 0%'},
+                    '0%': { backgroundPosition: '0% 0%' },
+                    '100%': { backgroundPosition: '300% 0%' },
+                },
+                aiShimmer: {
+                    '0%': {
+                        backgroundPosition: '-200% 0',
+                    },
+                    '100%': {
+                        backgroundPosition: '200% 0',
+                    },
                 },
             },
             animation: {
@@ -86,6 +94,7 @@ export default {
                 dropdownShow: 'scaleIn 0.1s ease-out',
                 dropdownHide: 'scaleOut 0.1s ease-in',
                 'border-flow': 'borderAnimation 4s linear infinite',
+                'ai-shimmer': 'aiShimmer 1.5s ease-in-out infinite',
             },
         },
     },

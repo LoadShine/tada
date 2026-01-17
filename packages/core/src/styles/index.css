@@ -217,6 +217,35 @@
 }
 
 @layer components {
+    .animate-ai-shimmer {
+        position: relative;
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            hsl(var(--color-primary-hsl) / 0.08) 25%,
+            hsl(var(--color-primary-hsl) / 0.15) 50%,
+            hsl(var(--color-primary-hsl) / 0.08) 75%,
+            transparent 100%
+        );
+        background-size: 200% 100%;
+        border: 1px solid hsl(var(--color-primary-hsl) / 0.3);
+        box-shadow: 0 0 8px hsl(var(--color-primary-hsl) / 0.15);
+    }
+
+    .dark .animate-ai-shimmer {
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            hsl(var(--color-primary-light-hsl) / 0.06) 25%,
+            hsl(var(--color-primary-light-hsl) / 0.12) 50%,
+            hsl(var(--color-primary-light-hsl) / 0.06) 75%,
+            transparent 100%
+        );
+        background-size: 200% 100%;
+        border: 1px solid hsl(var(--color-primary-light-hsl) / 0.25);
+        box-shadow: 0 0 8px hsl(var(--color-primary-light-hsl) / 0.15);
+    }
+
     .ai-glow-anim-border {
         position: relative;
         padding: 2px;
