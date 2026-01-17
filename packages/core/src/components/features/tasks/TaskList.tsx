@@ -190,16 +190,23 @@ const TaskList: React.FC<{ title: string }> = ({title: pageTitle}) => {
         setNewTaskDueDate(defaultDate);
         setNewTaskPriority(preferences.defaultNewTaskPriority);
 
-        const defaultList = preferences.defaultNewTaskList;
-        if (availableListsForNewTask.includes(defaultList)) {
-            setNewTaskListState(defaultList);
+        let targetList = preferences.defaultNewTaskList;
+        if (currentFilterGlobal.startsWith('list-')) {
+            const listName = currentFilterGlobal.substring(5);
+            if (availableListsForNewTask.includes(listName) && listName !== 'Trash') {
+                targetList = listName;
+            }
+        }
+        
+        if (availableListsForNewTask.includes(targetList)) {
+            setNewTaskListState(targetList);
         } else if (availableListsForNewTask.length > 0) {
             setNewTaskListState(availableListsForNewTask[0]);
         } else {
             setNewTaskListState('Inbox');
         }
 
-    }, [preferences, availableListsForNewTask, isLoadingPreferences]);
+    }, [preferences, availableListsForNewTask, isLoadingPreferences, currentFilterGlobal]);
 
     // Auto-enable AI task input when alwaysUseAITask is enabled AND config is valid
     useEffect(() => {
