@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useState, useRef } from 'react';
-import { useAtom, useSetAtom } from 'jotai';
+import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import {
     addNotificationAtom,
     tasksAtom,
@@ -19,6 +19,7 @@ import * as RadioGroup from '@radix-ui/react-radio-group';
 import * as RadixSwitch from '@radix-ui/react-switch';
 import { useTranslation } from "react-i18next";
 import storageManager from '@/services/storageManager';
+import { syncTasksToServer, getCalendarUrl, testServerConnection } from '@/services/icsService';
 
 /**
  * A generic row component for settings pages, providing a consistent layout
@@ -35,7 +36,7 @@ const SettingsRow: React.FC<{
     <div className="flex justify-between items-center py-3 min-h-[48px]">
         <div className="flex-1 mr-4">
             <label htmlFor={htmlFor}
-                   className="text-[13px] text-grey-dark dark:text-neutral-200 font-normal block cursor-default">{label}</label>
+                className="text-[13px] text-grey-dark dark:text-neutral-200 font-normal block cursor-default">{label}</label>
             {description &&
                 <p className="text-[11px] text-grey-medium dark:text-neutral-400 mt-0.5 font-light">{description}</p>}
         </div>
@@ -208,6 +209,73 @@ const DataSettings: React.FC = () => {
     const [conflicts, setConflicts] = useState<DataConflict[]>([]);
     const [pendingImport, setPendingImport] = useState<{ data: ExportedData; options: ImportOptions } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ICS Calendar Sync
+    const tasks = useAtomValue(tasksAtom);
+    const [icsServerUrl, setIcsServerUrl] = useState(() =>
+        typeof window !== 'undefined' ? localStorage.getItem('tada-ics-server-url') || '' : ''
+    );
+    const [isSyncingIcs, setIsSyncingIcs] = useState(false);
+    const [showIcsUrl, setShowIcsUrl] = useState(false);
+
+    const handleIcsServerUrlChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const url = e.target.value;
+        setIcsServerUrl(url);
+        localStorage.setItem('tada-ics-server-url', url);
+    }, []);
+
+    const handleSyncIcs = useCallback(async () => {
+        if (!icsServerUrl || !tasks) return;
+
+        setIsSyncingIcs(true);
+        try {
+            // Test connection first
+            const isConnected = await testServerConnection(icsServerUrl);
+            if (!isConnected) {
+                addNotification({ type: 'error', message: t('settings.data.ics.connectionFailed') });
+                return;
+            }
+
+            const result = await syncTasksToServer(tasks, icsServerUrl);
+            if (result.success) {
+                addNotification({
+                    type: 'success',
+                    message: t('settings.data.ics.syncSuccess', { count: result.tasksWithDueDate || 0 })
+                });
+                setShowIcsUrl(true);
+            } else {
+                addNotification({ type: 'error', message: result.error || t('settings.data.ics.syncError') });
+            }
+        } catch (error) {
+            addNotification({ type: 'error', message: t('settings.data.ics.syncError') });
+        } finally {
+            setIsSyncingIcs(false);
+        }
+    }, [icsServerUrl, tasks, addNotification, t]);
+
+    const handleCopyIcsUrl = useCallback(async () => {
+        const url = getCalendarUrl(icsServerUrl);
+        try {
+            // 优先使用 Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                // HTTP 环境下的降级方案
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+            addNotification({ type: 'success', message: t('settings.data.ics.urlCopied') });
+        } catch (err) {
+            addNotification({ type: 'error', message: 'Copy failed' });
+        }
+    }, [icsServerUrl, addNotification, t]);
 
     const handleExportData = useCallback(async () => {
         try {
@@ -397,6 +465,50 @@ const DataSettings: React.FC = () => {
                         </Button>
                     }
                 />
+            </div>
+
+            {/* ICS Calendar Sync Section */}
+            <div className="space-y-0 divide-y divide-grey-light dark:divide-neutral-700 mt-4 pt-4 border-t border-grey-light dark:border-neutral-700">
+                <SettingsRow
+                    label={t('settings.data.ics.title')}
+                    description={t('settings.data.ics.description')}
+                >
+                    <input
+                        type="text"
+                        value={icsServerUrl}
+                        onChange={handleIcsServerUrlChange}
+                        placeholder={t('settings.data.ics.serverPlaceholder')}
+                        className="w-[200px] h-8 px-3 text-[13px] font-light rounded-base bg-grey-ultra-light dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 border border-grey-light dark:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <Button
+                        onClick={handleSyncIcs}
+                        disabled={isSyncingIcs || !icsServerUrl}
+                        icon={isSyncingIcs ? 'loader' : 'refresh-cw'}
+                        variant="ghost"
+                        size="sm"
+                        iconProps={{
+                            className: isSyncingIcs ? 'animate-spin' : undefined,
+                            size: 14
+                        }}
+                    >
+                        {t('settings.data.ics.syncButton')}
+                    </Button>
+                </SettingsRow>
+
+                {showIcsUrl && icsServerUrl && (
+                    <SettingsRow
+                        label={t('settings.data.ics.subscribeUrl')}
+                        description={t('settings.data.ics.subscribeDescription')}
+                    >
+                        <input
+                            type="text"
+                            readOnly
+                            value={getCalendarUrl(icsServerUrl)}
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                            className="w-[280px] h-8 px-2 text-[12px] font-mono bg-grey-ultra-light dark:bg-neutral-700 text-grey-dark dark:text-neutral-100 border border-grey-light dark:border-neutral-600 rounded cursor-text select-all"
+                        />
+                    </SettingsRow>
+                )}
             </div>
 
             <input

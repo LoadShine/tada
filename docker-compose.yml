@@ -1,0 +1,25 @@
+services:
+  # TADA Web 前端
+  web:
+    image: node:20-alpine
+    container_name: tada-web
+    restart: always
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install -g pnpm@9 && pnpm install && pnpm dev --host"
+
+  # ICS 日历订阅服务
+  ics:
+    image: node:20-alpine
+    container_name: tada-ics
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./server:/app
+      - ./server/data:/app/data
+    ports:
+      - "3001:3001"
+    command: sh -c "npm install && npm run dev"
