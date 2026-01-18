@@ -247,6 +247,19 @@
         "keepNewer": "保留较新版本",
         "skip": "跳过此项目",
         "resolve": "应用解决方案"
+      },
+      "ics": {
+        "title": "日历同步",
+        "description": "将任务同步到服务器，并通过日历应用订阅。",
+        "serverPlaceholder": "http://服务器地址:3001",
+        "syncButton": "同步",
+        "syncSuccess": "已同步 {{count}} 个带截止日期的任务。",
+        "syncError": "同步失败，请检查服务器地址。",
+        "connectionFailed": "无法连接到服务器。",
+        "subscribeUrl": "订阅链接",
+        "subscribeDescription": "将此链接添加到日历应用中（如：Apple 日历、Google 日历等）",
+        "copyUrl": "复制",
+        "urlCopied": "链接已复制到剪贴板。"
       }
     },
     "about": {

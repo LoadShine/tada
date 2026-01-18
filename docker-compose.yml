@@ -1,0 +1,12 @@
+services:
+  # TADA Web 前端
+  web:
+    image: node:20-alpine
+    container_name: tada-web
+    restart: always
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install -g pnpm@9 && pnpm install && pnpm dev --host"
