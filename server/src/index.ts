@@ -54,7 +54,25 @@ function saveTasks(data: SyncData): void {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// 生成 ICS 日期格式 (YYYYMMDD)
+// 生成 ICS 日期时间格式 (YYYYMMDDTHHmmss) - 本地时间
+function formatICSDateTime(timestamp: number): string {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+}
+
+// 检查时间戳是否为全天事件（时间部分为 00:00:00）
+function isAllDayEvent(timestamp: number): boolean {
+    const date = new Date(timestamp);
+    return date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0;
+}
+
+// 生成 ICS 日期格式 (YYYYMMDD) - 用于全天事件
 function formatICSDate(timestamp: number): string {
     const date = new Date(timestamp);
     const year = date.getFullYear();
@@ -88,15 +106,27 @@ function generateICS(tasks: Task[]): string {
 
     for (const task of tasksWithDueDate) {
         const uid = `task-${task.id}@tada`;
-        const dtstart = formatICSDate(task.dueDate!);
         const summary = escapeICS(task.title);
         const description = task.content ? escapeICS(task.content) : '';
         const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const isAllDay = isAllDayEvent(task.dueDate!);
 
         lines.push('BEGIN:VEVENT');
         lines.push(`UID:${uid}`);
         lines.push(`DTSTAMP:${now}`);
-        lines.push(`DTSTART;VALUE=DATE:${dtstart}`);
+
+        if (isAllDay) {
+            // 全天事件：使用 VALUE=DATE 格式
+            const dtstart = formatICSDate(task.dueDate!);
+            lines.push(`DTSTART;VALUE=DATE:${dtstart}`);
+        } else {
+            // 有具体时间的事件：使用本地时间格式
+            const dtstart = formatICSDateTime(task.dueDate!);
+            lines.push(`DTSTART:${dtstart}`);
+            // 设置事件持续时间为 30 分钟
+            lines.push('DURATION:PT30M');
+        }
+
         lines.push(`SUMMARY:${summary}`);
         if (description) {
             lines.push(`DESCRIPTION:${description}`);
@@ -110,6 +140,20 @@ function generateICS(tasks: Task[]): string {
             lines.push(`CATEGORIES:${escapeICS(task.listName)}`);
         }
         lines.push('STATUS:CONFIRMED');
+
+        // 添加提醒 (VALARM)
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push(`DESCRIPTION:${summary}`);
+        if (isAllDay) {
+            // 全天事件：当天早上 9 点提醒 (相对于事件开始时间 +9 小时)
+            lines.push('TRIGGER:PT9H');
+        } else {
+            // 有具体时间的事件：在事件开始时提醒
+            lines.push('TRIGGER:PT0M');
+        }
+        lines.push('END:VALARM');
+
         lines.push('END:VEVENT');
     }
 
