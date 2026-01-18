@@ -54,30 +54,30 @@ function saveTasks(data: SyncData): void {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// 生成 ICS 日期时间格式 (YYYYMMDDTHHmmss) - 本地时间
+// 生成 ICS 日期时间格式 (YYYYMMDDTHHmmssZ) - UTC 时间
 function formatICSDateTime(timestamp: number): string {
     const date = new Date(timestamp);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+    return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
 }
 
-// 检查时间戳是否为全天事件（时间部分为 00:00:00）
+// 检查时间戳是否为全天事件（UTC 时间部分为 00:00:00）
 function isAllDayEvent(timestamp: number): boolean {
     const date = new Date(timestamp);
-    return date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0;
+    return date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
 }
 
-// 生成 ICS 日期格式 (YYYYMMDD) - 用于全天事件
+// 生成 ICS 日期格式 (YYYYMMDD) - 用于全天事件 (使用 UTC)
 function formatICSDate(timestamp: number): string {
     const date = new Date(timestamp);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}${month}${day}`;
 }
 
