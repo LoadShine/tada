@@ -247,6 +247,19 @@
         "keepNewer": "Keep the Newer Version",
         "skip": "Skip This Item",
         "resolve": "Apply Resolutions"
+      },
+      "ics": {
+        "title": "Calendar Sync",
+        "description": "Sync tasks to your server and subscribe via calendar apps.",
+        "serverPlaceholder": "http://your-server:3001",
+        "syncButton": "Sync",
+        "syncSuccess": "Synced {{count}} tasks with due dates.",
+        "syncError": "Sync failed. Please check server URL.",
+        "connectionFailed": "Cannot connect to server.",
+        "subscribeUrl": "Subscription URL",
+        "subscribeDescription": "Add this URL to your calendar app (Apple Calendar, Google Calendar, etc.)",
+        "copyUrl": "Copy",
+        "urlCopied": "URL copied to clipboard."
       }
     },
     "about": {
