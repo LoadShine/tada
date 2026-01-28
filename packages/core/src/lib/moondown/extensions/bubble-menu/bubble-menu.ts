@@ -15,6 +15,9 @@ import {
 import {CSS_CLASSES, ICON_SIZES, POPPER_CONFIG, MARKDOWN_MARKERS} from "../../core";
 import {createElement, createIconElement} from "../../core";
 import {isMarkdownImage} from "../../core";
+import {AIPolishPanel} from "./ai-polish-panel";
+import type {AISettings} from '@/types';
+import storageManager from '@/services/storageManager';
 
 /**
  * BubbleMenu - A floating toolbar that appears on text selection.
@@ -26,6 +29,7 @@ export class BubbleMenu implements PluginValue {
     private view: EditorView;
     private popper: PopperInstance | null;
     private boundHandleMouseUp: (e: MouseEvent) => void;
+    private aiPolishPanel: AIPolishPanel | null = null;
 
     constructor(view: EditorView) {
         this.view = view;
@@ -56,6 +60,7 @@ export class BubbleMenu implements PluginValue {
 
     destroy(): void {
         this.destroyPopper();
+        this.destroyAIPolishPanel();
         this.dom.remove();
         document.removeEventListener('mouseup', this.boundHandleMouseUp);
     }
@@ -303,6 +308,12 @@ export class BubbleMenu implements PluginValue {
                         isActive: state => isInlineStyleActive(state, MARKDOWN_MARKERS.INLINE_CODE),
                     },
                 ]
+            },
+            {
+                name: 'AI Polish',
+                icon: 'Sparkles',
+                type: 'button',
+                action: view => this.handleAIPolish(view),
             }
         ];
     }
@@ -375,5 +386,70 @@ export class BubbleMenu implements PluginValue {
                 attrs: ICON_SIZES.MEDIUM,
             });
         }, 0);
+    }
+
+    /**
+     * Handles the AI Polish action when clicked
+     */
+    private handleAIPolish(view: EditorView): boolean {
+        const {from, to} = view.state.selection.main;
+        const selectedText = view.state.sliceDoc(from, to);
+
+        if (!selectedText.trim()) {
+            return false;
+        }
+
+        const storage = storageManager.get();
+        const settings = storage.fetchSettings();
+        const aiSettings = settings?.ai;
+
+        if (!aiSettings || !aiSettings.model) {
+            alert('Please configure AI settings first in the application settings.');
+            return false;
+        }
+
+        this.destroyAIPolishPanel();
+
+        this.aiPolishPanel = new AIPolishPanel({
+            selectedText,
+            from,
+            to,
+            view,
+            onClose: () => {
+                this.destroyAIPolishPanel();
+            },
+            onInsert: (polishedText: string) => {
+                view.dispatch({
+                    changes: {from, to, insert: polishedText},
+                    selection: {anchor: from + polishedText.length}
+                });
+                view.focus();
+            },
+            aiSettings: aiSettings as AISettings
+        });
+
+        this.positionAIPolishPanel();
+
+        document.body.appendChild(this.aiPolishPanel.getDOM());
+        return true;
+    }
+
+    private positionAIPolishPanel(): void {
+        if (!this.aiPolishPanel) return;
+
+        requestAnimationFrame(() => {
+            const panelDOM = this.aiPolishPanel!.getDOM();
+            const menuRect = this.dom.getBoundingClientRect();
+
+            panelDOM.style.top = `${menuRect.bottom + 12}px`;
+            panelDOM.style.left = `${menuRect.left}px`;
+        });
+    }
+
+    private destroyAIPolishPanel(): void {
+        if (this.aiPolishPanel) {
+            this.aiPolishPanel.destroy();
+            this.aiPolishPanel = null;
+        }
     }
 }

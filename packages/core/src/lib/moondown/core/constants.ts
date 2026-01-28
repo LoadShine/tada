@@ -71,6 +71,14 @@ export const CSS_CLASSES = {
     LOADING_WIDGET: 'cm-loading-widget',
     LOADING_SPINNER: 'cm-loading-spinner',
     NEW_TEXT: 'cm-new-text',
+
+    // AI Polish Panel
+    AI_POLISH_PANEL: 'cm-ai-polish-panel',
+    AI_POLISH_INPUT_SECTION: 'cm-ai-polish-input-section',
+    AI_POLISH_INPUT_ROW: 'cm-ai-polish-input-row',
+    AI_POLISH_INPUT: 'cm-ai-polish-input',
+    AI_POLISH_RESPONSE_SECTION: 'cm-ai-polish-response-section',
+    AI_POLISH_RESPONSE_BUBBLE: 'cm-ai-polish-response-bubble',
 } as const;
 
 /** Icon sizes */

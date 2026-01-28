@@ -63,6 +63,18 @@
         --ai-glow-gradient-yellow: linear-gradient(90deg, #F78C33, #F6AD55, #FFDB1A, #A3CC33, #F78C33);
         --ai-glow-gradient-blue: linear-gradient(90deg, #4ADCF2, #63B3ED, #738AF2, #9C6BF7, #4ADCF2);
         --ai-glow-gradient-neutral: linear-gradient(90deg, #ADC9F5, #CDE5EF, #D2BDEF, #F7D9E0, #ADC9F5);
+
+        --ai-panel-bg: rgba(255, 255, 255, 0.92);
+        --ai-panel-border: rgba(0, 0, 0, 0.08);
+        --ai-panel-shadow:
+                0 4px 6px -1px rgba(0, 0, 0, 0.05),
+                0 20px 40px -8px rgba(0, 0, 0, 0.12);
+
+        --ai-accent: hsl(var(--color-primary-hsl, 211 100% 50%));
+
+        --ai-text-primary: #1d1d1f;
+        --ai-text-secondary: #86868b;
+        --ai-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     /* Override Font Weights based on classes to use variables */
@@ -102,6 +114,14 @@
         --color-grey-medium: 210 10% 55%;
         --color-grey-dark: 210 10% 88%;
         --color-grey-deep: 210 20% 8%;
+
+        --ai-panel-bg: rgba(30, 30, 32, 0.92);
+        --ai-panel-border: rgba(255, 255, 255, 0.12);
+        --ai-panel-shadow:
+                0 4px 6px -1px rgba(0, 0, 0, 0.2),
+                0 24px 48px -12px rgba(0, 0, 0, 0.4);
+        --ai-text-primary: #f5f5f7;
+        --ai-text-secondary: #98989d;
     }
 
     body {
@@ -331,6 +351,252 @@
     }
 
     /* --- Bubble Menu Styles --- */
+    .cm-ai-polish-panel {
+        position: fixed;
+        background: var(--ai-panel-bg);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+
+        border: 1px solid var(--ai-panel-border);
+        border-radius: 16px;
+        box-shadow: var(--ai-panel-shadow);
+
+        width: 440px;
+        z-index: 9999;
+        font-family: var(--ai-font-family), serif;
+        color: var(--ai-text-primary);
+
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+        animation: aiPanelIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+        -webkit-font-smoothing: antialiased;
+    }
+
+    @keyframes aiPanelIn {
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .ai-polish-close-btn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        color: var(--ai-text-secondary);
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.6;
+        transition: all 0.2s ease;
+        z-index: 20;
+        padding: 0;
+    }
+
+    .ai-polish-close-btn svg { width: 14px; height: 14px; }
+    .ai-polish-close-btn:hover { opacity: 1; background: rgba(0,0,0,0.05); color: var(--ai-text-primary); }
+    .dark .ai-polish-close-btn:hover { background: rgba(255,255,255,0.1); }
+
+    .cm-ai-polish-input-section {
+        padding: 42px 18px 18px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ai-polish-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        width: 100%;
+    }
+
+    .cm-ai-polish-input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        font-size: 15px;
+        line-height: 1.5;
+        color: var(--ai-text-primary);
+        padding: 0 36px 0 0;
+        resize: none;
+        outline: none;
+        font-family: inherit;
+        max-height: 150px;
+        min-height: 24px;
+    }
+
+    .cm-ai-polish-input::placeholder { color: var(--ai-text-secondary); opacity: 0.6; }
+
+    .ai-polish-send-btn {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: none;
+        background: var(--ai-text-secondary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        transform: scale(0.9);
+        opacity: 0.5;
+        padding: 0;
+        z-index: 10;
+    }
+    .ai-polish-send-btn svg { width: 16px; height: 16px; }
+
+    .cm-ai-polish-input:focus ~ .ai-polish-send-btn,
+    .cm-ai-polish-input:not(:placeholder-shown) ~ .ai-polish-send-btn {
+        background: var(--ai-accent);
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .ai-polish-send-btn:active { transform: scale(0.92); }
+    .ai-polish-send-btn:disabled { opacity: 0.4; cursor: default; filter: grayscale(1); }
+
+    .ai-polish-hint {
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--ai-text-secondary);
+        font-weight: 500;
+        text-align: right;
+        opacity: 0.5;
+        padding-right: 4px;
+    }
+
+    .cm-ai-polish-response-section {
+        display: none;
+        background: rgba(0,0,0,0.02);
+        border-top: 1px solid var(--ai-panel-border);
+        padding: 20px 18px;
+        max-height: 320px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .dark .cm-ai-polish-response-section { background: rgba(255,255,255,0.02); }
+
+    .cm-ai-polish-response-section.visible { display: flex; flex-direction: column; gap: 16px; }
+
+    .ai-polish-user-bubble {
+        align-self: flex-end;
+        background: rgba(0, 0, 0, 0.05);
+        color: var(--ai-text-primary);
+        padding: 8px 12px;
+        border-radius: 12px 12px 2px 12px;
+        font-size: 13px;
+        max-width: 85%;
+        line-height: 1.4;
+        word-wrap: break-word;
+        margin-left: auto;
+        animation: slideUp 0.2s ease;
+    }
+    .dark .ai-polish-user-bubble {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .cm-ai-polish-response-bubble {
+        align-self: flex-start;
+        width: 100%;
+        animation: slideUp 0.3s ease;
+    }
+
+    .cm-ai-polish-response-bubble:last-child .ai-polish-action-bar {
+        display: flex;
+    }
+
+    .cm-ai-polish-response-bubble.error .ai-polish-response-text { color: #ff453a; }
+
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-polish-response-text {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--ai-text-primary);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .ai-polish-typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 6px 0;
+    }
+    .ai-polish-typing-indicator span {
+        width: 4px;
+        height: 4px;
+        background: var(--ai-text-secondary);
+        border-radius: 50%;
+        animation: typing 1.4s infinite ease-in-out both;
+    }
+    .ai-polish-typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .ai-polish-typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+
+    .ai-polish-action-bar {
+        display: none;
+        gap: 6px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--ai-panel-border);
+        opacity: 0;
+        animation: fadeIn 0.3s ease forwards;
+    }
+
+    @keyframes fadeIn { to { opacity: 1; } }
+
+    .ai-polish-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: transparent;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ai-text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .ai-polish-action-btn svg { width: 14px; height: 14px; }
+    .ai-polish-action-btn:hover { background: rgba(0,0,0,0.04); color: var(--ai-text-primary); }
+    .dark .ai-polish-action-btn:hover { background: rgba(255,255,255,0.08); }
+
+    .ai-polish-action-btn.primary-action {
+        margin-left: auto;
+        color: var(--ai-accent);
+    }
+    .ai-polish-action-btn.primary-action:hover {
+        background: var(--ai-accent);
+        color: white;
+    }
+
+    .cm-ai-polish-response-section::-webkit-scrollbar { width: 4px; }
+    .cm-ai-polish-response-section::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+    .cm-ai-polish-response-section::-webkit-scrollbar-track { background: transparent; }
+    .dark .cm-ai-polish-response-section::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
 
     /* Light Mode Bubble Menu */
     .cm-bubble-menu {
