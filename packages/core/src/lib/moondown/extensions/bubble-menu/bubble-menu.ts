@@ -190,6 +190,7 @@ export class BubbleMenu implements PluginValue {
     }
 
     private createItems(): BubbleMenuItem[] {
+        // @ts-ignore
         return [
             {
                 name: 'Heading',
@@ -223,7 +224,8 @@ export class BubbleMenu implements PluginValue {
                 subItems: [
                     {
                         name: 'Ordered List',
-                        icon: 'ListOrdered',
+                        // @ts-ignore
+                        icon: 'list-ordered',
                         action: view => toggleList(view, true),
                         isActive: state => isListActive(state, true),
                     },
