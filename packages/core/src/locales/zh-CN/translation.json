@@ -522,7 +522,18 @@
   },
   "moondown": {
     "ai": {
-      "thinking": "AI 正在思考..."
+      "thinking": "AI 正在思考...",
+      "polish": {
+        "placeholder": "告诉 AI 如何润色 (例如: '修复语病', '更专业一点')...",
+        "hint": "CMD + Enter 发送",
+        "buttons": {
+          "retry": "重试",
+          "copy": "复制",
+          "copied": "已复制",
+          "insert": "插入",
+          "close": "关闭"
+        }
+      }
     },
     "slash": {
       "aiContinue": "AI 继续写作",

@@ -19,10 +19,6 @@ import {AIPolishPanel} from "./ai-polish-panel";
 import type {AISettings} from '@/types';
 import storageManager from '@/services/storageManager';
 
-/**
- * BubbleMenu - A floating toolbar that appears on text selection.
- * It provides quick access to formatting options like bold, italic, headings, etc.
- */
 export class BubbleMenu implements PluginValue {
     private dom: HTMLElement;
     private items: BubbleMenuItem[];
@@ -65,25 +61,16 @@ export class BubbleMenu implements PluginValue {
         document.removeEventListener('mouseup', this.boundHandleMouseUp);
     }
 
-    /**
-     * Checks if the current selection is an image markdown string.
-     */
     private isImageSelection(state: EditorState, from: number, to: number): boolean {
         const selectedText = state.sliceDoc(from, to);
         return isMarkdownImage(selectedText);
     }
 
-    /**
-     * Hides the bubble menu.
-     */
     private hide(): void {
         this.dom.style.display = 'none';
         this.destroyPopper();
     }
 
-    /**
-     * Destroys the Popper instance if it exists.
-     */
     private destroyPopper(): void {
         if (this.popper) {
             this.popper.destroy();
@@ -91,9 +78,6 @@ export class BubbleMenu implements PluginValue {
         }
     }
 
-    /**
-     * Shows and positions the bubble menu above the current text selection.
-     */
     private show(from: number, to: number): void {
         requestAnimationFrame(() => {
             this.dom.style.display = 'flex';
@@ -103,7 +87,6 @@ export class BubbleMenu implements PluginValue {
 
             if (!startPos || !endPos) return;
 
-            // Create a virtual element for Popper.js to position the menu relative to the selection.
             const virtualElement: VirtualElement = {
                 getBoundingClientRect: (): DOMRect => {
                     return {
@@ -115,7 +98,7 @@ export class BubbleMenu implements PluginValue {
                         left: startPos.left,
                         x: startPos.left,
                         y: startPos.top,
-                        toJSON: () => { // Required for some Popper.js internals
+                        toJSON: () => {
                             return {
                                 width: endPos.left - startPos.left,
                                 height: startPos.bottom - startPos.top,
@@ -150,9 +133,6 @@ export class BubbleMenu implements PluginValue {
         });
     }
 
-    /**
-     * Updates the active state (highlighting) of all menu items based on the current selection.
-     */
     private updateActiveStates(): void {
         this.items.forEach(item => {
             if (item.isActive) {
@@ -186,9 +166,6 @@ export class BubbleMenu implements PluginValue {
         });
     }
 
-    /**
-     * Handles the global mouse up event to determine whether to show or hide the menu.
-     */
     private handleMouseUp(_event: MouseEvent): void {
         const { state } = this.view;
         const { from, to } = state.selection.main;
@@ -202,9 +179,6 @@ export class BubbleMenu implements PluginValue {
         }
     }
 
-    /**
-     * Clears the text selection and refocuses the editor, typically after a menu action.
-     */
     private clearSelectionAndFocus(): void {
         requestAnimationFrame(() => {
             const currentPos = this.view.state.selection.main.head;
@@ -215,9 +189,6 @@ export class BubbleMenu implements PluginValue {
         });
     }
 
-    /**
-     * Defines the structure and actions of the bubble menu items.
-     */
     private createItems(): BubbleMenuItem[] {
         return [
             {
@@ -318,9 +289,6 @@ export class BubbleMenu implements PluginValue {
         ];
     }
 
-    /**
-     * Builds the DOM structure for the menu based on the item configuration.
-     */
     private buildMenu(): void {
         this.dom.innerHTML = '';
 
@@ -379,7 +347,6 @@ export class BubbleMenu implements PluginValue {
             this.dom.appendChild(button);
         });
 
-        // Initialize Lucide icons after DOM update
         setTimeout(() => {
             createIcons({
                 icons,
@@ -388,9 +355,6 @@ export class BubbleMenu implements PluginValue {
         }, 0);
     }
 
-    /**
-     * Handles the AI Polish action when clicked
-     */
     private handleAIPolish(view: EditorView): boolean {
         const {from, to} = view.state.selection.main;
         const selectedText = view.state.sliceDoc(from, to);

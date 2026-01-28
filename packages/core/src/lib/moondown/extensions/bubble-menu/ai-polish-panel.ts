@@ -4,6 +4,7 @@ import {createElement, createIconElement} from "../../core";
 import {CSS_CLASSES} from "../../core";
 import type {AISettings} from '@/types';
 import {streamChatCompletionForEditor} from '@/services/aiService';
+import i18next from 'i18next';
 
 export interface AIPolishPanelOptions {
     selectedText: string;
@@ -31,7 +32,7 @@ export class AIPolishPanel {
         this.options = options;
         this.dom = createElement('div', CSS_CLASSES.AI_POLISH_PANEL);
 
-        const closeBtn = this.createIconButton('x', 'Close', 'ai-polish-close-btn');
+        const closeBtn = this.createIconButton('x', i18next.t('moondown.ai.polish.buttons.close'), 'ai-polish-close-btn');
         closeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.options.onClose();
@@ -74,7 +75,7 @@ export class AIPolishPanel {
 
         const textarea = document.createElement('textarea');
         textarea.className = CSS_CLASSES.AI_POLISH_INPUT;
-        textarea.placeholder = 'Ask AI to refine...';
+        textarea.placeholder = i18next.t('moondown.ai.polish.placeholder');
         textarea.rows = 1;
 
         textarea.addEventListener('input', () => this.adjustTextareaHeight(textarea));
@@ -89,7 +90,7 @@ export class AIPolishPanel {
 
         const sendBtn = document.createElement('button');
         sendBtn.className = 'ai-polish-send-btn';
-        sendBtn.title = 'Send (Cmd+Enter)';
+        sendBtn.title = `${i18next.t('moondown.ai.polish.buttons.send')} (Cmd+Enter)`;
         sendBtn.appendChild(createIconElement('arrow-up'));
         sendBtn.addEventListener('click', () => this.handleGenerate());
 
@@ -97,7 +98,7 @@ export class AIPolishPanel {
         container.appendChild(wrapper);
 
         const hint = createElement('div', 'ai-polish-hint');
-        hint.innerHTML = '<span>CMD + Enter to send</span>';
+        hint.innerHTML = `<span>${i18next.t('moondown.ai.polish.hint')}</span>`;
         container.appendChild(hint);
 
         return container;
@@ -119,7 +120,7 @@ export class AIPolishPanel {
 
     private async handleGenerate(manualInstruction?: string, isRetry: boolean = false): Promise<void> {
         const instruction = manualInstruction || this.inputField.value.trim();
-        if (!instruction || this.isGenerating) return;
+        if (this.isGenerating) return;
 
         this.isGenerating = true;
         this.currentResponse = '';
@@ -132,9 +133,13 @@ export class AIPolishPanel {
             this.inputField.value = '';
             this.adjustTextareaHeight(this.inputField);
 
-            this.conversationHistory.push({ role: 'user', content: instruction });
+            const userHistoryContent = instruction || "General Polish";
+            this.conversationHistory.push({ role: 'user', content: userHistoryContent });
+
             this.responseContainer.classList.add('visible');
-            this.appendUserBubble(instruction);
+            if (instruction) {
+                this.appendUserBubble(instruction);
+            }
         }
 
         const responseBubble = this.createResponseBubble();
@@ -144,8 +149,10 @@ export class AIPolishPanel {
 
         try {
             this.abortController = new AbortController();
+
             const systemPrompt = this.buildSystemPrompt();
-            const userPrompt = this.buildUserPrompt(instruction); // Note: buildUserPrompt uses conversationHistory
+
+            const userPrompt = this.buildUserPrompt(instruction || "Polish this text.");
 
             const stream = await streamChatCompletionForEditor(
                 this.options.aiSettings,
@@ -191,7 +198,6 @@ export class AIPolishPanel {
 
     private handleRegenerate(): void {
         if (this.isGenerating) return;
-
         if (this.conversationHistory.length < 2) return;
 
         const lastIndex = this.conversationHistory.length - 1;
@@ -199,7 +205,6 @@ export class AIPolishPanel {
 
         if (lastMsg.role === 'assistant') {
             this.conversationHistory.pop();
-
             if (this.responseContainer.lastElementChild) {
                 this.responseContainer.lastElementChild.remove();
             }
@@ -207,7 +212,8 @@ export class AIPolishPanel {
 
         const userMsg = this.conversationHistory[this.conversationHistory.length - 1];
         if (userMsg && userMsg.role === 'user') {
-            this.handleGenerate(userMsg.content, true);
+            const retryContent = userMsg.content === "General Polish" ? "" : userMsg.content;
+            this.handleGenerate(retryContent, true);
         }
     }
 
@@ -255,12 +261,12 @@ export class AIPolishPanel {
             return btn;
         };
 
-        actionBar.appendChild(createAction('refresh-cw', 'Retry', () => this.handleRegenerate()));
+        actionBar.appendChild(createAction('refresh-cw', i18next.t('moondown.ai.polish.buttons.retry'), () => this.handleRegenerate()));
 
-        const copyBtn = createAction('copy', 'Copy', () => this.handleCopy(copyBtn));
+        const copyBtn = createAction('copy', i18next.t('moondown.ai.polish.buttons.copy'), () => this.handleCopy(copyBtn));
         actionBar.appendChild(copyBtn);
 
-        const insertBtn = createAction('check', 'Insert', () => this.handleInsert(), true);
+        const insertBtn = createAction('check', i18next.t('moondown.ai.polish.buttons.insert'), () => this.handleInsert(), true);
         actionBar.appendChild(insertBtn);
 
         bubble.appendChild(actionBar);
@@ -271,7 +277,9 @@ export class AIPolishPanel {
         if (this.currentResponse) {
             navigator.clipboard.writeText(this.currentResponse).then(() => {
                 const originalContent = btn.innerHTML;
-                btn.innerHTML = 'Copied!';
+                const span = btn.querySelector('span');
+                if (span) span.textContent = i18next.t('moondown.ai.polish.buttons.copied');
+
                 setTimeout(() => {
                     btn.innerHTML = originalContent;
                     this.initializeIcons();
@@ -288,23 +296,58 @@ export class AIPolishPanel {
     }
 
     private buildSystemPrompt(): string {
-        return `You are an expert text editor. Polish and improve text according to instructions. Rules: Output ONLY the polished text. No explanations.`;
+        return `You are an expert AI Editor embedded in a Markdown editor.
+Your goal is to refine the user's text based on their instructions.
+
+### SYSTEM RULES (CRITICAL):
+
+1. **MARKDOWN PRESERVATION**:
+   - The input is Markdown. You MUST preserve all formatting (e.g., **bold**, [links](), \`code\`).
+   - Do NOT wrap the output in \`\`\`markdown code blocks\`\`\`. Output raw text only.
+
+2. **LANGUAGE CONSISTENCY**:
+   - You will receive a <target_language> tag.
+   - You MUST write the output in that specific language.
+   - Exception: If the user explicitly asks to "Translate to English", follow the user's instruction.
+
+3. **NO CONVERSATIONAL FILLER**:
+   - Output ONLY the result.
+   - Do NOT say "Here is the polished text" or "I have improved it".
+
+4. **INSTRUCTION FOLLOWING**:
+   - If <user_instruction> is empty or generic, improve grammar, flow, and clarity while keeping the original meaning.
+`;
     }
 
     private buildUserPrompt(instruction: string): string {
+        const currentLang = i18next.language || 'en';
+
+        const targetLanguage = currentLang.startsWith('zh') ? 'Simplified Chinese' : 'English';
+
         let prompt = '';
-        if (this.conversationHistory.length > 1) {
-            prompt += 'Previous conversation:\n';
-            const previousTurns = this.conversationHistory.slice(0, -1);
-            previousTurns.forEach(msg => {
-                prompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+
+        if (this.conversationHistory.length > 0) {
+            prompt += '<conversation_history>\n';
+            this.conversationHistory.forEach(msg => {
+                prompt += `<message role="${msg.role}">\n${msg.content}\n</message>\n`;
             });
-            prompt += '\n';
+            prompt += '</conversation_history>\n\n';
         }
 
-        prompt += `Original Text:\n${this.options.selectedText}\n\n`;
-        prompt += `Instruction: ${instruction}\n\n`;
-        prompt += `Polished text:`;
+        prompt += `
+<context_data>
+    <target_language>${targetLanguage}</target_language>
+    <source_text>
+${this.options.selectedText}
+    </source_text>
+</context_data>
+
+<user_instruction>
+${instruction}
+</user_instruction>
+
+Output:`;
+
         return prompt;
     }
 

@@ -522,7 +522,18 @@
   },
   "moondown": {
     "ai": {
-      "thinking": "AI is thinking..."
+      "thinking": "AI is thinking...",
+      "polish": {
+        "placeholder": "Tell AI how to polish (e.g., 'Fix grammar', 'Make it professional')...",
+        "hint": "CMD + Enter to send",
+        "buttons": {
+          "retry": "Retry",
+          "copy": "Copy",
+          "copied": "Copied!",
+          "insert": "Insert",
+          "close": "Close"
+        }
+      }
     },
     "slash": {
       "aiContinue": "AI Continue Writing",
