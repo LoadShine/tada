@@ -47,6 +47,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@tauri-apps/api": "2.9.0",
     "@tauri-apps/plugin-http": "^2.5.4",
+    "@tauri-apps/plugin-opener": "^2.5.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.2.10",

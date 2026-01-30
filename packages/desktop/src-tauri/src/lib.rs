@@ -149,6 +149,7 @@ pub fn run() {
             is_quitting: AtomicBool::new(false),
         })
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:tada.db", migrations)

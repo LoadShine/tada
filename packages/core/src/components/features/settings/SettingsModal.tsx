@@ -44,6 +44,7 @@ import { Link } from 'react-router-dom';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fetchWithProxy, isTauri } from "@/utils/networkUtils";
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 interface SettingsItem {
     id: SettingsTab;
@@ -1107,7 +1108,19 @@ const AboutSettings: React.FC = memo(() => {
                         variant="ghost"
                         size="sm"
                         icon="external-link"
-                        onClick={() => window.open('https://github.com/LoadShine/tada/issues')}
+                        onClick={async () => {
+                            const url = 'https://github.com/LoadShine/tada/issues';
+                            if (isTauri()) {
+                                try {
+                                    await openUrl(url);
+                                } catch (e) {
+                                    console.error('Failed to open URL with Tauri opener, falling back to window.open', e);
+                                    window.open(url);
+                                }
+                            } else {
+                                window.open(url);
+                            }
+                        }}
                         className="text-[13px]"
                     >
                         {t('settings.about.reportButton')}

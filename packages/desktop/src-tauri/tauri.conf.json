@@ -29,6 +29,7 @@
             "core:window:allow-set-fullscreen",
             "core:default",
             "core:tray:default",
+            "opener:default",
             "http:default",
             {
               "identifier": "http:default",
