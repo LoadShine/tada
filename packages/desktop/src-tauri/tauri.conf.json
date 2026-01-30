@@ -30,6 +30,7 @@
             "core:default",
             "core:tray:default",
             "opener:default",
+            "log:default",
             "http:default",
             {
               "identifier": "http:default",

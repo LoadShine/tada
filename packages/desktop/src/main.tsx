@@ -1,69 +1,80 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import { HashRouter } from 'react-router-dom';
-import { Provider as JotaiProvider } from 'jotai';
-import { App } from '@tada/core';
-import * as Tooltip from '@radix-ui/react-tooltip';
-import storageManager from '@tada/core/services/storageManager';
-import { SqliteStorageService } from './services/sqliteStorageService';
-
-import '@tada/core/locales';
+import { error as logError } from '@tauri-apps/plugin-log';
 import '@tada/core/styles/index.css';
 
-const DesktopAppLauncher = () => {
-    const [isReady, setIsReady] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+const setupErrorHandlers = () => {
+    window.onerror = (message, source, lineno, colno, error) => {
+        const errorMsg = `Global Script Error: ${message} at ${source}:${lineno}:${colno}\nStack: ${error?.stack || 'No Stack'}`;
+        console.error(errorMsg);
+        logError(errorMsg).catch(console.error);
+    };
 
-    useEffect(() => {
-        const init = async () => {
-            try {
-                const storageService = new SqliteStorageService();
-                await storageService.initialize();
+    window.onunhandledrejection = (event) => {
+        const errorMsg = `Unhandled Promise Rejection: ${event.reason}`;
+        console.error(errorMsg);
+        logError(errorMsg).catch(console.error);
+    };
+};
 
-                storageManager.register(storageService);
+setupErrorHandlers();
 
-                await storageService.preloadData();
+const AppEntry = React.lazy(() => import('./AppEntry'));
 
-                setIsReady(true);
-            } catch (err: any) {
-                console.error('Desktop initialization failed:', err);
-                setError(err.message || String(err));
-            }
-        };
-        init();
-    }, []);
+const Loader = () => (
+    <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-[#1D2530]">
+        <div className="animate-pulse flex flex-col items-center">
+            <div className="h-12 w-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mb-4"></div>
+            <span className="text-gray-500">Initializing System...</span>
+        </div>
+    </div>
+);
 
-    if (error) {
-        return (
-            <div className="h-screen w-screen flex flex-col items-center justify-center bg-red-50 text-red-900 p-10 text-center">
-                <h1 className="text-2xl font-bold mb-4">Application Failed to Start</h1>
-                <p className="mb-4">We encountered an error while initializing the database.</p>
-                <pre className="bg-white p-4 rounded border border-red-200 text-left overflow-auto max-w-full">
-                    {error}
-                </pre>
-            </div>
-        );
+const FatalErrorScreen = ({ error }: { error: any }) => (
+    <div className="h-screen w-screen flex flex-col items-center justify-center bg-red-50 text-red-900 p-10 text-center">
+        <h1 className="text-2xl font-bold mb-4">Critical System Error</h1>
+        <p className="mb-4">The application failed to load its core modules.</p>
+        <pre className="bg-white p-4 rounded border border-red-200 text-left overflow-auto max-w-full text-xs">
+            {String(error)}
+        </pre>
+        <button
+            onClick={() => window.location.reload()}
+            className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+            Reload Application
+        </button>
+    </div>
+);
+
+class ModuleLoaderBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false, error: null };
     }
 
-    if (!isReady) {
-        return (
-            <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-[#1D2530]">
-                <div className="animate-pulse flex flex-col items-center">
-                    <div className="h-12 w-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mb-4"></div>
-                    <span className="text-gray-500">Loading Tada...</span>
-                </div>
-            </div>
-        );
+    static getDerivedStateFromError(error: any) {
+        return { hasError: true, error };
     }
 
+    componentDidCatch(error: any, errorInfo: any) {
+        logError(`Module Load Failure: ${error}\nInfo: ${errorInfo.componentStack}`);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return <FatalErrorScreen error={this.state.error} />;
+        }
+        return this.props.children;
+    }
+}
+
+const Root = () => {
     return (
-        <JotaiProvider>
-            <Tooltip.Provider delayDuration={200}>
-                <HashRouter>
-                    <App />
-                </HashRouter>
-            </Tooltip.Provider>
-        </JotaiProvider>
+        <ModuleLoaderBoundary>
+            <Suspense fallback={<Loader />}>
+                <AppEntry />
+            </Suspense>
+        </ModuleLoaderBoundary>
     );
 };
 
@@ -73,4 +84,4 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-root.render(<React.StrictMode><DesktopAppLauncher /></React.StrictMode>);
+root.render(<React.StrictMode><Root /></React.StrictMode>);

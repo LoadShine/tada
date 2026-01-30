@@ -151,6 +151,19 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
+            tauri_plugin_log::Builder::default()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: None,
+                    }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(3))
+                .level(log::LevelFilter::Info)
+                .build(),
+        )
+        .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:tada.db", migrations)
                 .build(),
@@ -159,7 +172,8 @@ pub fn run() {
             // Create a tray menu
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app, "show", "Show Tada", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+            let logs_i = MenuItem::with_id(app, "open_logs", "Open Logs", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_i, &logs_i, &quit_i])?;
 
             let icon_bytes = include_bytes!("../icons/tray-icon.png");
             let icon = Image::from_bytes(icon_bytes).expect("Failed to load tray icon");
@@ -181,6 +195,19 @@ pub fn run() {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "open_logs" => {
+                        let app_handle = app.app_handle();
+                        if let Ok(path) = app_handle.path().app_log_dir() {
+                            if let Some(path_str) = path.to_str() {
+                                #[cfg(target_os = "macos")]
+                                let _ = std::process::Command::new("open").arg(path_str).spawn();
+                                #[cfg(target_os = "windows")]
+                                let _ = std::process::Command::new("explorer").arg(path_str).spawn();
+                                #[cfg(target_os = "linux")]
+                                let _ = std::process::Command::new("xdg-open").arg(path_str).spawn();
+                            }
                         }
                     }
                     _ => {}

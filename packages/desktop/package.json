@@ -15,6 +15,7 @@
     "@radix-ui/react-tooltip": "^1.2.4",
     "@tada/core": "workspace:*",
     "@tauri-apps/api": "2.9.0",
+    "@tauri-apps/plugin-log": "^2.8.0",
     "@tauri-apps/plugin-sql": "2.3.1",
     "jotai": "^2.8.3",
     "react": "^18.3.1",
