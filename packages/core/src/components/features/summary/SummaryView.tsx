@@ -28,6 +28,7 @@ import {
     isSettingsOpenAtom,
     settingsSelectedTabAtom,
     selectedSummaryIdAtom,
+    userProfileAtom,
 } from '@/store/jotai.ts';
 import Button from '@/components/ui/Button.tsx';
 import Icon from '@/components/ui/Icon.tsx';
@@ -100,6 +101,7 @@ const SummaryView: React.FC = () => {
     const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
     const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
     const [selectedSummaryId, setSelectedSummaryId] = useAtom(selectedSummaryIdAtom);
+    const userProfile = useAtomValue(userProfileAtom);
 
     const isAiEnabled = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
 
@@ -204,7 +206,8 @@ const SummaryView: React.FC = () => {
                 taskIdsToSummarize, futureTaskIdsToConsider,
                 periodKey, listKey,
                 aiSettings!, systemPrompt,
-                onDelta
+                onDelta,
+                userProfile
             );
 
             setStoredSummaries(prev => [finalSummary, ...(prev ?? []).filter(s => s.id !== finalSummary.id)]);

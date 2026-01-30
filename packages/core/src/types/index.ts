@@ -1,6 +1,8 @@
 import { DarkModeOption, DefaultNewTaskDueDate } from "@/store/jotai.ts";
 import { AIProvider, AIModel } from "@/config/aiProviders.ts";
 
+export * from './userProfile';
+
 /**
  * Represents a user-created list for organizing tasks.
  */
@@ -67,6 +69,7 @@ export type TaskFilter =
 export type SettingsTab =
     | 'appearance'
     | 'preferences'
+    | 'profile'
     | 'ai'
     | 'proxy'
     | 'data'
@@ -148,8 +151,6 @@ export interface PreferencesSettings {
     confirmDeletions: boolean;
     zenModeShyNative: boolean;
     enableEcho: boolean; // Toggle for the Echo feature
-    echoJobTypes: string[]; // Selected job types for Echo
-    echoPastExamples?: string; // User provided past report examples
     alwaysUseAITask: boolean; // Toggle for always using AI task input
     scheduleSettings: ScheduleSettings; // Scheduled report generation config
 }
@@ -192,6 +193,7 @@ export interface ExportedData {
             ai: AISettings;
             proxy?: ProxySettings;
         };
+        userProfile: import('./userProfile').UserProfile | null;
         lists: List[];
         tasks: Task[];
         summaries: StoredSummary[];

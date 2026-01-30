@@ -7,6 +7,7 @@ import {
     scheduledReportModalAtom,
     storedSummariesAtom,
     echoReportsAtom,
+    userProfileAtom,
 } from '@/store/jotai';
 import { isAIConfigValid, generateAiSummary, generateEchoReport } from '@/services/aiService';
 import { startOfDay, endOfDay } from '@/utils/dateUtils';
@@ -21,6 +22,7 @@ const ScheduledReportGenerator: React.FC = () => {
     const { t } = useTranslation();
     const aiSettings = useAtomValue(aiSettingsAtom);
     const preferences = useAtomValue(preferencesSettingsAtom);
+    const userProfile = useAtomValue(userProfileAtom);
     const tasksData = useAtomValue(tasksAtom);
     const setScheduledReportModal = useSetAtom(scheduledReportModalAtom);
     const setStoredSummaries = useSetAtom(storedSummariesAtom);
@@ -128,7 +130,8 @@ const ScheduledReportGenerator: React.FC = () => {
                     systemPrompt,
                     (chunk) => {
                         content += chunk;
-                    }
+                    },
+                    userProfile
                 );
 
                 reportId = summary.id;
@@ -142,17 +145,14 @@ const ScheduledReportGenerator: React.FC = () => {
                 reportType = 'echo';
                 console.log('[ScheduledReportGenerator] 🔮 Generating Echo (no tasks completed today)...');
 
-                const jobTypes = preferences?.echoJobTypes ?? [];
-                const pastExamples = preferences?.echoPastExamples ?? '';
                 const language = preferences?.language ?? 'zh-CN';
 
-                if (jobTypes.length === 0) {
-                    console.log('[ScheduledReportGenerator] ⚠️ No job types configured for Echo');
+                if (!userProfile?.persona || userProfile.persona.length === 0) {
+                    console.log('[ScheduledReportGenerator] ⚠️ No personas configured for Echo');
                 }
 
                 const echoReport = await generateEchoReport(
-                    jobTypes,
-                    pastExamples,
+                    userProfile,
                     aiSettings!,
                     t,
                     language,
@@ -187,7 +187,7 @@ const ScheduledReportGenerator: React.FC = () => {
         } finally {
             isGeneratingRef.current = false;
         }
-    }, [aiSettings, preferences, tasksData, t, setScheduledReportModal, setStoredSummaries, setEchoReports]);
+    }, [aiSettings, preferences, userProfile, tasksData, t, setScheduledReportModal, setStoredSummaries, setEchoReports]);
 
     useEffect(() => {
         // Check every minute for scheduled generation

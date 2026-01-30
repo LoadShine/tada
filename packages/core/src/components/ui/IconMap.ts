@@ -102,6 +102,13 @@ export const iconMap = {
     'webhook': LucideIcons.Webhook,
     'zap': LucideIcons.Zap,
     'clock-8': LucideIcons.Clock8,
+    'code': LucideIcons.Code,
+    'layout': LucideIcons.Layout,
+    'megaphone': LucideIcons.Megaphone,
+    'handshake': LucideIcons.Handshake,
+    'building': LucideIcons.Building,
+    'bar-chart-2': LucideIcons.BarChart2,
+    'coffee': LucideIcons.Coffee,
 };
 
 export type IconName = keyof typeof iconMap;

@@ -1,8 +1,63 @@
-import { AISettings, StoredSummary, Task, EchoReport, ProxySettings } from '@/types';
+import { AISettings, StoredSummary, Task, EchoReport, ProxySettings, UserProfile } from '@/types';
 import storageManager from './storageManager.ts';
 import { AI_PROVIDERS, AIModel, AIProvider } from "@/config/aiProviders";
 import { stripBase64Images } from "@/lib/moondown/core/utils/string-utils";
 import { fetchWithProxy } from "@/utils/networkUtils";
+
+/**
+ * Generates a context string from UserProfile for injection into AI prompts.
+ * This personalizes AI outputs based on user's persona and work reality model.
+ */
+export const generateUserProfileContext = (userProfile: UserProfile | null | undefined): string => {
+    if (!userProfile) return "";
+
+    const parts: string[] = [];
+
+    // Persona context
+    if (userProfile.persona && userProfile.persona.length > 0) {
+        const personaLabels: Record<string, string> = {
+            dev: "software development and technical work",
+            product: "product management and design",
+            marketing: "marketing and content creation",
+            sales: "sales and business development",
+            ops: "operations and customer support",
+            admin: "administration and HR",
+            research: "data analysis and research",
+            freelance: "freelance and consulting"
+        };
+        const personaDescriptions = userProfile.persona.map(p => personaLabels[p] || p).join(", ");
+        parts.push(`The user works primarily in: ${personaDescriptions}.`);
+    }
+
+    // Work Reality Model context
+    const wrm = userProfile.workRealityModel;
+    if (wrm) {
+        if (wrm.taskView === 'process') {
+            parts.push("The user prefers to think about tasks as concrete steps and progress, not just final deliverables.");
+        } else if (wrm.taskView === 'outcome') {
+            parts.push("The user prefers to think about tasks in terms of outcomes and deliverables.");
+        }
+
+        if (wrm.uncertaintyTolerance === 'low') {
+            parts.push("The user prefers clarity and structure. Break down ambiguous items clearly.");
+        } else if (wrm.uncertaintyTolerance === 'high') {
+            parts.push("The user is comfortable with ambiguity and exploratory approaches.");
+        }
+
+        if (wrm.incompletionStyle === 'narrative') {
+            parts.push("When work is incomplete, present it as forward momentum rather than failure.");
+        } else if (wrm.incompletionStyle === 'explicit') {
+            parts.push("When work is incomplete, be honest about blockers and reasons.");
+        }
+    }
+
+    // User note
+    if (userProfile.userNote) {
+        parts.push(`Important user preference: "${userProfile.userNote}"`);
+    }
+
+    return parts.length > 0 ? `\n\n**User Context**:\n${parts.join("\n")}` : "";
+};
 
 export interface AiTaskAnalysis {
     title: string;
@@ -266,16 +321,24 @@ function sanitizeJsonString(jsonString: string): string {
  * @param prompt The user's natural language input for creating a task.
  * @param settings The current AI settings.
  * @param systemPrompt The system prompt guiding the AI's JSON output format.
+ * @param userProfile Optional user profile for personalization.
  * @returns A promise that resolves to an `AiTaskAnalysis` object.
  */
-export const analyzeTaskInputWithAI = async (prompt: string, settings: AISettings, systemPrompt: string): Promise<AiTaskAnalysis> => {
+export const analyzeTaskInputWithAI = async (
+    prompt: string,
+    settings: AISettings,
+    systemPrompt: string,
+    userProfile?: UserProfile | null
+): Promise<AiTaskAnalysis> => {
     if (!isAIConfigValid(settings)) {
         throw new Error("AI configuration is incomplete or invalid.");
     }
     const provider = AI_PROVIDERS.find(p => p.id === settings.provider)!;
 
+    const enrichedSystemPrompt = systemPrompt + generateUserProfileContext(userProfile);
+
     const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom', 'gemini'].includes(provider.id);
-    let payload: any = createOpenAICompatiblePayload(settings.model, systemPrompt, prompt, useJsonFormat, false);
+    let payload: any = createOpenAICompatiblePayload(settings.model, enrichedSystemPrompt, prompt, useJsonFormat, false);
     if (provider.requestBodyTransformer) {
         payload = provider.requestBodyTransformer(payload);
     }
@@ -511,11 +574,13 @@ export const streamChatCompletionForEditor = async (
  * @param settings
  * @param systemPrompt
  * @param onDelta Callback function to handle incoming stream chunks.
+ * @param userProfile Optional user profile for personalization.
  * @returns A promise that resolves to the final, completed summary object.
  */
 export const generateAiSummary = async (
     taskIds: string[], futureTaskIds: string[], periodKey: string, listKey: string,
-    settings: AISettings, systemPrompt: string, onDelta: (chunk: string) => void
+    settings: AISettings, systemPrompt: string, onDelta: (chunk: string) => void,
+    userProfile?: UserProfile | null
 ): Promise<StoredSummary> => {
     // Basic validation
     if (!isAIConfigValid(settings)) {
@@ -545,7 +610,9 @@ export const generateAiSummary = async (
 
     const userPrompt = `${tasksString}${futureTasksString}`;
 
-    const stream = await streamChatCompletionForEditor(settings, systemPrompt, userPrompt, new AbortController().signal);
+    const enrichedSystemPrompt = systemPrompt + generateUserProfileContext(userProfile);
+
+    const stream = await streamChatCompletionForEditor(settings, enrichedSystemPrompt, userPrompt, new AbortController().signal);
     const reader = stream.getReader();
     let fullText = "";
 
@@ -567,8 +634,7 @@ export const generateAiSummary = async (
 };
 
 export const generateEchoReport = async (
-    jobTypes: string[],
-    pastExamples: string,
+    userProfile: import('@/types').UserProfile | null,
     settings: AISettings,
     t: (key: string) => string,
     language: string, // 'en' | 'zh-CN'
@@ -588,24 +654,24 @@ export const generateEchoReport = async (
     // Filter for recent context (last 7 days)
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const recentTasks = allTasks.filter(t => (t.completedAt && t.completedAt > sevenDaysAgo) || (t.updatedAt > sevenDaysAgo));
-    const recentSummaries = summaries.slice(0, 3); // Last 3 summaries
+    const recentSummaries = summaries.slice(0, 3);
 
     // Construct Context
     const taskContext = recentTasks.map(t => `- ${t.title} (${t.completed ? 'Done' : 'In Progress'})`).join('\n');
-    // Strip Base64 from previous summaries to avoid massive context
     const summaryContext = recentSummaries.map(s => stripBase64Images(s.summaryText)).join('\n---\n');
 
-    // Get Job Persona Instructions dynamically from translation files
+    // Get Job Persona Instructions from user profile
+    const jobTypes = userProfile?.persona || [];
     const personas = jobTypes.map(job => {
         const key = `echo.prompts.personas.${job}`;
         const localizedPersona = t(key);
         return localizedPersona !== key ? localizedPersona : "";
     }).filter(Boolean).join("\n\n");
 
-    // Map language code to human readable name for the LLM
+    // Map language code to human readable name
     const targetLanguage = language === 'zh-CN' ? 'Simplified Chinese' : 'English';
 
-    // Style Instructions (Keeping Logic in English for better LLM adherence)
+    // Style Instructions
     let styleInstruction = "";
     if (style === 'exploration') {
         styleInstruction = "Focus heavily (80%) on 'Exploration' (market research, technology scanning, benchmarking, trend analysis). 20% Reflection.";
@@ -615,52 +681,88 @@ export const generateEchoReport = async (
         styleInstruction = "Maintain a 50/50 balance between 'Exploration' (external research) and 'Reflection' (internal planning/review).";
     }
 
-    // User Input Handling Instructions
+    const wrm = userProfile?.workRealityModel;
+    let wrmInstructions = "";
+
+    if (wrm) {
+        const wrmParts: string[] = [];
+
+        if (wrm.taskView === 'process') {
+            wrmParts.push("- **Task Framing**: Frame work as concrete steps and progress made today. Emphasize actionable items pushed forward, not just final deliverables.");
+        } else if (wrm.taskView === 'outcome') {
+            wrmParts.push("- **Task Framing**: Frame work in terms of outcomes and deliverables achieved. Focus on results and completed milestones.");
+        }
+
+        if (wrm.uncertaintyTolerance === 'low') {
+            wrmParts.push("- **Clarity Style**: Provide structured, well-defined explanations. Break down ambiguous work into clear categories. The reader prefers certainty.");
+        } else if (wrm.uncertaintyTolerance === 'high') {
+            wrmParts.push("- **Clarity Style**: Embrace exploratory language. It's okay to mention areas still being figured out. The reader is comfortable with ambiguity.");
+        }
+
+        if (wrm.incompletionStyle === 'narrative') {
+            wrmParts.push("- **Progress Reporting**: When work is incomplete, present it as forward momentum. Use phrases like 'laying groundwork', 'building foundation', 'progressing toward'.");
+        } else if (wrm.incompletionStyle === 'explicit') {
+            wrmParts.push("- **Progress Reporting**: When work is incomplete, be honest about reasons. Mention blockers, dependencies, or scope changes directly.");
+        }
+
+        if (wrmParts.length > 0) {
+            wrmInstructions = `\n**User's Communication Preferences**:\n${wrmParts.join('\n')}`;
+        }
+    }
+
+    const userNote = userProfile?.userNote;
+    const userNoteInstruction = userNote ? `
+**Important User Context**:
+The user has specifically mentioned: "${userNote}"
+Incorporate this preference into your writing style and report framing.
+` : "";
+
     const userInputContext = userInput ? `
-    CRITICAL: The user has explicitly stated they were doing: "${userInput}".
-    
-    Your PRIMARY task is to TRANSLATE this activity into high-level, professional, corporate-safe language suitable for the job personas.
-    
-    Examples of transformation (Mental Model):
-    - "Browsing news" -> "Monitoring industry trends and external environment."
-    - "Shopping" -> "Analyzing market product positioning and pricing strategies."
-    - "Chatting" -> "Cross-departmental alignment and informal information synchronization."
-    - "Slacking/Nothing" -> "Deep thinking on long-term strategy and process bottlenecks."
-    
-    Do NOT mention the raw activity. Use the TRANSLATED value as the core theme of the report.
-    ` : "The user has not specified specific activities. Infer plausible high-value 'soft work' (planning, researching, reviewing) based on the Job Personas.";
+CRITICAL: The user has explicitly stated they were doing: "${userInput}".
+
+Your PRIMARY task is to TRANSLATE this activity into high-level, professional, corporate-safe language suitable for the job personas.
+
+Examples of transformation:
+- "Browsing news" -> "Monitoring industry trends and external environment."
+- "Shopping" -> "Analyzing market product positioning and pricing strategies."
+- "Chatting" -> "Cross-departmental alignment and informal information synchronization."
+- "Slacking/Nothing" -> "Deep thinking on long-term strategy and process bottlenecks."
+
+Do NOT mention the raw activity. Use the TRANSLATED value as the core theme of the report.
+` : "The user has not specified specific activities. Infer plausible high-value 'soft work' (planning, researching, reviewing) based on the Job Personas.";
 
     const systemPrompt = `You are an expert Ghostwriter for corporate daily reports. Your goal is to generate a **professional, safe, unverifiable, and high-value** daily report.
-    
-    **Target Audience**: A manager who values proactivity, strategic thinking, and continuous improvement.
-    
-    **Job Role Context**:
-    ${personas}
 
-    **Core Philosophy**:
-    - **Safety First**: Never imply idleness. Every minute is accounted for with high-level cognitive work.
-    - **Unverifiable**: Avoid specific metrics (e.g., "wrote 500 lines of code") that can be checked. Use abstract progress (e.g., "Optimized module architecture").
-    - **Constructive**: Even if nothing was "done", value was "created" through thought and research.
-    
-    **Report Structure**:
-    - Format: Markdown (bullet points, bold highlights).
-    - Tone: Professional, Insightful, Forward-looking.
-    
-    **Specific Instructions**:
-    ${styleInstruction}
-    ${userInputContext}
-    
-    **IMPORTANT: Output Language**:
-    You MUST generate the final report in **${targetLanguage}**.
-    
-    **User History Context (Use for flavor/continuity, do not repeat verbatim):**
-    ${taskContext ? `Recent Tasks:\n${taskContext}` : ''}
-    ${summaryContext ? `Recent Summaries:\n${summaryContext}` : ''}
-    ${pastExamples ? `User's Past Approved Style:\n${pastExamples}` : ''}
-    
-    **Output:**
-    Generate ONLY the report content in ${targetLanguage}. No conversational fillers.
-    `;
+**Target Audience**: A manager who values proactivity, strategic thinking, and continuous improvement.
+
+**Job Role Context**:
+${personas || "General professional role."}
+${wrmInstructions}
+${userNoteInstruction}
+
+**Core Philosophy**:
+- **Safety First**: Never imply idleness. Every minute is accounted for with high-level cognitive work.
+- **Unverifiable**: Avoid specific metrics (e.g., "wrote 500 lines of code") that can be checked. Use abstract progress (e.g., "Optimized module architecture").
+- **Constructive**: Even if nothing was "done", value was "created" through thought and research.
+
+**Report Structure**:
+- Format: Markdown (bullet points, bold highlights).
+- Tone: Professional, Insightful, Forward-looking.
+
+**Specific Instructions**:
+${styleInstruction}
+${userInputContext}
+
+**IMPORTANT: Output Language**:
+You MUST generate the final report in **${targetLanguage}**.
+
+**User History Context (Use for flavor/continuity, do not repeat verbatim):**
+${taskContext ? `Recent Tasks:\n${taskContext}` : ''}
+${summaryContext ? `Recent Summaries:\n${summaryContext}` : ''}
+
+**Output:**
+Generate ONLY the report content in ${targetLanguage}. No conversational fillers.
+`;
 
     const stream = await streamChatCompletionForEditor(settings, systemPrompt, "Generate Daily Report", new AbortController().signal);
     const reader = stream.getReader();

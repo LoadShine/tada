@@ -16,6 +16,7 @@ import {
     proxySettingsAtom,
     settingsSelectedTabAtom,
     userListNamesAtom,
+    userProfileAtom,
 } from '@/store/jotai.ts';
 import { AISettings as AISettingsType, SettingsTab, AppearanceSettings as AppearanceSettingsType } from '@/types';
 import Icon from '@/components/ui/Icon.tsx';
@@ -53,6 +54,7 @@ interface SettingsItem {
 const settingsSections: SettingsItem[] = [
     { id: 'appearance', labelKey: 'settings.appearance.title', icon: 'settings' },
     { id: 'preferences', labelKey: 'settings.preferences.title', icon: 'sliders' },
+    { id: 'profile', labelKey: 'settings.profile.title', icon: 'user' },
     { id: 'ai', labelKey: 'settings.ai.title', icon: 'sparkles' },
     { id: 'proxy', labelKey: 'settings.proxy.title', icon: 'network' },
     { id: 'data', labelKey: 'settings.data.title', icon: 'hard-drive' },
@@ -666,6 +668,201 @@ const PreferencesSettings: React.FC = memo(() => {
     );
 });
 PreferencesSettings.displayName = 'PreferencesSettings';
+
+/**
+ * Persona options for profile selection (same as onboarding)
+ */
+const PROFILE_PERSONA_OPTIONS: { id: 'dev' | 'product' | 'marketing' | 'sales' | 'ops' | 'admin' | 'research' | 'freelance'; icon: IconName }[] = [
+    { id: 'dev', icon: 'code' },
+    { id: 'product', icon: 'layout' },
+    { id: 'marketing', icon: 'megaphone' },
+    { id: 'sales', icon: 'handshake' },
+    { id: 'ops', icon: 'users' },
+    { id: 'admin', icon: 'building' },
+    { id: 'research', icon: 'bar-chart-2' },
+    { id: 'freelance', icon: 'coffee' },
+];
+
+/**
+ * Settings panel for managing user profile (persona, WRM, user note).
+ */
+const ProfileSettings: React.FC = memo(() => {
+    const { t } = useTranslation();
+    const [userProfile, setUserProfile] = useAtom(userProfileAtom);
+
+    const currentPersonas = userProfile?.persona ?? [];
+    const currentWRM = userProfile?.workRealityModel ?? {
+        taskView: null,
+        uncertaintyTolerance: null,
+        incompletionStyle: null,
+        confidence: { taskView: 0.5, uncertaintyTolerance: 0.5, incompletionStyle: 0.5 }
+    };
+    const currentUserNote = userProfile?.userNote ?? '';
+
+    const togglePersona = (personaId: typeof PROFILE_PERSONA_OPTIONS[number]['id']) => {
+        const newPersonas = currentPersonas.includes(personaId)
+            ? currentPersonas.filter(p => p !== personaId)
+            : [...currentPersonas, personaId];
+        setUserProfile({
+            ...userProfile!,
+            persona: newPersonas.length > 0 ? newPersonas : null,
+            updatedAt: Date.now()
+        });
+    };
+
+    const handleWRMChange = (field: 'taskView' | 'uncertaintyTolerance' | 'incompletionStyle', value: string | null) => {
+        setUserProfile({
+            ...userProfile!,
+            workRealityModel: {
+                ...currentWRM,
+                [field]: value,
+                confidence: {
+                    ...currentWRM.confidence,
+                    [field]: value ? 0.9 : 0.5
+                }
+            },
+            updatedAt: Date.now()
+        });
+    };
+
+    const handleUserNoteChange = (note: string) => {
+        setUserProfile({
+            ...userProfile!,
+            userNote: note.trim() || null,
+            updatedAt: Date.now()
+        });
+    };
+
+    const renderWRMOption = (
+        field: 'taskView' | 'uncertaintyTolerance' | 'incompletionStyle',
+        label: string,
+        description: string,
+        options: { value: string; label: string }[],
+        currentValue: string | null | undefined
+    ) => (
+        <SettingsRow label={label} description={description}>
+            <div className="flex gap-1.5">
+                {options.map(opt => (
+                    <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleWRMChange(field, currentValue === opt.value ? null : opt.value)}
+                        className={twMerge(
+                            "px-3 py-1.5 text-[12px] rounded-base border transition-colors duration-150",
+                            currentValue === opt.value
+                                ? "border-primary bg-primary/10 text-primary dark:border-primary-light dark:text-primary-light font-normal"
+                                : "border-grey-light dark:border-neutral-700 text-grey-dark dark:text-neutral-200 hover:border-grey-medium dark:hover:border-neutral-600 font-light"
+                        )}
+                    >
+                        {opt.label}
+                    </button>
+                ))}
+            </div>
+        </SettingsRow>
+    );
+
+    return (
+        <div className="space-y-0">
+            {/* Persona Section */}
+            <SettingsRow
+                label={t('settings.profile.persona')}
+                description={t('settings.profile.personaDescription')}
+            >
+                <div /> {/* Empty div for spacing */}
+            </SettingsRow>
+            <div className="grid grid-cols-4 gap-1.5 pb-4">
+                {PROFILE_PERSONA_OPTIONS.map((persona) => (
+                    <button
+                        key={persona.id}
+                        type="button"
+                        onClick={() => togglePersona(persona.id)}
+                        className={twMerge(
+                            'p-2 rounded-base border text-center transition-all duration-200 flex flex-col items-center gap-1',
+                            currentPersonas.includes(persona.id)
+                                ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                                : 'border-grey-light dark:border-neutral-700 hover:border-grey-medium dark:hover:border-neutral-600'
+                        )}
+                    >
+                        <Icon
+                            name={persona.icon}
+                            size={16}
+                            strokeWidth={1.5}
+                            className={currentPersonas.includes(persona.id)
+                                ? 'text-primary dark:text-primary-light'
+                                : 'text-grey-medium dark:text-neutral-400'
+                            }
+                        />
+                        <span className={twMerge(
+                            'text-[11px]',
+                            currentPersonas.includes(persona.id)
+                                ? 'text-primary dark:text-primary-light font-normal'
+                                : 'text-grey-dark dark:text-neutral-300 font-light'
+                        )}>
+                            {t(`onboarding.personas.${persona.id}`)}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+            {renderWRMOption(
+                'taskView',
+                t('settings.profile.wrm.taskView'),
+                t('settings.profile.wrm.taskViewDescription'),
+                [
+                    { value: 'process', label: t('settings.profile.wrm.taskViewOptions.process') },
+                    { value: 'outcome', label: t('settings.profile.wrm.taskViewOptions.outcome') }
+                ],
+                currentWRM.taskView
+            )}
+
+            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+            {renderWRMOption(
+                'uncertaintyTolerance',
+                t('settings.profile.wrm.uncertaintyTolerance'),
+                t('settings.profile.wrm.uncertaintyToleranceDescription'),
+                [
+                    { value: 'low', label: t('settings.profile.wrm.uncertaintyToleranceOptions.low') },
+                    { value: 'high', label: t('settings.profile.wrm.uncertaintyToleranceOptions.high') }
+                ],
+                currentWRM.uncertaintyTolerance
+            )}
+
+            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+            {renderWRMOption(
+                'incompletionStyle',
+                t('settings.profile.wrm.incompletionStyle'),
+                t('settings.profile.wrm.incompletionStyleDescription'),
+                [
+                    { value: 'narrative', label: t('settings.profile.wrm.incompletionStyleOptions.narrative') },
+                    { value: 'explicit', label: t('settings.profile.wrm.incompletionStyleOptions.explicit') }
+                ],
+                currentWRM.incompletionStyle
+            )}
+
+            <div className="h-px bg-grey-light dark:bg-neutral-700 my-0"></div>
+
+            <SettingsRow
+                label={t('settings.profile.userNote')}
+                description={t('settings.profile.userNoteDescription')}
+            >
+                <div />
+            </SettingsRow>
+            <div className="pb-4">
+                <textarea
+                    value={currentUserNote}
+                    onChange={(e) => handleUserNoteChange(e.target.value)}
+                    placeholder={t('settings.profile.userNotePlaceholder')}
+                    className="w-full h-24 p-3 rounded-base border border-grey-light dark:border-neutral-700 bg-white dark:bg-neutral-750 text-grey-dark dark:text-neutral-100 placeholder:text-grey-medium/60 dark:placeholder:text-neutral-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-[13px] font-light"
+                />
+            </div>
+        </div>
+    );
+});
+ProfileSettings.displayName = 'ProfileSettings';
 
 /**
  * A selectable card representing an AI provider.
@@ -1481,6 +1678,8 @@ const SettingsModal: React.FC = () => {
                 return <AppearanceSettings />;
             case 'preferences':
                 return <PreferencesSettings />;
+            case 'profile':
+                return <ProfileSettings />;
             case 'ai':
                 return <AISettings />;
             case 'proxy':

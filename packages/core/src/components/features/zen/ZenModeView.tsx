@@ -1,5 +1,5 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {useAtom, useAtomValue, useSetAtom} from 'jotai';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     aiSettingsAtom,
     isSettingsOpenAtom,
@@ -8,7 +8,8 @@ import {
     selectedTaskIdAtom,
     settingsSelectedTabAtom,
     tasksAtom,
-    userListsAtom
+    userListsAtom,
+    userProfileAtom
 } from '@/store/jotai.ts';
 import {
     addNotificationAtom
@@ -31,22 +32,22 @@ import {
     useSortable,
     verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import {CSS} from '@dnd-kit/utilities';
-import {Task} from '@/types';
-import {isSameDay, safeParseDate, startOfDay} from '@/utils/dateUtils';
-import {useTaskOperations} from '@/hooks/useTaskOperations';
-import {twMerge} from 'tailwind-merge';
-import {useTranslation} from 'react-i18next';
-import {AI_PROVIDERS} from "@/config/aiProviders";
-import {analyzeTaskInputWithAI, isAIConfigValid} from "@/services/aiService";
+import { CSS } from '@dnd-kit/utilities';
+import { Task } from '@/types';
+import { isSameDay, safeParseDate, startOfDay } from '@/utils/dateUtils';
+import { useTaskOperations } from '@/hooks/useTaskOperations';
+import { twMerge } from 'tailwind-merge';
+import { useTranslation } from 'react-i18next';
+import { AI_PROVIDERS } from "@/config/aiProviders";
+import { analyzeTaskInputWithAI, isAIConfigValid } from "@/services/aiService";
 import Icon from "@/components/ui/Icon";
 import Button from "@/components/ui/Button";
-import {ProgressIndicator} from "@/components/features/tasks/TaskItem";
+import { ProgressIndicator } from "@/components/features/tasks/TaskItem";
 import * as Switch from '@radix-ui/react-switch';
-import {TFunction} from "i18next";
+import { TFunction } from "i18next";
 
 // --- Sortable Task Component ---
-const ZenTaskItem = ({task, type, isOverlay, t}: { task: Task, type: 'todo' | 'done' | 'overdue', isOverlay?: boolean, t: TFunction }) => {
+const ZenTaskItem = ({ task, type, isOverlay, t }: { task: Task, type: 'todo' | 'done' | 'overdue', isOverlay?: boolean, t: TFunction }) => {
     const {
         attributes,
         listeners,
@@ -56,12 +57,12 @@ const ZenTaskItem = ({task, type, isOverlay, t}: { task: Task, type: 'todo' | 'd
         isDragging
     } = useSortable({
         id: task.id,
-        data: {task, origin: type},
+        data: { task, origin: type },
         disabled: false
     });
 
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
-    const {updateTask} = useTaskOperations();
+    const { updateTask } = useTaskOperations();
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -211,7 +212,7 @@ const ZenTaskItem = ({task, type, isOverlay, t}: { task: Task, type: 'todo' | 'd
 
                 {type === 'done' && task.completedAt && (
                     <span className="font-sans text-[0.75rem] text-[#C0C0C0] no-underline inline-block flex-shrink-0 ml-3 opacity-60">
-                        {new Date(task.completedAt).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}
+                        {new Date(task.completedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 )}
             </div>
@@ -220,8 +221,8 @@ const ZenTaskItem = ({task, type, isOverlay, t}: { task: Task, type: 'todo' | 'd
 };
 
 // --- Droppable Container for Empty Lists ---
-const DroppableListContainer = ({id, items, children, className}: { id: string, items: string[], children: React.ReactNode, className?: string }) => {
-    const {setNodeRef} = useDroppable({
+const DroppableListContainer = ({ id, items, children, className }: { id: string, items: string[], children: React.ReactNode, className?: string }) => {
+    const { setNodeRef } = useDroppable({
         id: id,
     });
 
@@ -239,20 +240,21 @@ const DroppableListContainer = ({id, items, children, className}: { id: string, 
 }
 
 const ZenModeView: React.FC = () => {
-    const {t, i18n} = useTranslation();
+    const { t, i18n } = useTranslation();
     const [preferences, setPreferences] = useAtom(preferencesSettingsAtom);
     const tasks = useAtomValue(tasksAtom) ?? [];
     const allUserLists = useAtomValue(userListsAtom);
     const aiSettings = useAtomValue(aiSettingsAtom);
+    const userProfile = useAtomValue(userProfileAtom);
     const addNotification = useSetAtom(addNotificationAtom);
     const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
     const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
     const [isFullScreen, setIsFullScreen] = useAtom(isZenFullScreenAtom);
 
-    const {updateTask, createTask, createSubtask, batchUpdateTasks} = useTaskOperations();
+    const { updateTask, createTask, createSubtask, batchUpdateTasks } = useTaskOperations();
 
     const [activeId, setActiveId] = useState<string | null>(null);
-    const [draggingTaskData, setDraggingTaskData] = useState<{task: Task, origin: string} | null>(null);
+    const [draggingTaskData, setDraggingTaskData] = useState<{ task: Task, origin: string } | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
 
     // AI Input State
@@ -346,7 +348,7 @@ const ZenModeView: React.FC = () => {
     };
 
     // Task Categorization
-    const {todayTodos, todayDones, overdueTasks} = useMemo(() => {
+    const { todayTodos, todayDones, overdueTasks } = useMemo(() => {
         const today = startOfDay(new Date());
         const todos: Task[] = [];
         const dones: Task[] = [];
@@ -383,7 +385,7 @@ const ZenModeView: React.FC = () => {
         // Sort todos by order
         todos.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-        return {todayTodos: todos, todayDones: dones, overdueTasks: overdue};
+        return { todayTodos: todos, todayDones: dones, overdueTasks: overdue };
     }, [tasks]);
 
     // Drag Logic
@@ -396,13 +398,13 @@ const ZenModeView: React.FC = () => {
     );
 
     const handleDragStart = (event: DragStartEvent) => {
-        const {active} = event;
+        const { active } = event;
         setActiveId(active.id as string);
-        setDraggingTaskData(active.data.current as {task: Task, origin: string});
+        setDraggingTaskData(active.data.current as { task: Task, origin: string });
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
-        const {active, over} = event;
+        const { active, over } = event;
         setActiveId(null);
         setDraggingTaskData(null);
 
@@ -432,7 +434,7 @@ const ZenModeView: React.FC = () => {
         if (origin !== targetContainer) {
             // Overdue -> Todolist
             if (origin === 'overdue' && targetContainer === 'todo') {
-                updateTask(task.id, {dueDate: todayStart, order: now});
+                updateTask(task.id, { dueDate: todayStart, order: now });
             }
             // Overdue -> Done
             else if (origin === 'overdue' && targetContainer === 'done') {
@@ -541,7 +543,7 @@ const ZenModeView: React.FC = () => {
 
         try {
             const systemPrompt = tZen('prompts.taskAnalysis', { currentDate: new Date().toLocaleDateString() });
-            const aiAnalysis = await analyzeTaskInputWithAI(prompt, aiSettings!, systemPrompt);
+            const aiAnalysis = await analyzeTaskInputWithAI(prompt, aiSettings!, systemPrompt, userProfile);
 
             const defaultList = preferences?.defaultNewTaskList || 'Inbox';
             const targetList = allUserLists?.find(l => l.name === defaultList) ?? allUserLists?.find(l => l.name === 'Inbox');
@@ -616,7 +618,7 @@ const ZenModeView: React.FC = () => {
     const handleRescheduleOverdue = () => {
         if (overdueTasks.length === 0) return;
         const todayStart = startOfDay(new Date()).getTime();
-        const updates = overdueTasks.map(t => ({...t, dueDate: todayStart}));
+        const updates = overdueTasks.map(t => ({ ...t, dueDate: todayStart }));
         batchUpdateTasks(updates);
         addNotification({ type: 'success', message: tZen('taskList.rescheduleAll') + ' ' + tZen('common.ok') });
     };
@@ -707,7 +709,7 @@ const ZenModeView: React.FC = () => {
                     onDragEnd={handleDragEnd}
                     onDragStart={handleDragStart}
                     collisionDetection={closestCenter}
-                    measuring={{droppable: {strategy: MeasuringStrategy.Always}}}
+                    measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
                 >
 
                     {/* 3. Layout Axis */}
@@ -751,10 +753,10 @@ const ZenModeView: React.FC = () => {
                         {/* Top Cluster: Clock & Todos */}
                         <div className="w-full max-w-[650px] flex flex-col items-center px-4">
                             <div className="font-display text-[9rem] leading-[0.9] text-[#2A2A2A] mb-5 -tracking-[4px] select-none pointer-events-none">
-                                {currentTime.toLocaleTimeString(zenLanguage === 'zh-CN' ? 'zh-CN' : 'en-GB', {hour: '2-digit', minute: '2-digit'})}
+                                {currentTime.toLocaleTimeString(zenLanguage === 'zh-CN' ? 'zh-CN' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}
                             </div>
                             <div className="font-display text-[1.1rem] tracking-[0.3em] text-[#707070] mb-10 uppercase select-none pointer-events-none whitespace-nowrap text-center">
-                                {currentTime.toLocaleDateString(zenLanguage, {month: 'long', day: 'numeric'})}
+                                {currentTime.toLocaleDateString(zenLanguage, { month: 'long', day: 'numeric' })}
                             </div>
 
                             <div className="w-full relative mb-5 px-4 md:px-0">
@@ -792,7 +794,7 @@ const ZenModeView: React.FC = () => {
                                         title={tZen('taskList.aiTaskButton.label')}
                                         disabled={isAiProcessing}
                                     >
-                                        {isAiProcessing ? <Icon name="loader" className="animate-spin" size={18} strokeWidth={2}/> : <Icon name="sparkles" size={18} strokeWidth={1.5} />}
+                                        {isAiProcessing ? <Icon name="loader" className="animate-spin" size={18} strokeWidth={2} /> : <Icon name="sparkles" size={18} strokeWidth={1.5} />}
                                     </button>
                                 </form>
                             </div>

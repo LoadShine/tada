@@ -117,6 +117,30 @@ pub fn run() {
                 CREATE INDEX IF NOT EXISTS idx_echo_reports_created_at ON echo_reports(created_at);
             "#,
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 3,
+            description: "add_user_profile",
+            sql: r#"
+                -- User Profile table for onboarding and personalization
+                CREATE TABLE IF NOT EXISTS user_profile (
+                    id TEXT PRIMARY KEY DEFAULT 'default',
+                    persona TEXT,                    -- JSON array of persona types
+                    task_view TEXT,                  -- 'process' | 'outcome' | null
+                    uncertainty_tolerance TEXT,     -- 'low' | 'high' | null
+                    incompletion_style TEXT,        -- 'narrative' | 'explicit' | null
+                    wrm_confidence TEXT,            -- JSON: {taskView, uncertaintyTolerance, incompletionStyle}
+                    user_note TEXT,
+                    onboarding_completed INTEGER NOT NULL DEFAULT 0,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );
+
+                -- Insert default profile
+                INSERT OR IGNORE INTO user_profile (id, onboarding_completed, created_at, updated_at)
+                VALUES ('default', 0, strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000);
+            "#,
+            kind: MigrationKind::Up,
         }
     ];
 

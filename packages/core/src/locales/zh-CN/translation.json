@@ -160,6 +160,36 @@
         }
       }
     },
+    "profile": {
+      "title": "个人画像",
+      "description": "个性化你的 AI 体验",
+      "persona": "你的角色",
+      "personaDescription": "选择描述你的角色。这有助于个性化 AI 输出。",
+      "wrm": {
+        "title": "工作偏好",
+        "taskView": "任务偏好",
+        "taskViewDescription": "你更倾向于怎样看待任务？",
+        "taskViewOptions": {
+          "process": "注重过程",
+          "outcome": "注重结果"
+        },
+        "uncertaintyTolerance": "不确定性容忍度",
+        "uncertaintyToleranceDescription": "你如何处理任务中的不确定性？",
+        "uncertaintyToleranceOptions": {
+          "low": "我喜欢明确的结果",
+          "high": "我能够接受模糊性"
+        },
+        "incompletionStyle": "完成风格",
+        "incompletionStyleDescription": "未完成的任务应该如何表达？",
+        "incompletionStyleOptions": {
+          "narrative": "叙述式风格",
+          "explicit": "直接明确"
+        }
+      },
+      "userNote": "个人备注",
+      "userNoteDescription": "添加关于你的工作习惯或任何影响生产力的上下文。",
+      "userNotePlaceholder": "例如：我容易被打断，我喜欢在早上处理困难的任务..."
+    },
     "ai": {
       "title": "AI 设置",
       "selectProvider": "选择 AI 服务商",
@@ -547,6 +577,62 @@
       "orderedList": "有序列表",
       "unorderedList": "无序列表",
       "codeBlock": "代码块"
+    }
+  },
+  "onboarding": {
+    "title": "开始使用",
+    "skip": "跳过",
+    "skipAll": "跳过设置",
+    "back": "上一步",
+    "next": "继续",
+    "start": "开始体验",
+    "getStarted": "开始",
+    "welcome": {
+      "title": "欢迎使用 Tada",
+      "subtitle": "几个简单的问题，让我们更了解你的工作风格"
+    },
+    "step1": {
+      "title": "你主要从事哪类工作？",
+      "hint": "可多选"
+    },
+    "step3": {
+      "title": "有什么需要我特别注意的吗？",
+      "hint": "选填，这有助于我提供更个性化的建议"
+    },
+    "personas": {
+      "dev": "技术 / 开发",
+      "product": "产品 / 设计",
+      "marketing": "市场 / 内容",
+      "sales": "销售 / 商务",
+      "ops": "运营 / 客服",
+      "admin": "行政 / HR",
+      "research": "数据 / 研究",
+      "freelance": "自由职业 / 咨询"
+    },
+    "wrm": {
+      "taskView": {
+        "label": "可以怎样描述一个任务？",
+        "hint": "你更倾向于哪种视角",
+        "process": "今天能推进的具体步骤",
+        "outcome": "最终要交付的成果"
+      },
+      "uncertaintyTolerance": {
+        "label": "遇到模糊不清的任务时？",
+        "hint": "你的处理方式",
+        "low": "先拆解清楚再动手",
+        "high": "边做边探索"
+      },
+      "incompletionStyle": {
+        "label": "如果今天进展不多？",
+        "hint": "你希望如何记录",
+        "narrative": "记录过程中的思考和尝试",
+        "explicit": "直接说明客观原因"
+      }
+    },
+    "userNotePlaceholders": {
+      "interrupted": "我经常面临临时插入的需求",
+      "progress": "我需要定期同步进度，即使没有最终产出",
+      "rush": "我不喜欢被催促，偏好有条理的节奏"
     }
   },
   "prompts": {

@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import {
     aiSettingsAtom,
@@ -7,6 +7,7 @@ import {
     storedSummariesAtom,
     tasksAtom,
     userListsAtom,
+    userProfileAtom,
 } from '@/store/jotai';
 import AppRouter from '@/router';
 import SettingsApplicator from '@/components/global/SettingsApplicator';
@@ -15,6 +16,7 @@ import GlobalStatusDisplay from '@/components/global/GlobalStatusDisplay';
 import ScheduledReportGenerator from '@/components/global/ScheduledReportGenerator';
 import ScheduledReportModal from '@/components/global/ScheduledReportModal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { OnboardingScreen } from '@/components/features/onboarding/OnboardingScreen';
 import storageManager from '@/services/storageManager';
 import { useIcsAutoSync } from '@/services/icsAutoSync';
 
@@ -33,6 +35,19 @@ const App: React.FC = () => {
     useAtomValue(aiSettingsAtom);
     useAtomValue(storedSummariesAtom);
 
+    // User profile for onboarding check
+    const userProfile = useAtomValue(userProfileAtom);
+
+    // Local state to control onboarding visibility (allows closing without re-render issues)
+    const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // Determine if onboarding should be shown
+    useEffect(() => {
+        if (userProfile && !userProfile.onboardingCompleted) {
+            setShowOnboarding(true);
+        }
+    }, [userProfile]);
+
     // Auto sync tasks to ICS server when configured
     useIcsAutoSync();
 
@@ -45,8 +60,17 @@ const App: React.FC = () => {
         };
     }, []);
 
+    const handleOnboardingComplete = () => {
+        setShowOnboarding(false);
+    };
+
     return (
         <>
+            {/* Onboarding screen - shown on first launch */}
+            {showOnboarding && (
+                <OnboardingScreen onComplete={handleOnboardingComplete} />
+            )}
+
             {/* Global non-visual components */}
             <SettingsApplicator />
             <DailyTaskRefresh />

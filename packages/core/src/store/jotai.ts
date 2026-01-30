@@ -16,7 +16,9 @@ import {
     ImportResult,
     EchoReport,
     ProxySettings,
-    ScheduledReportData
+    ScheduledReportData,
+    UserProfile,
+    createDefaultUserProfile
 } from '@/types';
 import {
     endOfDay, isAfter, isBefore, isSameDay, isValid, isWithinNext7Days,
@@ -70,7 +72,7 @@ export const defaultAppearanceSettingsForApi = (): AppearanceSettings => ({
 export const defaultPreferencesSettingsForApi = (): PreferencesSettings => ({
     language: 'zh-CN', defaultNewTaskDueDate: null, defaultNewTaskPriority: null,
     defaultNewTaskList: 'Inbox', confirmDeletions: true, zenModeShyNative: false,
-    enableEcho: true, echoJobTypes: [], echoPastExamples: '', alwaysUseAITask: false,
+    enableEcho: true, alwaysUseAITask: false,
     scheduleSettings: { enabled: false, time: '18:00', days: [1, 2, 3, 4, 5] } // default: Mon-Fri at 18:00
 });
 export const defaultAISettingsForApi = (): AISettings => ({
@@ -89,6 +91,35 @@ export const defaultProxySettingsForApi = (): ProxySettings => ({
     username: '',
     password: ''
 });
+
+// --- User Profile Atom ---
+const baseUserProfileAtom = atom<UserProfile | null>(null);
+export const userProfileLoadingAtom = atom<boolean>(false);
+
+/**
+ * The main atom for managing the user profile (onboarding data).
+ */
+export const userProfileAtom: LocalDataAtom<UserProfile> = atom(
+    (get) => get(baseUserProfileAtom),
+    (get, set, update) => {
+        if (update === RESET) {
+            const service = storageManager.get();
+            const profile = service.fetchUserProfile();
+            set(baseUserProfileAtom, profile ?? createDefaultUserProfile());
+            return;
+        }
+        const currentProfile = get(baseUserProfileAtom) ?? createDefaultUserProfile();
+        const updatedProfile = typeof update === 'function'
+            ? (update as (prev: UserProfile | null) => UserProfile)(currentProfile)
+            : update;
+
+        const savedProfile = storageManager.get().updateUserProfile(updatedProfile);
+        set(baseUserProfileAtom, savedProfile);
+    }
+);
+userProfileAtom.onMount = (setSelf) => {
+    setSelf(RESET);
+};
 
 // --- Task Atoms ---
 const baseTasksDataAtom = atom<Task[] | null>(null);

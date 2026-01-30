@@ -18,6 +18,7 @@ import {
     tasksAtom,
     tasksLoadingAtom,
     userListsAtom,
+    userProfileAtom,
 } from '@/store/jotai.ts';
 import Icon from '@/components/ui/Icon.tsx';
 import Button from '@/components/ui/Button.tsx';
@@ -136,6 +137,7 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
     const allUserLists = useAtomValue(userListsAtom);
     const preferencesData = useAtomValue(preferencesSettingsAtom);
     const aiSettings = useAtomValue(aiSettingsAtom);
+    const userProfile = useAtomValue(userProfileAtom);
     const isLoadingPreferences = useAtomValue(preferencesSettingsLoadingAtom);
     const preferences = useMemo(() => preferencesData ?? defaultPreferencesSettingsForApi(), [preferencesData]);
     const addNotification = useSetAtom(addNotificationAtom);
@@ -592,7 +594,7 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
 
         try {
             const systemPrompt = t('prompts.taskAnalysis', { currentDate: new Date().toLocaleDateString() });
-            const aiAnalysis = await analyzeTaskInputWithAI(sentence, aiSettings, systemPrompt);
+            const aiAnalysis = await analyzeTaskInputWithAI(sentence, aiSettings, systemPrompt, userProfile);
 
             const initialListName = newTaskListState;
             const targetList = allUserLists?.find(l => l.name === initialListName);

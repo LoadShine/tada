@@ -13,7 +13,9 @@ import {
     DataConflict,
     ConflictResolution,
     EchoReport,
-    ProxySettings
+    ProxySettings,
+    UserProfile,
+    createDefaultUserProfile
 } from '@tada/core/types';
 import {
     defaultAISettingsForApi,
@@ -35,6 +37,7 @@ const KEYS = {
     PREFERENCES_SETTINGS: 'tada-preferencesSettings',
     AI_SETTINGS: 'tada-aiSettings',
     PROXY_SETTINGS: 'tada-proxySettings',
+    USER_PROFILE: 'tada-userProfile',
 };
 
 /**
@@ -165,6 +168,7 @@ export class LocalStorageService implements IStorageService {
     private preferencesCache = new MemoryCache<PreferencesSettings>();
     private aiCache = new MemoryCache<AISettings>();
     private proxyCache = new MemoryCache<ProxySettings>();
+    private userProfileCache = new MemoryCache<UserProfile>();
 
     private pendingWrites = new Set<string>();
     private flushTimeout: NodeJS.Timeout | null = null;
@@ -223,6 +227,38 @@ export class LocalStorageService implements IStorageService {
     updateProxySettings(settings: ProxySettings) {
         setItem(KEYS.PROXY_SETTINGS, settings, this.proxyCache);
         return settings;
+    }
+
+    /**
+     * Retrieve user profile from cache or localStorage
+     */
+    fetchUserProfile(): UserProfile | null {
+        const cached = this.userProfileCache.get();
+        if (cached !== null) {
+            return cached;
+        }
+
+        try {
+            const rawData = localStorage.getItem(KEYS.USER_PROFILE);
+            if (rawData) {
+                const parsed = JSON.parse(rawData) as UserProfile;
+                this.userProfileCache.set(parsed, false);
+                return parsed;
+            }
+        } catch (error) {
+            console.error('Failed to load user profile from localStorage', error);
+        }
+
+        return null;
+    }
+
+    /**
+     * Update user profile in cache and localStorage
+     */
+    updateUserProfile(profile: UserProfile): UserProfile {
+        const updated = { ...profile, updatedAt: Date.now() };
+        setItem(KEYS.USER_PROFILE, updated, this.userProfileCache);
+        return updated;
     }
 
     /**
@@ -644,6 +680,7 @@ export class LocalStorageService implements IStorageService {
     // Import/Export
     exportData(): ExportedData {
         const settings = this.fetchSettings();
+        const userProfile = this.fetchUserProfile();
         const lists = this.fetchLists();
         const tasks = this.fetchTasks();
         const summaries = this.fetchSummaries();
@@ -655,6 +692,7 @@ export class LocalStorageService implements IStorageService {
             platform: 'web',
             data: {
                 settings,
+                userProfile,
                 lists,
                 tasks,
                 summaries,
@@ -788,6 +826,12 @@ export class LocalStorageService implements IStorageService {
                     this.updateProxySettings(data.data.settings.proxy);
                     result.imported.settings++;
                 }
+            }
+
+            // Import user profile along with settings
+            if (options.includeSettings && data.data.userProfile) {
+                this.updateUserProfile(data.data.userProfile);
+                result.imported.settings++;
             }
 
             // Import lists

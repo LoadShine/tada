@@ -8,6 +8,7 @@ import {
     isSettingsOpenAtom,
     settingsSelectedTabAtom,
     selectedEchoReportIdAtom,
+    userProfileAtom,
 } from '@/store/jotai.ts';
 import Button from '@/components/ui/Button.tsx';
 import Icon from '@/components/ui/Icon.tsx';
@@ -23,139 +24,6 @@ import { generateEchoReport, isAIConfigValid } from '@/services/aiService';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN, enUS } from 'date-fns/locale';
 import { AI_PROVIDERS } from "@/config/aiProviders";
-
-// --- Types ---
-interface EchoConfigModalProps {
-    isOpen: boolean;
-    onClose?: () => void;
-    onComplete: (jobTypes: string[], pastExamples: string) => void;
-    initialJobTypes?: string[];
-    initialExamples?: string;
-    canClose?: boolean;
-}
-
-const JOB_TYPES = [
-    { id: 'dev', label: 'R&D / Engineering', desc: 'Code, Architecture, Refactoring' },
-    { id: 'product', label: 'Product / Design', desc: 'User Flows, Specs, Review' },
-    { id: 'marketing', label: 'Marketing / Content', desc: 'Campaigns, Copy, Social' },
-    { id: 'sales', label: 'Sales / BD', desc: 'Leads, CRM, Client Relations' },
-    { id: 'ops', label: 'Operations / Support', desc: 'Process, Tickets, Logistics' },
-    { id: 'admin', label: 'HR / Admin', desc: 'Policies, Events, Compliance' },
-    { id: 'research', label: 'Research / Analysis', desc: 'Data, Trends, Experiments' },
-    { id: 'freelance', label: 'Freelance / Consultant', desc: 'Hours, Client Comms' },
-];
-
-// --- Onboarding / Config Modal ---
-const EchoConfigModal: React.FC<EchoConfigModalProps> = ({
-    isOpen,
-    onClose,
-    onComplete,
-    initialJobTypes = [],
-    initialExamples = '',
-    canClose = false
-}) => {
-    const { t } = useTranslation();
-    const [selectedJobs, setSelectedJobs] = useState<string[]>(initialJobTypes);
-    const [examples, setExamples] = useState(initialExamples);
-
-    // Sync state when props change (re-opening modal)
-    useEffect(() => {
-        if (isOpen) {
-            setSelectedJobs(initialJobTypes);
-            setExamples(initialExamples);
-        }
-    }, [isOpen, initialJobTypes, initialExamples]);
-
-    const toggleJob = (id: string) => {
-        setSelectedJobs(prev =>
-            prev.includes(id) ? prev.filter(j => j !== id) : [...prev, id]
-        );
-    };
-
-    const handleOpenChange = (open: boolean) => {
-        if (!open && canClose && onClose) {
-            onClose();
-        }
-    };
-
-    return (
-        <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
-            <Dialog.Portal>
-                <Dialog.Overlay className="fixed inset-0 bg-black/40 dark:bg-black/60 z-50 backdrop-blur-sm data-[state=open]:animate-fadeIn" />
-                <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl p-8 border border-grey-light dark:border-neutral-700 data-[state=open]:animate-modalShow focus:outline-none max-h-[90vh] overflow-y-auto styled-scrollbar">
-
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="text-center w-full">
-                            <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 text-primary dark:text-primary-light">
-                                <Icon name="sparkles" size={24} strokeWidth={1.5} />
-                            </div>
-                            <Dialog.Title className="text-2xl font-light text-grey-dark dark:text-neutral-100 mb-2">
-                                {t('echo.onboarding.title')}
-                            </Dialog.Title>
-                            <Dialog.Description className="text-grey-medium dark:text-neutral-400 font-light text-sm max-w-md mx-auto">
-                                {t('echo.onboarding.description')}
-                            </Dialog.Description>
-                        </div>
-                        {canClose && onClose && (
-                            <Dialog.Close asChild>
-                                <Button variant="ghost" size="icon" icon="x" className="absolute top-4 right-4" />
-                            </Dialog.Close>
-                        )}
-                    </div>
-
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-xs font-medium uppercase tracking-wider text-grey-medium dark:text-neutral-500 mb-3">
-                                {t('echo.onboarding.selectRole')}
-                            </label>
-                            <div className="grid grid-cols-2 gap-3">
-                                {JOB_TYPES.map(job => (
-                                    <button
-                                        key={job.id}
-                                        onClick={() => toggleJob(job.id)}
-                                        className={twMerge(
-                                            "p-3 rounded-lg border text-left transition-all duration-200",
-                                            selectedJobs.includes(job.id)
-                                                ? "border-primary bg-primary/5 dark:bg-primary/10 text-primary dark:text-primary-light"
-                                                : "border-grey-light dark:border-neutral-700 hover:border-grey-medium dark:hover:border-neutral-600 text-grey-dark dark:text-neutral-300"
-                                        )}
-                                    >
-                                        <div className="text-sm font-medium">{t(`echo.jobTypes.${job.id}`)}</div>
-                                        <div className="text-[11px] opacity-70 mt-0.5 font-light">{t(`echo.jobDescriptions.${job.id}`)}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-medium uppercase tracking-wider text-grey-medium dark:text-neutral-500 mb-3">
-                                {t('echo.onboarding.pasteExamples')}
-                            </label>
-                            <textarea
-                                value={examples}
-                                onChange={(e) => setExamples(e.target.value)}
-                                placeholder="..."
-                                className="w-full h-24 p-3 rounded-lg border border-grey-light dark:border-neutral-700 bg-grey-ultra-light dark:bg-neutral-900 text-sm focus:ring-1 focus:ring-primary focus:outline-none resize-none font-light"
-                            />
-                        </div>
-
-                        <div className="flex justify-end pt-4">
-                            <Button
-                                variant="primary"
-                                size="lg"
-                                disabled={selectedJobs.length === 0}
-                                onClick={() => onComplete(selectedJobs, examples)}
-                                className="w-full sm:w-auto"
-                            >
-                                {t('common.save')}
-                            </Button>
-                        </div>
-                    </div>
-                </Dialog.Content>
-            </Dialog.Portal>
-        </Dialog.Root>
-    );
-};
 
 // --- Adjustment Modal ---
 interface AdjustmentProps {
@@ -362,9 +230,9 @@ const CopyButton: React.FC<{ text: string, disabled: boolean }> = ({ text, disab
 // --- Main View ---
 const EchoView: React.FC = () => {
     const { t, i18n } = useTranslation();
-    const [preferences, setPreferences] = useAtom(preferencesSettingsAtom);
     const [echoReports, setEchoReports] = useAtom(echoReportsAtom);
     const aiSettings = useAtomValue(aiSettingsAtom);
+    const userProfile = useAtomValue(userProfileAtom);
     const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
     const setSettingsTab = useSetAtom(settingsSelectedTabAtom);
     const [selectedEchoReportId, setSelectedEchoReportId] = useAtom(selectedEchoReportIdAtom);
@@ -373,7 +241,6 @@ const EchoView: React.FC = () => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationStatus, setGenerationStatus] = useState("Initializing...");
     const [isAdjustOpen, setIsAdjustOpen] = useState(false);
-    const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
 
     // Current Report State
@@ -415,21 +282,6 @@ const EchoView: React.FC = () => {
         return () => clearInterval(interval);
     }, [isGenerating]);
 
-    // Handle configuration update
-    const handleConfigComplete = (jobTypes: string[], pastExamples: string) => {
-        setPreferences(prev => ({
-            ...prev!,
-            echoJobTypes: jobTypes,
-            echoPastExamples: pastExamples
-        }));
-        setIsConfigOpen(false);
-    };
-
-    const needsOnboarding = !preferences?.echoJobTypes || preferences.echoJobTypes.length === 0;
-
-    // Show config modal if needs onboarding or requested by user
-    const showConfigModal = needsOnboarding || isConfigOpen;
-
     const handleGenerate = async (style: 'balanced' | 'exploration' | 'reflection' = 'balanced', input: string = '') => {
         // Ensure configuration is complete before generating
         if (!isAIConfigValid(aiSettings)) {
@@ -445,8 +297,7 @@ const EchoView: React.FC = () => {
 
         try {
             const report = await generateEchoReport(
-                preferences!.echoJobTypes,
-                preferences!.echoPastExamples || '',
+                userProfile,
                 aiSettings!,
                 t,
                 i18n.language,
@@ -467,10 +318,6 @@ const EchoView: React.FC = () => {
         }
     };
 
-    // Determine what to display:
-    // 1. If currently generating, rely on currentReportText state directly.
-    // 2. If finished generating (currentReportId is set), show that report.
-    // 3. Otherwise (initial state or reset), show nothing (Empty State).
     const activeReport = currentReportId
         ? echoReports?.find(r => r.id === currentReportId)
         : null;
@@ -497,14 +344,6 @@ const EchoView: React.FC = () => {
                     <h1 className="text-lg font-light text-grey-dark dark:text-neutral-100">{t('echo.title')}</h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        icon="user"
-                        onClick={() => setIsConfigOpen(true)}
-                        title="Configure Persona"
-                        className="w-8 h-8 text-grey-medium dark:text-neutral-400"
-                    />
                     <Button
                         variant="ghost"
                         size="sm"
@@ -679,15 +518,6 @@ const EchoView: React.FC = () => {
                     </>
                 )}
             </AnimatePresence>
-
-            <EchoConfigModal
-                isOpen={showConfigModal}
-                onClose={() => setIsConfigOpen(false)}
-                onComplete={handleConfigComplete}
-                initialJobTypes={preferences?.echoJobTypes}
-                initialExamples={preferences?.echoPastExamples}
-                canClose={!needsOnboarding}
-            />
 
             <EchoAdjustmentModal
                 isOpen={isAdjustOpen}

@@ -12,7 +12,8 @@ import {
     DataConflict,
     ConflictResolution,
     EchoReport,
-    ProxySettings
+    ProxySettings,
+    UserProfile
 } from '@/types';
 
 /**
@@ -32,6 +33,10 @@ export interface IStorageService {
     updatePreferencesSettings(settings: PreferencesSettings): PreferencesSettings;
     updateAISettings(settings: AISettings): AISettings;
     updateProxySettings(settings: ProxySettings): ProxySettings;
+
+    // User Profile
+    fetchUserProfile(): UserProfile | null;
+    updateUserProfile(profile: UserProfile): UserProfile;
 
     // Lists
     fetchLists(): List[];

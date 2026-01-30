@@ -14,7 +14,9 @@ import {
     DataConflict,
     ConflictResolution,
     EchoReport,
-    ProxySettings
+    ProxySettings,
+    UserProfile,
+    createDefaultUserProfile
 } from '@tada/core/types';
 import {
     defaultAISettingsForApi,
@@ -107,6 +109,7 @@ export class SqliteStorageService implements IStorageService {
         ai: AISettings;
         proxy: ProxySettings;
     } | null = null;
+    private userProfileCache: UserProfile | null = null;
     private isDataLoaded = false;
 
     private batchQueue: BatchOperation[] = [];
@@ -325,6 +328,37 @@ export class SqliteStorageService implements IStorageService {
             await db.execute('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)', ['proxy', JSON.stringify(settings), now]);
         });
         return settings;
+    }
+
+    // User Profile
+    fetchUserProfile(): UserProfile | null {
+        return this.userProfileCache;
+    }
+
+    async fetchUserProfileAsync(): Promise<UserProfile | null> {
+        const db = this.getDb();
+        const settings = await db.select<DbSetting[]>('SELECT * FROM settings WHERE key = ?', ['userProfile']);
+        if (settings.length > 0) {
+            try {
+                const parsed = JSON.parse(settings[0].value) as UserProfile;
+                this.userProfileCache = parsed;
+                return parsed;
+            } catch (error) {
+                console.error('Failed to parse user profile:', error);
+            }
+        }
+        return null;
+    }
+
+    updateUserProfile(profile: UserProfile): UserProfile {
+        const updated = { ...profile, updatedAt: Date.now() };
+        this.userProfileCache = updated;
+        this.queueWrite(async () => {
+            const db = this.getDb();
+            const now = Date.now();
+            await db.execute('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)', ['userProfile', JSON.stringify(updated), now]);
+        });
+        return updated;
     }
 
     // Lists
@@ -832,6 +866,7 @@ export class SqliteStorageService implements IStorageService {
             platform: 'desktop',
             data: {
                 settings: this.fetchSettings(),
+                userProfile: this.fetchUserProfile(),
                 lists: this.fetchLists(),
                 tasks: this.fetchTasks(),
                 summaries: this.fetchSummaries(),
@@ -889,6 +924,12 @@ export class SqliteStorageService implements IStorageService {
                 if (data.data.settings.preferences) { this.updatePreferencesSettings(data.data.settings.preferences); result.imported.settings++; }
                 if (data.data.settings.ai) { this.updateAISettings(data.data.settings.ai); result.imported.settings++; }
                 if (data.data.settings.proxy) { this.updateProxySettings(data.data.settings.proxy); result.imported.settings++; }
+            }
+
+            // Import user profile along with settings
+            if (options.includeSettings && data.data.userProfile) {
+                this.updateUserProfile(data.data.userProfile);
+                result.imported.settings++;
             }
 
             if (options.includeLists && data.data.lists) {

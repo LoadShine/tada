@@ -160,6 +160,36 @@
         }
       }
     },
+    "profile": {
+      "title": "Profile",
+      "description": "Personalize your AI experience",
+      "persona": "Your Role",
+      "personaDescription": "Select roles that describe you. This helps personalize AI outputs.",
+      "wrm": {
+        "title": "Work Preferences",
+        "taskView": "Task Preference",
+        "taskViewDescription": "How do you prefer to view your tasks?",
+        "taskViewOptions": {
+          "process": "Process-focused",
+          "outcome": "Outcome-focused"
+        },
+        "uncertaintyTolerance": "Uncertainty Tolerance",
+        "uncertaintyToleranceDescription": "How do you handle uncertainty in tasks?",
+        "uncertaintyToleranceOptions": {
+          "low": "I prefer clear outcomes",
+          "high": "I'm comfortable with ambiguity"
+        },
+        "incompletionStyle": "Completion Style",
+        "incompletionStyleDescription": "How should incomplete tasks be communicated?",
+        "incompletionStyleOptions": {
+          "narrative": "Narrative style",
+          "explicit": "Direct and explicit"
+        }
+      },
+      "userNote": "Personal Note",
+      "userNoteDescription": "Add context about your work style, habits, or anything that affects your productivity.",
+      "userNotePlaceholder": "e.g., I get interrupted easily, I prefer tackling hard tasks in the morning..."
+    },
     "ai": {
       "title": "AI Settings",
       "selectProvider": "Select AI Provider",
@@ -547,6 +577,62 @@
       "orderedList": "Ordered List",
       "unorderedList": "Unordered List",
       "codeBlock": "Code Block"
+    }
+  },
+  "onboarding": {
+    "title": "Let's Get Started",
+    "skip": "Skip",
+    "skipAll": "Skip setup",
+    "back": "Back",
+    "next": "Continue",
+    "start": "Let's go",
+    "getStarted": "Get Started",
+    "welcome": {
+      "title": "Welcome to Tada",
+      "subtitle": "A few quick questions to personalize your experience"
+    },
+    "step1": {
+      "title": "What's your main work?",
+      "hint": "Select all that apply"
+    },
+    "step3": {
+      "title": "Anything you want me to remember?",
+      "hint": "Optional, but helps personalize AI responses"
+    },
+    "personas": {
+      "dev": "Tech / Dev",
+      "product": "Product / Design",
+      "marketing": "Marketing / Content",
+      "sales": "Sales / Business",
+      "ops": "Operations / Support",
+      "admin": "Admin / HR",
+      "research": "Data / Research",
+      "freelance": "Freelance / Consulting"
+    },
+    "wrm": {
+      "taskView": {
+        "label": "A task looks more like?",
+        "hint": "How tasks feel to you",
+        "process": "Steps to push forward today",
+        "outcome": "The final deliverable"
+      },
+      "uncertaintyTolerance": {
+        "label": "When things are unclear?",
+        "hint": "Your approach to ambiguity",
+        "low": "Break it down first",
+        "high": "Figure it out as I go"
+      },
+      "incompletionStyle": {
+        "label": "When progress is limited?",
+        "hint": "How to express progress",
+        "narrative": "Show forward movement",
+        "explicit": "State reasons clearly"
+      }
+    },
+    "userNotePlaceholders": {
+      "interrupted": "I often get interrupted",
+      "progress": "I need to show progress",
+      "rush": "I don't like being rushed"
     }
   },
   "prompts": {
