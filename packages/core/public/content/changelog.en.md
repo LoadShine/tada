@@ -1,6 +1,29 @@
 # Changelog
 
-## Version 0.3.3 (Current)
+## Version 0.3.4 (Current)
+*Release Date: January 30, 2026*
+
+### ✨ New Features
+- **Log System**: Added log logic allowing users to access the log folder directly through the system tray to view application logs (Fixes #22).
+- **User Settings**: Introduced User Profile Settings (Fixes #21).
+- **AI Refinement**: Added support for secondary AI adjustment and polishing of created task content.
+- **ICS Export**: Enabled the functionality to export calendar events as `.ics` files.
+- **Daily Reports**: Added the ability to generate daily reports and responses at regular intervals (Fixes #8, #18).
+- **Task Matching**: New tasks are now automatically matched to the appropriate list.
+- **Alert Events**: Added support for alert events.
+
+### 🐛 Bug Fixes
+- Fixed an issue where the "Report Issue" button in Tauri failed to open the external browser.
+- Solved the problem where icons for ordered lists within the bubble menu were not displayed.
+- Fixed a logic error to ensuring that if a user is viewing a specific list, new tasks use that list as the context.
+
+### ❤️ Contributors
+Special thanks to the contributors of this release:
+**@yili1992**
+
+---
+
+## Version 0.3.3
 *Release Date: Jan 5, 2026*
 
 ### ✨ New Features & Improvements
