@@ -1,5 +1,6 @@
 import { DarkModeOption, DefaultNewTaskDueDate } from "@/store/jotai.ts";
 import { AIProvider, AIModel } from "@/config/aiProviders.ts";
+import { UserProfile } from './userProfile';
 
 export * from './userProfile';
 
@@ -193,7 +194,7 @@ export interface ExportedData {
             ai: AISettings;
             proxy?: ProxySettings;
         };
-        userProfile: import('./userProfile').UserProfile | null;
+        userProfile: UserProfile | null;
         lists: List[];
         tasks: Task[];
         summaries: StoredSummary[];

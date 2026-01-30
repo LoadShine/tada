@@ -161,34 +161,34 @@
       }
     },
     "profile": {
-      "title": "个人画像",
-      "description": "个性化你的 AI 体验",
-      "persona": "你的角色",
-      "personaDescription": "选择描述你的角色。这有助于个性化 AI 输出。",
+      "title": "你",
+      "description": "让我们更懂你。",
+      "persona": "角色",
+      "personaDescription": "选一个。",
       "wrm": {
-        "title": "工作偏好",
-        "taskView": "任务偏好",
-        "taskViewDescription": "你更倾向于怎样看待任务？",
+        "title": "习惯",
+        "taskView": "你更看重什么？",
+        "taskViewDescription": "对你来说。",
         "taskViewOptions": {
-          "process": "注重过程",
-          "outcome": "注重结果"
+          "process": "过程",
+          "outcome": "结果"
         },
-        "uncertaintyTolerance": "不确定性容忍度",
-        "uncertaintyToleranceDescription": "你如何处理任务中的不确定性？",
+        "uncertaintyTolerance": "需求模糊的时候...",
+        "uncertaintyToleranceDescription": "你会怎么做？",
         "uncertaintyToleranceOptions": {
-          "low": "我喜欢明确的结果",
-          "high": "我能够接受模糊性"
+          "low": "先问清楚",
+          "high": "自己摸索"
         },
-        "incompletionStyle": "完成风格",
-        "incompletionStyleDescription": "未完成的任务应该如何表达？",
+        "incompletionStyle": "没做完的时候...",
+        "incompletionStyleDescription": "怎么记？",
         "incompletionStyleOptions": {
-          "narrative": "叙述式风格",
-          "explicit": "直接明确"
+          "narrative": "记录思考",
+          "explicit": "直接说原因"
         }
       },
-      "userNote": "个人备注",
-      "userNoteDescription": "添加关于你的工作习惯或任何影响生产力的上下文。",
-      "userNotePlaceholder": "例如：我容易被打断，我喜欢在早上处理困难的任务..."
+      "userNote": "还有吗？",
+      "userNoteDescription": "任何小细节都可以。",
+      "userNotePlaceholder": "比如：我习惯熬夜，或者我不喜欢开会。"
     },
     "ai": {
       "title": "AI 设置",
@@ -588,16 +588,16 @@
     "start": "开始体验",
     "getStarted": "开始",
     "welcome": {
-      "title": "欢迎使用 Tada",
-      "subtitle": "几个简单的问题，让我们更了解你的工作风格"
+      "title": "你好。",
+      "subtitle": "来认识一下吧。"
     },
     "step1": {
-      "title": "你主要从事哪类工作？",
+      "title": "你是做什么的？",
       "hint": "可多选"
     },
     "step3": {
-      "title": "有什么需要我特别注意的吗？",
-      "hint": "选填，这有助于我提供更个性化的建议"
+      "title": "还有什么想告诉我的？",
+      "hint": "比如我做事情有点拖拉，或者不喜欢什么。"
     },
     "personas": {
       "dev": "技术 / 开发",

@@ -165,7 +165,8 @@ export class SqliteStorageService implements IStorageService {
                 this.fetchTasksAsync(),
                 this.fetchSummariesAsync(),
                 this.fetchEchoReportsAsync(),
-                this.fetchSettingsAsync()
+                this.fetchSettingsAsync(),
+                this.fetchUserProfileAsync()
             ]);
             this.listsCache = lists;
             this.tasksCache = tasks;
