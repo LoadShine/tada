@@ -1044,11 +1044,28 @@ export class SqliteStorageService implements IStorageService {
     }
 
     private mapDbTaskToTask(dbTask: DbTask): Task {
+        let parsedTags: string[] | undefined = undefined;
+        if (dbTask.tags) {
+            try {
+                const parsed = JSON.parse(dbTask.tags);
+                if (Array.isArray(parsed)) {
+                    parsedTags = parsed;
+                } else {
+                    console.warn(`Task ${dbTask.id} has invalid tags format:`, parsed);
+                    // If tags is a string, treat it as a single-element array
+                    if (typeof parsed === 'string') {
+                        parsedTags = [parsed];
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to parse tags for task ${dbTask.id}:`, error);
+            }
+        }
         return {
             id: dbTask.id, title: dbTask.title, completed: Boolean(dbTask.completed), completedAt: dbTask.completed_at,
             completePercentage: dbTask.complete_percentage, dueDate: dbTask.due_date, listId: dbTask.list_id,
             listName: dbTask.list_name, content: dbTask.content || undefined, order: dbTask.order,
-            createdAt: dbTask.created_at, updatedAt: dbTask.updated_at, tags: dbTask.tags ? JSON.parse(dbTask.tags) : undefined,
+            createdAt: dbTask.created_at, updatedAt: dbTask.updated_at, tags: parsedTags,
             priority: dbTask.priority, groupCategory: dbTask.group_category as any, subtasks: []
         };
     }
