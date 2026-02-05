@@ -184,6 +184,35 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
 
     const isAIConfigured = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
 
+    const [todayKey, setTodayKey] = useState(() => formatDate(new Date(), 'yyyy-MM-dd'));
+
+    useEffect(() => {
+        const checkDateChange = () => {
+            const currentDateKey = formatDate(new Date(), 'yyyy-MM-dd');
+            setTodayKey(prev => {
+                if (prev !== currentDateKey) {
+                    return currentDateKey;
+                }
+                return prev;
+            });
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                checkDateChange();
+            }
+        };
+
+        const intervalId = setInterval(checkDateChange, 60 * 1000);
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            clearInterval(intervalId);
+        };
+    }, []);
+
     useEffect(() => {
         if (isLoadingPreferences) return;
         let defaultDate: Date | null = null;
@@ -211,7 +240,7 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
             setNewTaskListState('Inbox');
         }
 
-    }, [preferences, availableListsForNewTask, isLoadingPreferences, currentFilterGlobal]);
+    }, [preferences, availableListsForNewTask, isLoadingPreferences, currentFilterGlobal, todayKey]);
 
     // Auto-enable AI task input when alwaysUseAITask is enabled AND config is valid
     useEffect(() => {
