@@ -12,11 +12,15 @@ import {
 import { isAIConfigValid, generateAiSummary, generateEchoReport } from '@/services/aiService';
 import { startOfDay, endOfDay } from '@/utils/dateUtils';
 import { useTranslation } from 'react-i18next';
+import { isTauri } from '@/utils/networkUtils';
 
 /**
  * A global, non-visual component that checks for scheduled report generation.
- * Similar to DailyTaskRefresh, it runs a check every minute and triggers
- * report generation when the configured time is reached.
+ * 
+ * In desktop mode (Tauri), it listens for events from the Rust backend which runs
+ * a reliable timer that works even when the app is in the background.
+ * 
+ * In web mode, it falls back to using setInterval (which may be throttled by the browser).
  */
 const ScheduledReportGenerator: React.FC = () => {
     const { t } = useTranslation();
@@ -31,8 +35,37 @@ const ScheduledReportGenerator: React.FC = () => {
     // Track if we've already generated today to prevent duplicates
     const lastGeneratedDateRef = useRef<string | null>(null);
     const isGeneratingRef = useRef(false);
+    const unlistenRef = useRef<(() => void) | null>(null);
 
-    const checkAndGenerate = useCallback(async () => {
+    /**
+     * Sync schedule settings to Tauri backend whenever they change
+     */
+    useEffect(() => {
+        if (!isTauri()) return;
+
+        const syncSettingsToBackend = async () => {
+            const scheduleSettings = preferences?.scheduleSettings;
+            if (!scheduleSettings) return;
+
+            try {
+                const { invoke } = await import('@tauri-apps/api/core');
+                await invoke('update_schedule_settings', {
+                    settings: {
+                        enabled: scheduleSettings.enabled,
+                        time: scheduleSettings.time,
+                        days: scheduleSettings.days,
+                    }
+                });
+                console.log('[ScheduledReportGenerator] ✅ Synced schedule settings to backend');
+            } catch (error) {
+                console.error('[ScheduledReportGenerator] Failed to sync settings to backend:', error);
+            }
+        };
+
+        syncSettingsToBackend();
+    }, [preferences?.scheduleSettings]);
+
+    const generateReport = useCallback(async (triggerDate?: string) => {
         // Skip if already generating
         if (isGeneratingRef.current) {
             console.log('[ScheduledReportGenerator] Skip: Already generating');
@@ -51,29 +84,13 @@ const ScheduledReportGenerator: React.FC = () => {
             return;
         }
 
-        // Get current time info
         const now = new Date();
-        const currentDay = now.getDay(); // 0=Sunday, 1=Monday, etc.
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const todayDateStr = now.toISOString().split('T')[0];
-
-        // Check if today is a scheduled day
-        if (!scheduleSettings.days.includes(currentDay)) {
-            return; // Silent skip
-        }
-
-        // Parse scheduled time
-        const [scheduledHour, scheduledMinute] = scheduleSettings.time.split(':').map(Number);
-
-        // Check if it's time (within the same minute)
-        if (currentHour !== scheduledHour || currentMinute !== scheduledMinute) {
-            return; // Silent skip, not time yet
-        }
+        const todayDateStr = triggerDate || now.toISOString().split('T')[0];
 
         // Check if we've already generated today
         if (lastGeneratedDateRef.current === todayDateStr) {
-            return; // Already generated today
+            console.log('[ScheduledReportGenerator] Skip: Already generated today');
+            return;
         }
 
         // Mark as generating immediately
@@ -81,8 +98,7 @@ const ScheduledReportGenerator: React.FC = () => {
         lastGeneratedDateRef.current = todayDateStr;
 
         console.log('[ScheduledReportGenerator] ⏰ Triggering scheduled report generation...');
-        console.log('[ScheduledReportGenerator] Current time:', `${currentHour}:${String(currentMinute).padStart(2, '0')}`);
-        console.log('[ScheduledReportGenerator] Scheduled time:', scheduleSettings.time);
+        console.log('[ScheduledReportGenerator] Date:', todayDateStr);
 
         try {
             // Get today's completed tasks
@@ -189,26 +205,106 @@ const ScheduledReportGenerator: React.FC = () => {
         }
     }, [aiSettings, preferences, userProfile, tasksData, t, setScheduledReportModal, setStoredSummaries, setEchoReports]);
 
+    /**
+     * Check and generate (for web fallback / focus event)
+     */
+    const checkAndGenerate = useCallback(async () => {
+        // Check if schedule is enabled
+        const scheduleSettings = preferences?.scheduleSettings;
+        if (!scheduleSettings?.enabled) {
+            return;
+        }
+
+        // Get current time info
+        const now = new Date();
+        const currentDay = now.getDay(); // 0=Sunday, 1=Monday, etc.
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Check if today is a scheduled day
+        if (!scheduleSettings.days.includes(currentDay)) {
+            return;
+        }
+
+        // Parse scheduled time
+        const [scheduledHour, scheduledMinute] = scheduleSettings.time.split(':').map(Number);
+
+        // Check if it's time (within the same minute)
+        if (currentHour !== scheduledHour || currentMinute !== scheduledMinute) {
+            return;
+        }
+
+        await generateReport();
+    }, [preferences?.scheduleSettings, generateReport]);
+
+    /**
+     * Set up event listeners based on environment
+     */
     useEffect(() => {
-        // Check every minute for scheduled generation
-        const intervalId = setInterval(checkAndGenerate, 60 * 1000);
+        const isDesktop = isTauri();
 
-        // Also check when window gains focus
-        window.addEventListener('focus', checkAndGenerate);
+        if (isDesktop) {
+            // Desktop mode: Listen for Tauri backend events
+            console.log('[ScheduledReportGenerator] Running in desktop mode - using Tauri backend scheduler');
 
-        // Initial check after a short delay (to let atoms initialize)
-        const initTimeout = setTimeout(checkAndGenerate, 2000);
+            const setupTauriListener = async () => {
+                try {
+                    const { listen } = await import('@tauri-apps/api/event');
 
-        return () => {
-            clearInterval(intervalId);
-            clearTimeout(initTimeout);
-            window.removeEventListener('focus', checkAndGenerate);
-        };
-    }, [checkAndGenerate]);
+                    const unlisten = await listen<{
+                        timestamp: number;
+                        date: string;
+                        time: string;
+                    }>('schedule-trigger', (event) => {
+                        console.log('[ScheduledReportGenerator] 📡 Received schedule-trigger event from backend:', event.payload);
+                        generateReport(event.payload.date);
+                    });
+
+                    unlistenRef.current = unlisten;
+                    console.log('[ScheduledReportGenerator] ✅ Tauri event listener registered');
+                } catch (error) {
+                    console.error('[ScheduledReportGenerator] Failed to set up Tauri listener:', error);
+                }
+            };
+
+            setupTauriListener();
+
+            // Also check when window gains focus (in case we missed an event)
+            window.addEventListener('focus', checkAndGenerate);
+
+            // Initial check after a short delay
+            const initTimeout = setTimeout(checkAndGenerate, 2000);
+
+            return () => {
+                if (unlistenRef.current) {
+                    unlistenRef.current();
+                    unlistenRef.current = null;
+                }
+                clearTimeout(initTimeout);
+                window.removeEventListener('focus', checkAndGenerate);
+            };
+        } else {
+            // Web mode: Use setInterval as fallback
+            console.log('[ScheduledReportGenerator] Running in web mode - using setInterval fallback');
+
+            const intervalId = setInterval(checkAndGenerate, 60 * 1000);
+
+            // Also check when window gains focus
+            window.addEventListener('focus', checkAndGenerate);
+
+            // Initial check after a short delay
+            const initTimeout = setTimeout(checkAndGenerate, 2000);
+
+            return () => {
+                clearInterval(intervalId);
+                clearTimeout(initTimeout);
+                window.removeEventListener('focus', checkAndGenerate);
+            };
+        }
+    }, [checkAndGenerate, generateReport]);
 
     return null; // This component does not render anything
 };
 
 ScheduledReportGenerator.displayName = 'ScheduledReportGenerator';
 export default ScheduledReportGenerator;
-

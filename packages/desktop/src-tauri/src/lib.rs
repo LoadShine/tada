@@ -2,14 +2,36 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent,
+    Manager, WindowEvent, Emitter,
     image::Image,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+use std::time::Duration;
+use chrono::{Timelike, Datelike};
 
-// Define the application status to track whether a real exit operation is being performed
+/// Schedule settings for automated report generation
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ScheduleSettings {
+    pub enabled: bool,
+    pub time: String, // HH:mm format, e.g., "18:00"
+    pub days: Vec<u8>, // 0=Sunday, 1=Monday, ..., 6=Saturday
+}
+
+impl Default for ScheduleSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            time: "18:00".to_string(),
+            days: vec![1, 2, 3, 4, 5], // Mon-Fri
+        }
+    }
+}
+
+/// Application state to track quitting status and schedule settings
 struct AppState {
     is_quitting: AtomicBool,
+    schedule_settings: Mutex<ScheduleSettings>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -144,10 +166,98 @@ pub fn run() {
         }
     ];
 
+    #[tauri::command]
+    fn update_schedule_settings(
+        state: tauri::State<'_, AppState>,
+        settings: ScheduleSettings,
+    ) -> Result<(), String> {
+        log::info!("[Scheduler] Updating schedule settings: enabled={}, time={}, days={:?}", 
+            settings.enabled, settings.time, settings.days);
+        
+        match state.schedule_settings.lock() {
+            Ok(mut current) => {
+                *current = settings;
+                Ok(())
+            }
+            Err(e) => Err(format!("Failed to update schedule settings: {}", e)),
+        }
+    }
+
+    fn start_background_scheduler(app_handle: tauri::AppHandle) {
+        std::thread::spawn(move || {
+            log::info!("[Scheduler] Background scheduler started");
+            
+            loop {
+                // Sleep for 60 seconds
+                std::thread::sleep(Duration::from_secs(60));
+                
+                // Get current time
+                let now = chrono::Local::now();
+                let current_hour = now.hour();
+                let current_minute = now.minute();
+                let current_day = now.weekday().num_days_from_sunday() as u8; // 0=Sunday
+                let today_str = now.format("%Y-%m-%d").to_string();
+                
+                // Check schedule settings
+                let should_trigger = {
+                    let state = app_handle.state::<AppState>();
+                    match state.schedule_settings.lock() {
+                        Ok(settings) => {
+                            if !settings.enabled {
+                                false
+                            } else if !settings.days.contains(&current_day) {
+                                false
+                            } else {
+                                // Parse scheduled time
+                                let parts: Vec<&str> = settings.time.split(':').collect();
+                                if parts.len() == 2 {
+                                    if let (Ok(scheduled_hour), Ok(scheduled_minute)) = 
+                                        (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+                                        current_hour == scheduled_hour && current_minute == scheduled_minute
+                                    } else {
+                                        false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                        }
+                        Err(_) => false,
+                    }
+                };
+                
+                if should_trigger {
+                    log::info!("[Scheduler] ⏰ Triggering scheduled report at {}:{:02}", 
+                        current_hour, current_minute);
+                    
+                    // Emit event to frontend
+                    #[derive(Clone, serde::Serialize)]
+                    struct ScheduleTriggerPayload {
+                        timestamp: i64,
+                        date: String,
+                        time: String,
+                    }
+                    
+                    let payload = ScheduleTriggerPayload {
+                        timestamp: now.timestamp_millis(),
+                        date: today_str,
+                        time: format!("{}:{:02}", current_hour, current_minute),
+                    };
+                    
+                    if let Err(e) = app_handle.emit("schedule-trigger", payload) {
+                        log::error!("[Scheduler] Failed to emit schedule-trigger event: {}", e);
+                    }
+                }
+            }
+        });
+    }
+
     tauri::Builder::default()
         .manage(AppState {
             is_quitting: AtomicBool::new(false),
+            schedule_settings: Mutex::new(ScheduleSettings::default()),
         })
+        .invoke_handler(tauri::generate_handler![update_schedule_settings])
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
@@ -231,6 +341,8 @@ pub fn run() {
             let tray_builder = tray_builder.icon_as_template(true);
 
             tray_builder.build(app)?;
+
+            start_background_scheduler(app.handle().clone());
 
             Ok(())
         })
