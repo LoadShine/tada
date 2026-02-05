@@ -50,6 +50,8 @@ import {
     safeParseDate,
     startOfDay,
     subDays,
+    isSameDay,
+    formatDate
 } from '@/utils/dateUtils';
 import { twMerge } from 'tailwind-merge';
 import { TaskItemMenuProvider } from '@/context/TaskItemMenuContext';
@@ -267,6 +269,70 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
         return { tasksToDisplay: filtered, isGroupedView: false, isSearching: false };
     }, [searchTerm, currentFilterGlobal, groupedTasks, rawSearchResults, allTasks]);
 
+    const completedGroups = useMemo(() => {
+        if (currentFilterGlobal !== 'completed') return {};
+
+        const groups: Record<string, Task[]> = {};
+        const tasks = tasksToDisplay as Task[];
+
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const yesterday = subDays(today, 1);
+
+        tasks.forEach(task => {
+            const date = safeParseDate(task.completedAt ?? task.updatedAt);
+            if (!date) {
+                const key = 'nodate';
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(task);
+                return;
+            }
+
+            let key = '';
+            if (isToday(date)) {
+                key = 'today';
+            } else if (isSameDay(date, yesterday)) {
+                key = 'yesterday';
+            } else if (date.getFullYear() === currentYear) {
+                key = formatDate(date, 'yyyy-MM');
+            } else {
+                key = formatDate(date, 'yyyy');
+            }
+
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(task);
+        });
+        return groups;
+    }, [tasksToDisplay, currentFilterGlobal]);
+
+    const completedGroupKeys = useMemo(() => {
+        const keys = Object.keys(completedGroups);
+        return keys.sort((a, b) => {
+            if (a === 'today') return -1;
+            if (b === 'today') return 1;
+            if (a === 'yesterday') return -1;
+            if (b === 'yesterday') return 1;
+            if (a === 'nodate') return 1;
+            if (b === 'nodate') return -1;
+            return b.localeCompare(a);
+        });
+    }, [completedGroups]);
+
+    const getCompletedGroupTitle = useCallback((key: string) => {
+        if (key === 'today') return t('taskGroup.today');
+        if (key === 'yesterday') return t('summary.periods.yesterday');
+        if (key === 'nodate') return t('taskGroup.nodate');
+
+        if (/^\d{4}$/.test(key)) {
+            return key;
+        }
+
+        const [year, month] = key.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1);
+        return formatDate(date, 'MMMM yyyy', preferences?.language);
+    }, [t, preferences?.language]);
+
+
     const groupOrder: TaskGroupCategory[] = useMemo(() => ['overdue', 'today', 'next7days', 'later', 'nodate'], []);
 
     const sortableItems: UniqueIdentifier[] = useMemo(() => {
@@ -274,10 +340,19 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
             return groupOrder.flatMap(groupKey =>
                 ((tasksToDisplay as Record<TaskGroupCategory, Task[]>)[groupKey] ?? []).map(task => task.id)
             );
+        } else if (currentFilterGlobal === 'completed') {
+            return completedGroupKeys.flatMap(key => completedGroups[key].map(task => task.id));
         } else {
             return ((tasksToDisplay as Task[]) ?? []).map(task => task.id);
         }
-    }, [tasksToDisplay, isGroupedView, groupOrder]);
+    }, [tasksToDisplay, isGroupedView, groupOrder, currentFilterGlobal, completedGroups, completedGroupKeys]);
+
+    const scrollToGroup = (key: string) => {
+        const element = document.getElementById(`group-${key}`);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1079,6 +1154,21 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
                 <Popover.Root open={isBulkRescheduleOpen} onOpenChange={setIsBulkRescheduleOpen}>
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}>
+
+                        {currentFilterGlobal === 'completed' && !isEmpty && (
+                            <div className="flex px-4 pb-2 pt-2 gap-2 overflow-x-auto no-scrollbar mask-grad-x sticky top-0 z-20 bg-transparent flex-shrink-0">
+                                {completedGroupKeys.map(key => (
+                                    <button
+                                        key={key}
+                                        onClick={() => scrollToGroup(key)}
+                                        className="whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium bg-grey-light/50 dark:bg-neutral-800 text-grey-dark dark:text-neutral-300 hover:bg-grey-light dark:hover:bg-neutral-700 transition-colors"
+                                    >
+                                        {getCompletedGroupTitle(key)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         <div ref={scrollContainerRef}
                             className="flex-1 overflow-y-auto styled-scrollbar relative px-4 py-2 bg-transparent">
                             {isEmpty ? (
@@ -1110,9 +1200,22 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
                                                 return null;
                                             })}
                                         </>) : (
-                                            <div className="pt-0.5">
-                                                {renderTaskGroup(tasksToDisplay as Task[], 'flat-list')}
-                                            </div>
+                                            <>
+                                                {currentFilterGlobal === 'completed' ? (
+                                                    <div className="pt-0.5">
+                                                        {completedGroupKeys.map(key => (
+                                                            <div key={key} id={`group-${key}`} className="mb-4 last:mb-0 scroll-mt-10">
+                                                                <TaskGroupHeader title={getCompletedGroupTitle(key)} groupKey={key as any} />
+                                                                {renderTaskGroup(completedGroups[key], key)}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="pt-0.5">
+                                                        {renderTaskGroup(tasksToDisplay as Task[], 'flat-list')}
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </SortableContext>
                                 </div>

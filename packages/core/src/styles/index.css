@@ -756,3 +756,20 @@
         color: #e0e0e0;
     }
 }
+
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .mask-grad-x {
+        mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+
+        /* stylelint-disable-next-line property-no-vendor-prefix */
+        -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+    }
+}
