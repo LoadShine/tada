@@ -3,6 +3,8 @@ import storageManager from './storageManager.ts';
 import { AI_PROVIDERS, AIModel, AIProvider } from "@/config/aiProviders";
 import { stripBase64Images } from "@/lib/moondown/core/utils/string-utils";
 import { fetchWithProxy } from "@/utils/networkUtils";
+import { aiCache, withCache } from './ai/cache';
+import { withRetry } from './ai/retry';
 
 /**
  * Generates a context string from UserProfile for injection into AI prompts.
@@ -318,6 +320,7 @@ function sanitizeJsonString(jsonString: string): string {
 
 /**
  * Sends a natural language prompt to the AI to get a structured task object.
+ * Uses caching for identical requests and retry logic for transient failures.
  * @param prompt The user's natural language input for creating a task.
  * @param settings The current AI settings.
  * @param systemPrompt The system prompt guiding the AI's JSON output format.
@@ -333,8 +336,18 @@ export const analyzeTaskInputWithAI = async (
     if (!isAIConfigValid(settings)) {
         throw new Error("AI configuration is incomplete or invalid.");
     }
-    const provider = AI_PROVIDERS.find(p => p.id === settings.provider)!;
 
+    // Generate cache key
+    const cacheKey = aiCache.generateKey(prompt, settings.model, systemPrompt);
+
+    // Check cache first
+    const cached = aiCache.get<AiTaskAnalysis>(cacheKey);
+    if (cached) {
+        console.log('[AI Task Analysis] Cache hit');
+        return cached;
+    }
+
+    const provider = AI_PROVIDERS.find(p => p.id === settings.provider)!;
     const enrichedSystemPrompt = systemPrompt + generateUserProfileContext(userProfile);
 
     const useJsonFormat = ['openai', 'openrouter', 'deepseek', 'custom', 'gemini'].includes(provider.id);
@@ -346,7 +359,8 @@ export const analyzeTaskInputWithAI = async (
     const endpoint = getApiEndpoint(settings, 'chat');
     const proxySettings = getProxySettings();
 
-    try {
+    // Use retry logic for the API call
+    const result = await withRetry(async () => {
         const response = await fetchWithProxy(endpoint, {
             method: 'POST',
             headers: getApiHeaders(settings),
@@ -379,10 +393,12 @@ export const analyzeTaskInputWithAI = async (
                 throw parseError;
             }
         }
-    } catch (error) {
-        console.error("AI Task analysis failed:", error);
-        throw error;
-    }
+    }, { maxRetries: 2 });
+
+    // Cache the successful result
+    aiCache.set(cacheKey, result);
+
+    return result;
 };
 
 /**

@@ -193,6 +193,58 @@ interface TaskItemProps {
 }
 
 /**
+ * Custom comparison function for TaskItem memo.
+ * Compares only the properties that affect rendering to minimize re-renders.
+ */
+function areTaskItemPropsEqual(prev: TaskItemProps, next: TaskItemProps): boolean {
+    // Quick reference equality check
+    if (prev === next) return true;
+
+    // Compare primitive props
+    if (prev.groupCategory !== next.groupCategory) return false;
+    if (prev.isOverlay !== next.isOverlay) return false;
+
+    // Compare task object - check key properties
+    const prevTask = prev.task;
+    const nextTask = next.task;
+
+    if (prevTask === nextTask) return true;
+    if (prevTask.id !== nextTask.id) return false;
+    if (prevTask.title !== nextTask.title) return false;
+    if (prevTask.content !== nextTask.content) return false;
+    if (prevTask.completed !== nextTask.completed) return false;
+    if (prevTask.completePercentage !== nextTask.completePercentage) return false;
+    if (prevTask.dueDate !== nextTask.dueDate) return false;
+    if (prevTask.priority !== nextTask.priority) return false;
+    if (prevTask.listName !== nextTask.listName) return false;
+    if (prevTask.order !== nextTask.order) return false;
+    if (prevTask.updatedAt !== nextTask.updatedAt) return false;
+
+    // Compare tags array
+    const prevTags = prevTask.tags ?? [];
+    const nextTags = nextTask.tags ?? [];
+    if (prevTags.length !== nextTags.length) return false;
+    if (prevTags.length > 0 && !prevTags.every((tag, i) => tag === nextTags[i])) return false;
+
+    // Compare subtasks array (shallow - just check length and IDs)
+    const prevSubtasks = prevTask.subtasks ?? [];
+    const nextSubtasks = nextTask.subtasks ?? [];
+    if (prevSubtasks.length !== nextSubtasks.length) return false;
+    if (prevSubtasks.length > 0) {
+        for (let i = 0; i < prevSubtasks.length; i++) {
+            if (prevSubtasks[i].id !== nextSubtasks[i].id ||
+                prevSubtasks[i].title !== nextSubtasks[i].title ||
+                prevSubtasks[i].completed !== nextSubtasks[i].completed) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+/**
  * Renders a single task item in the task list.
  * It's draggable, selectable, and includes quick actions via a hover menu.
  */
@@ -1041,6 +1093,6 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             />
         </>
     );
-});
+}, areTaskItemPropsEqual);
 TaskItem.displayName = 'TaskItem';
 export default TaskItem;
