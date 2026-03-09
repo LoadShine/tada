@@ -39,7 +39,7 @@ import { useTaskOperations } from '@/hooks/useTaskOperations';
 import { twMerge } from 'tailwind-merge';
 import { useTranslation } from 'react-i18next';
 import { AI_PROVIDERS } from "@/config/aiProviders";
-import { analyzeTaskInputWithAI, isAIConfigValid } from "@/services/aiService";
+import { analyzeTaskInputWithAI, isAIConfigValid, suggestListForTaskWithAI } from "@/services/aiService";
 import Icon from "@/components/ui/Icon";
 import Button from "@/components/ui/Button";
 import { ProgressIndicator } from "@/components/features/tasks/TaskItem";
@@ -512,7 +512,7 @@ const ZenModeView: React.FC = () => {
         if (!targetList) return;
 
         const now = Date.now();
-        createTask({
+        const newTask = createTask({
             title: title,
             content: '',
             listName: targetList.name,
@@ -520,6 +520,7 @@ const ZenModeView: React.FC = () => {
             completed: isDone,
             completedAt: isDone ? now : null,
             completePercentage: isDone ? 100 : null,
+            startDate: now,
             dueDate: startOfDay(new Date()).getTime(),
             priority: null,
             order: now,
@@ -528,6 +529,45 @@ const ZenModeView: React.FC = () => {
         });
 
         if (!isDone) setTodoInputValue("");
+
+        // Also proactively suggest list with AI on standard config
+        if (!isDone && isAIConfigured && aiSettings) {
+            const availableListNames = (allUserLists ?? []).filter(l => l.name !== 'Trash').map(l => l.name);
+            const shouldUseAIForListSuggestion = availableListNames.length > 1;
+
+            if (shouldUseAIForListSuggestion) {
+                (async () => {
+                    try {
+                        const listSystemPrompt = tZen('prompts.listSuggestion');
+                        const suggestion = await suggestListForTaskWithAI(
+                            title,
+                            availableListNames,
+                            aiSettings,
+                            listSystemPrompt
+                        );
+
+                        let suggestedListName: string | null = null;
+                        if (suggestion.listName && availableListNames.includes(suggestion.listName)) {
+                            suggestedListName = suggestion.listName;
+                        } else if (suggestion.listName === 'Inbox') {
+                            suggestedListName = 'Inbox';
+                        }
+
+                        if (suggestedListName && suggestedListName !== targetList.name) {
+                            const newListObject = allUserLists?.find(l => l.name === suggestedListName);
+                            if (newListObject) {
+                                updateTask(newTask.id, {
+                                    listName: suggestedListName,
+                                    listId: newListObject.id
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[Zen AI List Suggestion] Failed for standard task:', error);
+                    }
+                })();
+            }
+        }
     };
 
     const handleAiCreation = async (prompt: string) => {
@@ -546,6 +586,7 @@ const ZenModeView: React.FC = () => {
             const aiAnalysis = await analyzeTaskInputWithAI(prompt, aiSettings!, systemPrompt, userProfile);
 
             const defaultList = preferences?.defaultNewTaskList || 'Inbox';
+            const initialListName = defaultList;
             const targetList = allUserLists?.find(l => l.name === defaultList) ?? allUserLists?.find(l => l.name === 'Inbox');
 
             if (!targetList) throw new Error("Target list not found");
@@ -561,6 +602,7 @@ const ZenModeView: React.FC = () => {
                 completed: false,
                 completedAt: null,
                 completePercentage: null,
+                startDate: aiAnalysis.dueDate ? Date.now() : now,
                 dueDate: dueDate,
                 priority: aiAnalysis.priority,
                 order: now,
@@ -581,6 +623,46 @@ const ZenModeView: React.FC = () => {
             setTodoInputValue("");
             setIsAiMode(false);
             addNotification({ type: 'success', message: 'AI Task Created' });
+
+            // AI List Suggestion (matching TaskList.tsx pattern)
+            const availableListNames = (allUserLists ?? []).filter(l => l.name !== 'Trash').map(l => l.name);
+            const shouldUseAIForListSuggestion = availableListNames.length > 1;
+
+            if (shouldUseAIForListSuggestion && aiSettings) {
+                (async () => {
+                    try {
+                        const listSystemPrompt = tZen('prompts.listSuggestion');
+                        const suggestion = await suggestListForTaskWithAI(
+                            aiAnalysis.title || prompt,
+                            availableListNames,
+                            aiSettings,
+                            listSystemPrompt
+                        );
+
+                        console.log('[Zen AI List Suggestion] Result:', suggestion);
+
+                        let suggestedListName: string | null = null;
+                        if (suggestion.listName && availableListNames.includes(suggestion.listName)) {
+                            suggestedListName = suggestion.listName;
+                        } else if (suggestion.listName === 'Inbox') {
+                            suggestedListName = 'Inbox';
+                        }
+
+                        if (suggestedListName && suggestedListName !== initialListName) {
+                            const newListObject = allUserLists?.find(l => l.name === suggestedListName);
+                            if (newListObject) {
+                                updateTask(newTask.id, {
+                                    listName: suggestedListName,
+                                    listId: newListObject.id
+                                });
+                                console.log(`[Zen AI List Suggestion] Moved task to "${suggestedListName}"`);
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[Zen AI List Suggestion] Failed:', error);
+                    }
+                })();
+            }
 
         } catch (error: any) {
             addNotification({ type: 'error', message: error.message || "AI Creation Failed" });

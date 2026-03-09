@@ -269,6 +269,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
 
     const isSelected = useMemo(() => selectedTaskId === task.id, [selectedTaskId, task.id]);
     const [isDatePickerPopoverOpen, setIsDatePickerPopoverOpen] = useState(false);
+    const [isStartDatePickerPopoverOpen, setIsStartDatePickerPopoverOpen] = useState(false);
     const [isDateClickPickerOpen, setIsDateClickPickerOpen] = useState(false);
     const [isTagsPopoverOpen, setIsTagsPopoverOpen] = useState(false);
     const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
@@ -330,16 +331,17 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         if (openItemId !== task.id) {
             setIsMoreActionsOpen(false);
             setIsDatePickerPopoverOpen(false);
+            setIsStartDatePickerPopoverOpen(false);
             setIsDateClickPickerOpen(false);
             setIsTagsPopoverOpen(false);
         }
     }, [openItemId, task.id]);
 
     useEffect(() => {
-        if (!isMoreActionsOpen && !isDatePickerPopoverOpen && !isDateClickPickerOpen && !isTagsPopoverOpen && openItemId === task.id) {
+        if (!isMoreActionsOpen && !isDatePickerPopoverOpen && !isStartDatePickerPopoverOpen && !isDateClickPickerOpen && !isTagsPopoverOpen && openItemId === task.id) {
             setOpenItemId(null);
         }
-    }, [isMoreActionsOpen, isDatePickerPopoverOpen, isDateClickPickerOpen, isTagsPopoverOpen, openItemId, task.id, setOpenItemId]);
+    }, [isMoreActionsOpen, isDatePickerPopoverOpen, isStartDatePickerPopoverOpen, isDateClickPickerOpen, isTagsPopoverOpen, openItemId, task.id, setOpenItemId]);
 
 
     const handleTaskClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -391,30 +393,38 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
         if (open) {
             setOpenItemId(task.id);
             setIsDatePickerPopoverOpen(false);
+            setIsStartDatePickerPopoverOpen(false);
             setIsTagsPopoverOpen(false);
             setIsDateClickPickerOpen(false);
         } else {
-            if (!isDatePickerPopoverOpen && !isTagsPopoverOpen && !isDateClickPickerOpen) {
+            if (!isDatePickerPopoverOpen && !isStartDatePickerPopoverOpen && !isTagsPopoverOpen && !isDateClickPickerOpen) {
                 setOpenItemId(null);
             }
         }
-    }, [task.id, setOpenItemId, isDatePickerPopoverOpen, isTagsPopoverOpen, isDateClickPickerOpen]);
+    }, [task.id, setOpenItemId, isDatePickerPopoverOpen, isStartDatePickerPopoverOpen, isTagsPopoverOpen, isDateClickPickerOpen]);
 
 
-    const handleMenuSubPopoverOpenChange = useCallback((open: boolean, type: 'date' | 'tags') => {
+    const handleMenuSubPopoverOpenChange = useCallback((open: boolean, type: 'date' | 'tags' | 'startDate') => {
         if (open) {
             setOpenItemId(task.id);
             if (type === 'date') {
                 setIsDatePickerPopoverOpen(true);
                 setIsTagsPopoverOpen(false);
+                setIsStartDatePickerPopoverOpen(false);
             } else if (type === 'tags') {
                 setIsTagsPopoverOpen(true);
                 setIsDatePickerPopoverOpen(false);
+                setIsStartDatePickerPopoverOpen(false);
+            } else if (type === 'startDate') {
+                setIsStartDatePickerPopoverOpen(true);
+                setIsDatePickerPopoverOpen(false);
+                setIsTagsPopoverOpen(false);
             }
             setIsMoreActionsOpen(true);
         } else {
             if (type === 'date') setIsDatePickerPopoverOpen(false);
             if (type === 'tags') setIsTagsPopoverOpen(false);
+            if (type === 'startDate') setIsStartDatePickerPopoverOpen(false);
         }
     }, [task.id, setOpenItemId]);
 
@@ -425,12 +435,17 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
             setOpenItemId(task.id);
             setIsMoreActionsOpen(false);
             setIsDatePickerPopoverOpen(false);
+            setIsStartDatePickerPopoverOpen(false);
             setIsTagsPopoverOpen(false);
         }
     }, [task.id, setOpenItemId]);
 
     const closeMenuDatePickerPopover = useCallback(() => {
         handleMenuSubPopoverOpenChange(false, 'date');
+    }, [handleMenuSubPopoverOpenChange]);
+
+    const closeMenuStartDatePickerPopover = useCallback(() => {
+        handleMenuSubPopoverOpenChange(false, 'startDate');
     }, [handleMenuSubPopoverOpenChange]);
 
     const closeTagsPopover = useCallback(() => {
@@ -847,7 +862,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                         sideOffset={4}
                                         align="end"
                                         onCloseAutoFocus={(e) => {
-                                            if (isDatePickerPopoverOpen || isTagsPopoverOpen) {
+                                            if (isDatePickerPopoverOpen || isTagsPopoverOpen || isStartDatePickerPopoverOpen) {
                                                 e.preventDefault();
                                             } else if (moreActionsButtonRef.current) {
                                                 moreActionsButtonRef.current.focus();
@@ -855,7 +870,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                         }}
                                         onInteractOutside={(e) => {
                                             const target = e.target as HTMLElement;
-                                            if (target.closest('[data-radix-popper-content-wrapper]') && (isDatePickerPopoverOpen || isTagsPopoverOpen)) {
+                                            if (target.closest('[data-radix-popper-content-wrapper]') && (isDatePickerPopoverOpen || isTagsPopoverOpen || isStartDatePickerPopoverOpen)) {
                                                 e.preventDefault();
                                             }
                                         }}
@@ -936,10 +951,12 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                 onPointerEnter={() => {
                                                     if (isDatePickerPopoverOpen) handleMenuSubPopoverOpenChange(false, 'date');
                                                     if (isTagsPopoverOpen) handleMenuSubPopoverOpenChange(false, 'tags');
+                                                    if (isStartDatePickerPopoverOpen) handleMenuSubPopoverOpenChange(false, 'startDate');
                                                 }}
                                                 onFocus={() => {
                                                     if (isDatePickerPopoverOpen) handleMenuSubPopoverOpenChange(false, 'date');
                                                     if (isTagsPopoverOpen) handleMenuSubPopoverOpenChange(false, 'tags');
+                                                    if (isStartDatePickerPopoverOpen) handleMenuSubPopoverOpenChange(false, 'startDate');
                                                 }}
                                             >
                                                 <Icon name="folder" size={14} strokeWidth={1.5} className="mr-2 flex-shrink-0 opacity-80" />
@@ -1053,6 +1070,48 @@ const TaskItem: React.FC<TaskItemProps> = memo(({
                                                             closeMenuDatePickerPopover();
                                                         }}
                                                         closePopover={closeMenuDatePickerPopover} />
+                                                </Popover.Content>
+                                            </Popover.Portal>
+                                        </Popover.Root>
+
+                                        <Popover.Root modal={false} open={isStartDatePickerPopoverOpen}
+                                            onOpenChange={(open) => handleMenuSubPopoverOpenChange(open, 'startDate')}>
+                                            <Popover.Trigger asChild>
+                                                <TaskItemRadixMenuItem
+                                                    icon="calendar"
+                                                    onSelect={(event) => {
+                                                        event.preventDefault();
+                                                        handleMenuSubPopoverOpenChange(true, 'startDate');
+                                                    }}
+                                                    disabled={!isInteractive}
+                                                > {t('taskDetail.setStartDate', 'Set start date')}... </TaskItemRadixMenuItem>
+                                            </Popover.Trigger>
+                                            <Popover.Portal>
+                                                <Popover.Content
+                                                    side="right" align="start" sideOffset={5}
+                                                    className={twMerge(popoverContentWrapperClasses, "p-0")}
+                                                    onOpenAutoFocus={(e) => e.preventDefault()}
+                                                    onCloseAutoFocus={(e) => {
+                                                        e.preventDefault();
+                                                        moreActionsButtonRef.current?.focus();
+                                                    }}
+                                                    onFocusOutside={(event) => event.preventDefault()}
+                                                    onPointerDownOutside={(e) => {
+                                                        const target = e.target as HTMLElement;
+                                                        if (!target.closest('[data-radix-dropdown-menu-trigger]') && !target.closest('[data-radix-popper-content-wrapper]')) {
+                                                            handleMenuSubPopoverOpenChange(false, 'startDate');
+                                                        } else {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
+                                                >
+                                                    <CustomDatePickerContent
+                                                        initialDate={safeParseDate(task.startDate) ?? undefined}
+                                                        onSelect={(date) => {
+                                                            updateTask(task.id, { startDate: date ? date.getTime() : null });
+                                                            closeMenuStartDatePickerPopover();
+                                                        }}
+                                                        closePopover={closeMenuStartDatePickerPopover} />
                                                 </Popover.Content>
                                             </Popover.Portal>
                                         </Popover.Root>

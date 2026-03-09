@@ -1,17 +1,17 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {twMerge} from 'tailwind-merge';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { twMerge } from 'tailwind-merge';
 import Button from '@/components/ui/Button.tsx';
 import Icon from '@/components/ui/Icon.tsx';
-import {format, formatDistanceToNowStrict, isSameDay, isValid, parseISO, startOfDay, subDays} from 'date-fns';
+import { format, formatDistanceToNowStrict, isSameDay, isValid, parseISO, startOfDay, subDays } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {StoredSummary, Task} from '@/types';
+import { StoredSummary, Task } from '@/types';
 import useDebounce from '@/hooks/useDebounce';
 import Highlighter from 'react-highlight-words';
-import {IconName} from "@/components/ui/IconMap.ts";
+import { IconName } from "@/components/ui/IconMap.ts";
 import * as Dialog from '@radix-ui/react-dialog';
-import {VisuallyHidden} from '@radix-ui/react-visually-hidden';
-import {useTranslation} from "react-i18next";
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { useTranslation } from "react-i18next";
 
 /**
  * Generates human-readable labels for summary period and list filters.
@@ -68,7 +68,7 @@ const getFilterLabels = (periodKey: string, listKey: string, t: (key: string, op
         listLabel = t('sidebar.inbox');
     }
 
-    return {periodLabel, listLabel};
+    return { periodLabel, listLabel };
 };
 
 interface ReferencedTaskItemProps {
@@ -78,8 +78,8 @@ interface ReferencedTaskItemProps {
 /**
  * Renders a single task that was referenced in a generated summary.
  */
-const ReferencedTaskItem: React.FC<ReferencedTaskItemProps> = React.memo(({task}) => {
-    const {t} = useTranslation();
+const ReferencedTaskItem: React.FC<ReferencedTaskItemProps> = React.memo(({ task }) => {
+    const { t } = useTranslation();
     const iconName: IconName = task.completed ? "check-square" : "square";
     const iconColor = task.completed ? "text-success" : "text-grey-medium";
     const textColor = task.completed ? "text-grey-medium dark:text-neutral-400" : "text-grey-dark dark:text-neutral-100";
@@ -89,7 +89,7 @@ const ReferencedTaskItem: React.FC<ReferencedTaskItemProps> = React.memo(({task}
         <li className="flex items-center py-1.5 px-1 rounded-base transition-colors duration-150 ease-out group"
             title={task.title}>
             <Icon name={iconName} size={12} strokeWidth={1.5}
-                  className={twMerge("mr-2 flex-shrink-0 transition-colors opacity-90", iconColor)}/>
+                className={twMerge("mr-2 flex-shrink-0 transition-colors opacity-90", iconColor)} />
             <div className="flex items-baseline flex-1 overflow-hidden">
                 <span
                     className={twMerge("text-[12px] font-light truncate", textColor, task.completed && "line-through")}>
@@ -108,13 +108,14 @@ interface SummaryHistoryModalProps {
     onClose: () => void;
     summaries: StoredSummary[];
     allTasks: Task[];
+    initialSelectedId?: string | null;
 }
 
 /**
  * A modal component for browsing, searching, and viewing previously generated AI summaries.
  */
-const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClose, summaries, allTasks,}) => {
-    const {t} = useTranslation();
+const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({ isOpen, onClose, summaries, allTasks, initialSelectedId, }) => {
+    const { t } = useTranslation();
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [selectedSummaryId, setSelectedSummaryId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -130,15 +131,20 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
 
     useEffect(() => {
         if (isOpen) {
-            const validSelectionExists = summaries.some(s => s.id === selectedSummaryId);
-            if (summaries.length > 0 && !validSelectionExists) setSelectedSummaryId(summaries[0].id);
-            else if (summaries.length === 0) setSelectedSummaryId(null);
+            // If an initial ID is provided and exists in the summaries, pre-select it
+            if (initialSelectedId && summaries.some(s => s.id === initialSelectedId)) {
+                setSelectedSummaryId(initialSelectedId);
+            } else {
+                const validSelectionExists = summaries.some(s => s.id === selectedSummaryId);
+                if (summaries.length > 0 && !validSelectionExists) setSelectedSummaryId(summaries[0].id);
+                else if (summaries.length === 0) setSelectedSummaryId(null);
+            }
             if (summaries.length > 0 && !searchInputRef.current?.value) {
                 const timer = setTimeout(() => searchInputRef.current?.focus(), 100);
                 return () => clearTimeout(timer);
             }
         }
-    }, [isOpen, summaries, selectedSummaryId]);
+    }, [isOpen, summaries, selectedSummaryId, initialSelectedId]);
 
     const selectedSummary = useMemo(() => summaries.find(s => s.id === selectedSummaryId) ?? null, [selectedSummaryId, summaries]);
     const selectedReferencedTasks = useMemo(() => {
@@ -168,10 +174,10 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
         const filtered: { dateKey: string; items: StoredSummary[] }[] = [];
         groupedSummaries.forEach(group => {
             const matchingItems = group.items.filter(summary => {
-                const {periodLabel, listLabel} = getFilterLabels(summary.periodKey, summary.listKey, t);
+                const { periodLabel, listLabel } = getFilterLabels(summary.periodKey, summary.listKey, t);
                 return searchWords.every(word => summary.summaryText.toLowerCase().includes(word) || periodLabel.toLowerCase().includes(word) || listLabel.toLowerCase().includes(word));
             });
-            if (matchingItems.length > 0) filtered.push({dateKey: group.dateKey, items: matchingItems});
+            if (matchingItems.length > 0) filtered.push({ dateKey: group.dateKey, items: matchingItems });
         });
         return filtered;
     }, [groupedSummaries, debouncedSearchTerm, t]);
@@ -234,7 +240,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
         <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
             <Dialog.Portal>
                 <Dialog.Overlay
-                    className="fixed inset-0 bg-grey-dark/30 data-[state=open]:animate-fadeIn data-[state=closed]:animate-fadeOut z-50"/>
+                    className="fixed inset-0 bg-grey-dark/30 data-[state=open]:animate-fadeIn data-[state=closed]:animate-fadeOut z-50" />
                 <Dialog.Content
                     className={twMerge(
                         "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[55]",
@@ -247,12 +253,12 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
                         <Dialog.Title
                             className="text-[16px] font-normal text-grey-dark dark:text-neutral-100 flex items-center">
                             <Icon name="history" size={16} strokeWidth={1}
-                                  className="mr-2 text-grey-medium dark:text-neutral-400"/>{t('summary.history.title')}
+                                className="mr-2 text-grey-medium dark:text-neutral-400" />{t('summary.history.title')}
                         </Dialog.Title>
                         <Dialog.Close asChild>
                             <Button variant="ghost" size="icon" icon="x"
-                                    className="text-grey-medium dark:text-neutral-400 hover:bg-grey-ultra-light dark:hover:bg-grey-ultra-light hover:text-grey-dark dark:hover:text-neutral-100 w-7 h-7 -mr-1.5"
-                                    iconProps={{size: 12, strokeWidth: 1.5}} aria-label={t('summary.history.close')}/>
+                                className="text-grey-medium dark:text-neutral-400 hover:bg-grey-ultra-light dark:hover:bg-grey-ultra-light hover:text-grey-dark dark:hover:text-neutral-100 w-7 h-7 -mr-1.5"
+                                iconProps={{ size: 12, strokeWidth: 1.5 }} aria-label={t('summary.history.close')} />
                         </Dialog.Close>
                     </div>
                     <Dialog.Description asChild><VisuallyHidden>{t('summary.history.description')}</VisuallyHidden></Dialog.Description>
@@ -262,23 +268,23 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
                             <div className="p-3 border-b border-grey-light dark:border-neutral-700 flex-shrink-0">
                                 <div className={searchInputWrapperClass}>
                                     <Icon name="search" size={14} strokeWidth={1.5}
-                                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-grey-medium dark:text-neutral-400 z-10 pointer-events-none"/>
+                                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-grey-medium dark:text-neutral-400 z-10 pointer-events-none" />
                                     <input ref={searchInputRef} type="search" placeholder={t('summary.history.searchPlaceholder')}
-                                           value={searchTerm} onChange={handleSearchChange}
-                                           className={searchInputClass}
-                                           aria-label={t('summary.history.searchPlaceholder')}/>
+                                        value={searchTerm} onChange={handleSearchChange}
+                                        className={searchInputClass}
+                                        aria-label={t('summary.history.searchPlaceholder')} />
                                     {searchTerm && (<button onClick={handleClearSearch}
-                                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200 z-10 transition-colors"
-                                                            aria-label={t('common.clear')}><Icon name="x-circle" size={14}
-                                                                                                 strokeWidth={1}/></button>)}
+                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200 z-10 transition-colors"
+                                        aria-label={t('common.clear')}><Icon name="x-circle" size={14}
+                                            strokeWidth={1} /></button>)}
                                 </div>
                             </div>
                             <div className="flex-1 overflow-y-auto styled-scrollbar-thin">
                                 {summaries.length === 0 ? (
-                                        <p className="text-[12px] text-grey-medium dark:text-neutral-400 text-center py-10 px-4 italic font-light">{t('summary.history.emptyState')}</p>)
+                                    <p className="text-[12px] text-grey-medium dark:text-neutral-400 text-center py-10 px-4 italic font-light">{t('summary.history.emptyState')}</p>)
                                     : filteredGroupedSummaries.length === 0 ? (
-                                            <p className="text-[12px] text-grey-medium dark:text-neutral-400 text-center py-10 px-4 italic font-light">{t('summary.history.noResults', {searchTerm: debouncedSearchTerm})}</p>)
-                                        : (filteredGroupedSummaries.map(({dateKey, items}) => (
+                                        <p className="text-[12px] text-grey-medium dark:text-neutral-400 text-center py-10 px-4 italic font-light">{t('summary.history.noResults', { searchTerm: debouncedSearchTerm })}</p>)
+                                        : (filteredGroupedSummaries.map(({ dateKey, items }) => (
                                             <div key={dateKey} className="pt-2">
                                                 <h3 className="px-3.5 pt-2 pb-1 text-[11px] font-normal text-grey-medium dark:text-neutral-400 uppercase tracking-[0.5px] sticky top-0 bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm z-10 border-b border-grey-light dark:border-neutral-700">{formatDateGroupKey(dateKey)}</h3>
                                                 <ul className="px-2 py-1">
@@ -310,25 +316,25 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
                                                                                     isSelected ? "bg-primary/10 text-primary dark:bg-primary-dark/20 dark:text-primary-light" : "bg-info/10 text-info dark:bg-info/20 dark:text-info-light"
                                                                                 )}
                                                                                 title={periodLabel}><Icon
-                                                                                name="calendar-days" size={10}
-                                                                                strokeWidth={1}
-                                                                                className="mr-1 opacity-80 flex-shrink-0"/><span
-                                                                                className="truncate">{periodLabel}</span></span>
+                                                                                    name="calendar-days" size={10}
+                                                                                    strokeWidth={1}
+                                                                                    className="mr-1 opacity-80 flex-shrink-0" /><span
+                                                                                        className="truncate">{periodLabel}</span></span>
                                                                             <span
                                                                                 className={twMerge(
                                                                                     "inline-flex items-center px-1.5 py-[1px] rounded-full text-[10px] font-light",
                                                                                     isSelected ? "bg-grey-light text-grey-dark dark:bg-neutral-600 dark:text-neutral-100" : "bg-grey-light text-grey-medium dark:bg-neutral-750 dark:text-neutral-300"
                                                                                 )}
                                                                                 title={listLabel}><Icon name="list"
-                                                                                                        size={10}
-                                                                                                        strokeWidth={1}
-                                                                                                        className="mr-1 opacity-80 flex-shrink-0"/><span
-                                                                                className="truncate">{listLabel}</span></span>
+                                                                                    size={10}
+                                                                                    strokeWidth={1}
+                                                                                    className="mr-1 opacity-80 flex-shrink-0" /><span
+                                                                                        className="truncate">{listLabel}</span></span>
                                                                         </div>
                                                                     </div>
                                                                     <p className={twMerge("text-[12px] font-light leading-snug", isSelected ? "text-grey-dark dark:text-neutral-100" : "text-grey-medium dark:text-neutral-400")}>
                                                                         <Highlighter {...highlighterProps}
-                                                                                     textToHighlight={summarySnippet}/>
+                                                                            textToHighlight={summarySnippet} />
                                                                     </p>
                                                                 </button>
                                                             </li>
@@ -346,16 +352,16 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
                                         <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                                             <span
                                                 className="inline-flex items-center bg-info/10 text-info dark:bg-info/20 dark:text-info-light px-2 py-0.5 rounded-full text-[11px] font-light"><Icon
-                                                name="calendar-days" size={11} strokeWidth={1}
-                                                className="mr-1 opacity-80"/>{getFilterLabels(selectedSummary.periodKey, selectedSummary.listKey, t).periodLabel}</span>
+                                                    name="calendar-days" size={11} strokeWidth={1}
+                                                    className="mr-1 opacity-80" />{getFilterLabels(selectedSummary.periodKey, selectedSummary.listKey, t).periodLabel}</span>
                                             <span
                                                 className="inline-flex items-center bg-grey-light text-grey-medium dark:bg-neutral-700 dark:text-neutral-300 px-2 py-0.5 rounded-full text-[11px] font-light"><Icon
-                                                name="list" size={11} strokeWidth={1}
-                                                className="mr-1 opacity-80"/>{getFilterLabels(selectedSummary.periodKey, selectedSummary.listKey, t).listLabel}</span>
+                                                    name="list" size={11} strokeWidth={1}
+                                                    className="mr-1 opacity-80" />{getFilterLabels(selectedSummary.periodKey, selectedSummary.listKey, t).listLabel}</span>
                                         </div>
                                         <span
                                             className="text-[11px] text-grey-medium dark:text-neutral-400 whitespace-nowrap pl-2 font-light">
-                                            {formatDistanceToNowStrict(selectedSummary.createdAt, {addSuffix: true})}
+                                            {formatDistanceToNowStrict(selectedSummary.createdAt, { addSuffix: true })}
                                             {selectedSummary.updatedAt && selectedSummary.updatedAt > selectedSummary.createdAt + 10000 && (
                                                 <span className="italic ml-1">(edited)</span>)}
                                         </span>
@@ -373,7 +379,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
                                         <h4 className="text-[11px] font-normal text-grey-medium dark:text-neutral-400 uppercase tracking-[0.5px] mb-1.5 px-1 flex-shrink-0">{t('summary.referencedTasks')} ({selectedReferencedTasks.length})</h4>
                                         {selectedReferencedTasks.length > 0 ? (
                                             <ul className="space-y-0.5 flex-1 overflow-y-auto styled-scrollbar-thin pr-1">{selectedReferencedTasks.map(task => (
-                                                <ReferencedTaskItem key={task.id} task={task}/>))}</ul>
+                                                <ReferencedTaskItem key={task.id} task={task} />))}</ul>
                                         ) : (
                                             <p className="text-[12px] text-grey-medium dark:text-neutral-400 italic px-1 py-2 font-light">{t('summary.noReferencedTasks')}</p>)}
                                     </div>
@@ -381,7 +387,7 @@ const SummaryHistoryModal: React.FC<SummaryHistoryModalProps> = ({isOpen, onClos
                             ) : (
                                 <div
                                     className="flex flex-col items-center justify-center h-full text-grey-medium dark:text-neutral-400 text-[13px] italic p-10 text-center font-light">
-                                    <Icon name="file-text" size={32} strokeWidth={1} className="mb-3 opacity-40"/>
+                                    <Icon name="file-text" size={32} strokeWidth={1} className="mb-3 opacity-40" />
                                     {t('summary.history.selectPrompt')}
                                 </div>
                             )}

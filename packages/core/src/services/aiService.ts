@@ -64,9 +64,10 @@ export const generateUserProfileContext = (userProfile: UserProfile | null | und
 export interface AiTaskAnalysis {
     title: string;
     content?: string;
-    subtasks: { dueDate?: string; title: string }[];
+    subtasks: { startDate?: string; dueDate?: string; title: string }[];
     tags: string[];
     priority: number | null;
+    startDate: string | null;
     dueDate: string | null;
 }
 

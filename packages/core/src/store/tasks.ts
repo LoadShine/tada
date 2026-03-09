@@ -15,19 +15,36 @@ export const getTaskGroupCategory = (task: Omit<Task, 'groupCategory'> | Task): 
     if (task.completed || task.listName === 'Trash') {
         return 'nodate';
     }
-    if (task.dueDate != null) {
-        const dueDateObj = safeParseDate(task.dueDate);
-        if (!dueDateObj || !isValid(dueDateObj)) return 'nodate';
 
-        const today = startOfDay(new Date());
-        const taskDay = startOfDay(dueDateObj);
+    const dueDateObj = task.dueDate ? safeParseDate(task.dueDate) : null;
+    const startDateObj = task.startDate ? safeParseDate(task.startDate) : null;
 
-        if (isBefore(taskDay, today)) return 'overdue';
-        if (isSameDay(taskDay, today)) return 'today';
-        if (isWithinNext7Days(taskDay)) return 'next7days';
-        return 'later';
+    const hasValidDue = dueDateObj && isValid(dueDateObj);
+    const hasValidStart = startDateObj && isValid(startDateObj);
+
+    if (!hasValidDue && !hasValidStart) return 'nodate';
+
+    const today = startOfDay(new Date());
+    const startDay = hasValidStart ? startOfDay(startDateObj!) : null;
+    const dueDay = hasValidDue ? startOfDay(dueDateObj!) : null;
+
+    const todayTime = today.getTime();
+    const startTime = startDay ? startDay.getTime() : null;
+    const dueTime = dueDay ? dueDay.getTime() : null;
+
+    if (dueTime !== null && dueTime < todayTime) return 'overdue';
+
+    if (
+        (startTime !== null && dueTime !== null && startTime <= todayTime && todayTime <= dueTime) ||
+        (startTime !== null && dueTime === null && startTime <= todayTime) ||
+        (dueTime !== null && dueTime === todayTime)
+    ) {
+        return 'today';
     }
-    return 'nodate';
+
+    const futureDate = startDay || dueDay!;
+    if (isWithinNext7Days(futureDate)) return 'next7days';
+    return 'later';
 };
 
 // --- Task Atoms ---

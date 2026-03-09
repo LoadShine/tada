@@ -1,15 +1,15 @@
-import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Subtask} from '@/types';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Subtask } from '@/types';
 import Button from '@/components/ui/Button.tsx';
-import {formatRelativeDate, isOverdue, isValid, safeParseDate,} from '@/utils/dateUtils';
-import {twMerge} from 'tailwind-merge';
+import { formatRelativeDate, isOverdue, isValid, safeParseDate, } from '@/utils/dateUtils';
+import { twMerge } from 'tailwind-merge';
 import * as Popover from '@radix-ui/react-popover';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import {useSortable} from "@dnd-kit/sortable";
-import {CSS} from "@dnd-kit/utilities";
-import {useTranslation} from "react-i18next";
-import {useAtomValue} from "jotai";
-import {preferencesSettingsAtom} from "@/store/jotai.ts";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useTranslation } from "react-i18next";
+import { useAtomValue } from "jotai";
+import { preferencesSettingsAtom } from "@/store/jotai.ts";
 import SelectionCheckboxRadix from "@/components/ui/SelectionCheckbox.tsx";
 import CustomDatePickerContent from "@/components/ui/DatePicker.tsx";
 import ConfirmDeleteModalRadix from "@/components/ui/ConfirmDeleteModal.tsx";
@@ -26,26 +26,28 @@ interface SubtaskItemDetailProps {
  * Renders a single subtask item within the TaskDetail view.
  */
 const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
-                                                                      subtask,
-                                                                      onUpdate,
-                                                                      onDelete,
-                                                                      isTaskCompletedOrTrashed,
-                                                                      isDraggingOverlay = false
-                                                                  }) => {
-    const {t} = useTranslation();
+    subtask,
+    onUpdate,
+    onDelete,
+    isTaskCompletedOrTrashed,
+    isDraggingOverlay = false
+}) => {
+    const { t } = useTranslation();
     const preferences = useAtomValue(preferencesSettingsAtom);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [localTitle, setLocalTitle] = useState(subtask.title);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
+    const [isStartDateTooltipOpen, setIsStartDateTooltipOpen] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isDateTooltipOpen, setIsDateTooltipOpen] = useState(false);
 
     const isDisabledByParent = isTaskCompletedOrTrashed;
     const isDisabled = isDisabledByParent || subtask.completed;
 
-    const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({
-        id: `subtask-detail-${subtask.id}`, data: {subtask, type: 'subtask-item-detail'}, disabled: isDisabledByParent,
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: `subtask-detail-${subtask.id}`, data: { subtask, type: 'subtask-item-detail' }, disabled: isDisabledByParent,
     });
 
     const style = useMemo(() => {
@@ -64,7 +66,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
             cursor: 'grabbing',
             background: 'hsla(0, 0%, 100%, 0.5)' // A light dragging background
         };
-        return {transform: baseTransform, transition};
+        return { transform: baseTransform, transition };
     }, [transform, transition, isDragging, isDraggingOverlay]);
 
     useEffect(() => {
@@ -84,7 +86,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
     const saveTitle = () => {
         const trimmedTitle = localTitle.trim();
         if (trimmedTitle && trimmedTitle !== subtask.title) {
-            onUpdate(subtask.id, {title: trimmedTitle});
+            onUpdate(subtask.id, { title: trimmedTitle });
         } else if (!trimmedTitle && subtask.title) {
             setLocalTitle(subtask.title);
         }
@@ -113,9 +115,22 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
         }
     };
 
+    const handleStartDateSelect = useCallback((dateWithTime: Date | undefined) => {
+        if (!isDisabledByParent) {
+            onUpdate(subtask.id, { startDate: dateWithTime ? dateWithTime.getTime() : null });
+        }
+        setIsStartDatePickerOpen(false);
+        setIsStartDateTooltipOpen(false);
+    }, [onUpdate, subtask.id, isDisabledByParent]);
+
+    const closeStartDatePickerPopover = useCallback(() => {
+        setIsStartDatePickerOpen(false);
+        setIsStartDateTooltipOpen(false);
+    }, []);
+
     const handleDateSelect = useCallback((dateWithTime: Date | undefined) => {
         if (!isDisabledByParent) {
-            onUpdate(subtask.id, {dueDate: dateWithTime ? dateWithTime.getTime() : null});
+            onUpdate(subtask.id, { dueDate: dateWithTime ? dateWithTime.getTime() : null });
         }
         setIsDatePickerOpen(false);
         setIsDateTooltipOpen(false);
@@ -141,6 +156,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
         closeDeleteConfirm();
     }, [onDelete, subtask.id, closeDeleteConfirm]);
 
+    const subtaskStartDate = useMemo(() => safeParseDate(subtask.startDate), [subtask.startDate]);
     const subtaskDueDate = useMemo(() => safeParseDate(subtask.dueDate), [subtask.dueDate]);
     const isSubtaskOverdue = useMemo(() => subtaskDueDate && isValid(subtaskDueDate) && !subtask.completed && !isDisabledByParent && isOverdue(subtaskDueDate), [subtaskDueDate, subtask.completed, isDisabledByParent]);
 
@@ -153,6 +169,22 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
         "z-[70] p-0 bg-white dark:bg-neutral-800/95 backdrop-blur-xl rounded-lg shadow-modal border border-black/10 dark:border-white/10",
         "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
     ), []);
+
+    const startDateButtonClasses = useMemo(() => twMerge(
+        "text-xs px-1.5 py-0.5 rounded-md transition-colors duration-150 ease-apple whitespace-nowrap",
+        "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-800",
+        !isDisabled && (
+            subtask.startDate
+                ? "text-primary dark:text-primary-light hover:bg-primary/10 dark:hover:bg-primary-dark/20"
+                : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5"
+        ),
+        isDisabled && (
+            subtask.startDate
+                ? "text-primary/60 dark:text-primary-light/60"
+                : "text-grey-medium/60 dark:text-neutral-400/60"
+        ),
+        isDisabled && "cursor-not-allowed !hover:bg-transparent"
+    ), [isDisabled, subtask.startDate]);
 
     const dateButtonClasses = useMemo(() => twMerge(
         "text-xs px-1.5 py-0.5 rounded-md transition-colors duration-150 ease-apple whitespace-nowrap",
@@ -200,7 +232,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                     <div className={twMerge(
                         "flex-1 min-w-0 py-1 h-full flex items-center"
                     )}
-                         onClick={() => !isEditingTitle && !isDisabled && setIsEditingTitle(true)}>
+                        onClick={() => !isEditingTitle && !isDisabled && setIsEditingTitle(true)}>
                         {isEditingTitle ? (
                             <form onSubmit={handleTitleSubmit} className="w-full">
                                 <input
@@ -224,52 +256,91 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                                     "text-[13px] cursor-text block truncate leading-tight font-medium",
                                     subtask.completed ? "line-through text-grey-medium dark:text-neutral-400/70" : "text-grey-dark dark:text-neutral-100"
                                 )}>
-                            {subtask.title || <span className="italic text-grey-medium/70">{t('common.untitledSubtask')}</span>}
-                        </span>
+                                {subtask.title || <span className="italic text-grey-medium/70">{t('common.untitledSubtask')}</span>}
+                            </span>
                         )}
                     </div>
                     <div
                         className="flex items-center flex-shrink-0 ml-2 space-x-1 transition-opacity duration-150">
-                        {(!isDisabledByParent && (subtask.dueDate || !subtask.completed)) && (
-                            <Popover.Root open={isDatePickerOpen} onOpenChange={(open) => {
-                                setIsDatePickerOpen(open);
-                                if (!open) setIsDateTooltipOpen(false);
-                            }}>
-                                <Tooltip.Provider><Tooltip.Root delayDuration={300} open={isDateTooltipOpen}
-                                                                onOpenChange={setIsDateTooltipOpen}>
-                                    <Tooltip.Trigger asChild>
-                                        <Popover.Trigger asChild disabled={isDisabled}>
-                                            <button
-                                                type="button"
-                                                className={dateButtonClasses}
-                                                aria-label={subtask.dueDate ? `Subtask due: ${formatRelativeDate(subtaskDueDate, t, true, preferences?.language)}` : t('subtask.setDueDate')}
-                                            >
-                                                {subtask.dueDate ? formatRelativeDate(subtaskDueDate, t, false, preferences?.language) : t('taskDetail.setDueDate')}
-                                            </button>
-                                        </Popover.Trigger>
-                                    </Tooltip.Trigger>
-                                    <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="left"
-                                                                     sideOffset={6}>
-                                        {subtask.dueDate ? formatRelativeDate(subtaskDueDate, t, true, preferences?.language) : t('subtask.setDueDate')}
-                                        <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/90"/>
-                                    </Tooltip.Content></Tooltip.Portal>
-                                </Tooltip.Root></Tooltip.Provider>
-                                <Popover.Portal><Popover.Content
-                                    className={datePickerPopoverWrapperClasses}
-                                    sideOffset={5}
-                                    align="end" onOpenAutoFocus={(e) => e.preventDefault()}
-                                    onCloseAutoFocus={(e) => e.preventDefault()}
-                                >
-                                    <CustomDatePickerContent initialDate={subtaskDueDate ?? undefined}
-                                                             onSelect={handleDateSelect}
-                                                             closePopover={closeDatePickerPopover}/>
-                                </Popover.Content></Popover.Portal>
-                            </Popover.Root>
+                        {(!isDisabledByParent && (subtask.startDate || subtask.dueDate || !subtask.completed)) && (
+                            <div className="flex items-center gap-1">
+                                <Popover.Root open={isStartDatePickerOpen} onOpenChange={(open) => {
+                                    setIsStartDatePickerOpen(open);
+                                    if (!open) setIsStartDateTooltipOpen(false);
+                                }}>
+                                    <Tooltip.Provider><Tooltip.Root delayDuration={300} open={isStartDateTooltipOpen}
+                                        onOpenChange={setIsStartDateTooltipOpen}>
+                                        <Tooltip.Trigger asChild>
+                                            <Popover.Trigger asChild disabled={isDisabled}>
+                                                <button
+                                                    type="button"
+                                                    className={startDateButtonClasses}
+                                                    aria-label={subtask.startDate ? `Subtask start: ${formatRelativeDate(subtaskStartDate, t, true, preferences?.language)}` : t('taskDetail.setStartDate')}
+                                                >
+                                                    {subtask.startDate ? formatRelativeDate(subtaskStartDate, t, false, preferences?.language) : t('taskDetail.setStartDate')}
+                                                </button>
+                                            </Popover.Trigger>
+                                        </Tooltip.Trigger>
+                                        <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="left"
+                                            sideOffset={6}>
+                                            {subtask.startDate ? formatRelativeDate(subtaskStartDate, t, true, preferences?.language) : t('taskDetail.setStartDate')}
+                                            <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/90" />
+                                        </Tooltip.Content></Tooltip.Portal>
+                                    </Tooltip.Root></Tooltip.Provider>
+                                    <Popover.Portal><Popover.Content
+                                        className={datePickerPopoverWrapperClasses}
+                                        sideOffset={5}
+                                        align="end" onOpenAutoFocus={(e) => e.preventDefault()}
+                                        onCloseAutoFocus={(e) => e.preventDefault()}
+                                    >
+                                        <CustomDatePickerContent initialDate={subtaskStartDate ?? undefined}
+                                            onSelect={handleStartDateSelect}
+                                            closePopover={closeStartDatePickerPopover} />
+                                    </Popover.Content></Popover.Portal>
+                                </Popover.Root>
+
+                                <span className="text-grey-light dark:text-neutral-700/50">→</span>
+
+                                <Popover.Root open={isDatePickerOpen} onOpenChange={(open) => {
+                                    setIsDatePickerOpen(open);
+                                    if (!open) setIsDateTooltipOpen(false);
+                                }}>
+                                    <Tooltip.Provider><Tooltip.Root delayDuration={300} open={isDateTooltipOpen}
+                                        onOpenChange={setIsDateTooltipOpen}>
+                                        <Tooltip.Trigger asChild>
+                                            <Popover.Trigger asChild disabled={isDisabled}>
+                                                <button
+                                                    type="button"
+                                                    className={dateButtonClasses}
+                                                    aria-label={subtask.dueDate ? `Subtask due: ${formatRelativeDate(subtaskDueDate, t, true, preferences?.language)}` : t('subtask.setDueDate')}
+                                                >
+                                                    {subtask.dueDate ? formatRelativeDate(subtaskDueDate, t, false, preferences?.language) : t('taskDetail.setDueDate')}
+                                                </button>
+                                            </Popover.Trigger>
+                                        </Tooltip.Trigger>
+                                        <Tooltip.Portal><Tooltip.Content className={tooltipContentClass} side="left"
+                                            sideOffset={6}>
+                                            {subtask.dueDate ? formatRelativeDate(subtaskDueDate, t, true, preferences?.language) : t('subtask.setDueDate')}
+                                            <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/90" />
+                                        </Tooltip.Content></Tooltip.Portal>
+                                    </Tooltip.Root></Tooltip.Provider>
+                                    <Popover.Portal><Popover.Content
+                                        className={datePickerPopoverWrapperClasses}
+                                        sideOffset={5}
+                                        align="end" onOpenAutoFocus={(e) => e.preventDefault()}
+                                        onCloseAutoFocus={(e) => e.preventDefault()}
+                                    >
+                                        <CustomDatePickerContent initialDate={subtaskDueDate ?? undefined}
+                                            onSelect={handleDateSelect}
+                                            closePopover={closeDatePickerPopover} />
+                                    </Popover.Content></Popover.Portal>
+                                </Popover.Root>
+                            </div>
                         )}
                         <Button variant="ghost" size="icon" icon="trash"
-                                onClick={openDeleteConfirm}
-                                className={twMerge("w-7 h-7 text-grey-medium/60 dark:text-neutral-500/40 hover:text-error dark:hover:text-red-400", isDisabledByParent && "opacity-20 cursor-not-allowed")}
-                                aria-label={t('subtask.delete')} disabled={isDisabledByParent}
+                            onClick={openDeleteConfirm}
+                            className={twMerge("w-7 h-7 text-grey-medium/60 dark:text-neutral-500/40 hover:text-error dark:hover:text-red-400", isDisabledByParent && "opacity-20 cursor-not-allowed")}
+                            aria-label={t('subtask.delete')} disabled={isDisabledByParent}
                         />
                     </div>
                 </div>
@@ -281,7 +352,7 @@ const SubtaskItemDetail: React.FC<SubtaskItemDetailProps> = memo(({
                 onConfirm={handleConfirmDelete}
                 itemTitle={subtask.title || t('common.untitledSubtask')}
                 title={t('subtask.deleteModal.title')}
-                description={t('confirmDeleteModal.subtask.description', {itemTitle: subtask.title || t('common.untitledSubtask')})}
+                description={t('confirmDeleteModal.subtask.description', { itemTitle: subtask.title || t('common.untitledSubtask') })}
             />
         </>
     );

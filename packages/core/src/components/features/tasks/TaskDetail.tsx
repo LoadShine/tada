@@ -1,5 +1,5 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {useAtomValue, useSetAtom} from 'jotai';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAtomValue, useSetAtom } from 'jotai';
 import {
     defaultPreferencesSettingsForApi,
     preferencesSettingsAtom,
@@ -10,14 +10,14 @@ import {
 } from '@/store/jotai.ts';
 import Icon from '@/components/ui/Icon.tsx';
 import Button from '@/components/ui/Button.tsx';
-import {formatDateTime, formatRelativeDate, isOverdue, isValid, safeParseDate,} from '@/utils/dateUtils';
-import {Subtask, Task, TaskGroupCategory} from '@/types';
-import {twMerge} from 'tailwind-merge';
+import { formatDateTime, formatRelativeDate, isOverdue, isValid, safeParseDate, } from '@/utils/dateUtils';
+import { Subtask, Task, TaskGroupCategory } from '@/types';
+import { twMerge } from 'tailwind-merge';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Popover from '@radix-ui/react-popover';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import {ProgressIndicator} from './TaskItem';
-import {IconName} from "@/components/ui/IconMap.ts";
+import { ProgressIndicator } from './TaskItem';
+import { IconName } from "@/components/ui/IconMap.ts";
 import {
     closestCenter,
     DndContext,
@@ -31,11 +31,11 @@ import {
     useSensor,
     useSensors
 } from "@dnd-kit/core";
-import {arrayMove, SortableContext, verticalListSortingStrategy} from "@dnd-kit/sortable";
-import {AnimatePresence, motion} from "framer-motion";
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { AnimatePresence, motion } from "framer-motion";
 import SubtaskItemDetail from "./SubtaskItemDetail";
-import {useTranslation} from "react-i18next";
-import CodeMirrorEditor, {CodeMirrorEditorRef} from "@/components/ui/Editor.tsx";
+import { useTranslation } from "react-i18next";
+import CodeMirrorEditor, { CodeMirrorEditorRef } from "@/components/ui/Editor.tsx";
 import AddTagsPopoverContent from "@/components/ui/TagInput.tsx";
 import CustomDatePickerContent from "@/components/ui/DatePicker.tsx";
 import ConfirmDeleteModalRadix from "@/components/ui/ConfirmDeleteModal.tsx";
@@ -47,7 +47,7 @@ interface TagPillProps {
     disabled?: boolean;
 }
 
-const TagPill: React.FC<TagPillProps> = React.memo(({tag, onRemove, disabled}) => (
+const TagPill: React.FC<TagPillProps> = React.memo(({ tag, onRemove, disabled }) => (
     <span
         className={twMerge(
             "inline-flex items-center bg-black/5 dark:bg-white/5 text-grey-medium dark:text-neutral-300 rounded px-1.5 py-0.5 text-[11px] mr-1 mb-1 group/pill whitespace-nowrap backdrop-blur-sm",
@@ -62,9 +62,9 @@ const TagPill: React.FC<TagPillProps> = React.memo(({tag, onRemove, disabled}) =
                 e.stopPropagation();
                 onRemove();
             }}
-                    className="ml-1 text-grey-medium/70 dark:text-neutral-500 hover:text-error dark:hover:text-red-400 opacity-50 group-hover/pill:opacity-100 focus:outline-none rounded-full p-0.5 -mr-0.5 flex items-center justify-center"
-                    aria-label={`Remove tag ${tag}`} tabIndex={-1}>
-                <Icon name="x" size={9} strokeWidth={2.5}/>
+                className="ml-1 text-grey-medium/70 dark:text-neutral-500 hover:text-error dark:hover:text-red-400 opacity-50 group-hover/pill:opacity-100 focus:outline-none rounded-full p-0.5 -mr-0.5 flex items-center justify-center"
+                aria-label={`Remove tag ${tag}`} tabIndex={-1}>
+                <Icon name="x" size={9} strokeWidth={2.5} />
             </button>
         )}
     </span>
@@ -83,14 +83,14 @@ const RadixMenuItem = React.forwardRef<
     React.ElementRef<typeof DropdownMenu.Item>,
     RadixMenuItemProps
 >(({
-       icon,
-       iconColor,
-       selected,
-       children,
-       className,
-       isDanger = false,
-       ...props
-   }, ref) => (
+    icon,
+    iconColor,
+    selected,
+    children,
+    className,
+    isDanger = false,
+    ...props
+}, ref) => (
     <DropdownMenu.Item
         ref={ref}
         className={twMerge(
@@ -107,15 +107,15 @@ const RadixMenuItem = React.forwardRef<
         {...props}
     >
         {icon && (<Icon name={icon} size={14} strokeWidth={1.5}
-                        className={twMerge("mr-2 flex-shrink-0 opacity-80", iconColor)}
-                        aria-hidden="true"/>)}
+            className={twMerge("mr-2 flex-shrink-0 opacity-80", iconColor)}
+            aria-hidden="true" />)}
         <span className="flex-grow">{children}</span>
     </DropdownMenu.Item>
 ));
 RadixMenuItem.displayName = 'RadixMenuItem';
 
 const TaskDetail: React.FC = () => {
-    const {t} = useTranslation();
+    const { t } = useTranslation();
     const selectedTask = useAtomValue(selectedTaskAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
     const allUserLists = useAtomValue(userListsAtom);
@@ -127,6 +127,10 @@ const TaskDetail: React.FC = () => {
 
     const [localTitle, setLocalTitle] = useState(selectedTask?.title || '');
     const [localContent, setLocalContent] = useState(selectedTask?.content || '');
+    const [localStartDate, setLocalStartDate] = useState<Date | undefined>(() => {
+        const date = safeParseDate(selectedTask?.startDate);
+        return date && isValid(date) ? date : undefined;
+    });
     const [localDueDate, setLocalDueDate] = useState<Date | undefined>(() => {
         const date = safeParseDate(selectedTask?.dueDate);
         return date && isValid(date) ? date : undefined;
@@ -134,19 +138,24 @@ const TaskDetail: React.FC = () => {
 
     const localTitleRef = useRef(localTitle);
     const localContentRef = useRef(localContent);
+    const localStartDateRef = useRef(localStartDate);
     const localDueDateRef = useRef(localDueDate);
     useEffect(() => { localTitleRef.current = localTitle; }, [localTitle]);
     useEffect(() => { localContentRef.current = localContent; }, [localContent]);
+    useEffect(() => { localStartDateRef.current = localStartDate; }, [localStartDate]);
     useEffect(() => { localDueDateRef.current = localDueDate; }, [localDueDate]);
 
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false);
+    const [isFooterStartDatePickerOpen, setIsFooterStartDatePickerOpen] = useState(false);
     const [isFooterDatePickerOpen, setIsFooterDatePickerOpen] = useState(false);
     const [isHeaderMenuDatePickerOpen, setIsHeaderMenuDatePickerOpen] = useState(false);
+    const [isHeaderMenuStartDatePickerOpen, setIsHeaderMenuStartDatePickerOpen] = useState(false);
     const [isHeaderMenuTagsPopoverOpen, setIsHeaderMenuTagsPopoverOpen] = useState(false);
     const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
     const [isInfoPopoverOpen, setIsInfoPopoverOpen] = useState(false);
 
+    const [isStartDateTooltipOpen, setIsStartDateTooltipOpen] = useState(false);
     const [isDateTooltipOpen, setIsDateTooltipOpen] = useState(false);
     const [isInfoTooltipOpen, setIsInfoTooltipOpen] = useState(false);
 
@@ -176,13 +185,17 @@ const TaskDetail: React.FC = () => {
 
         const processedTitle = localTitleRef.current.trim();
         const currentContent = localContentRef.current;
+        const currentStartDate = localStartDateRef.current;
         const currentDueDate = localDueDateRef.current;
 
+        const processedStartDateTimestamp = currentStartDate && isValid(currentStartDate) ? currentStartDate.getTime() : null;
         const processedDueDateTimestamp = currentDueDate && isValid(currentDueDate) ? currentDueDate.getTime() : null;
 
         const changesToSave: Partial<Task> = {};
         if (processedTitle !== selectedTask.title) changesToSave.title = processedTitle || t('common.untitledTask');
         if (currentContent !== (selectedTask.content || '')) changesToSave.content = currentContent;
+        const originalStartTime = selectedTask.startDate ?? null;
+        if (processedStartDateTimestamp !== originalStartTime) changesToSave.startDate = processedStartDateTimestamp;
         const originalDueTime = selectedTask.dueDate ?? null;
         if (processedDueDateTimestamp !== originalDueTime) changesToSave.dueDate = processedDueDateTimestamp;
 
@@ -212,6 +225,8 @@ const TaskDetail: React.FC = () => {
             if (document.activeElement !== editorRef.current?.getView()?.contentDOM) {
                 // CodeMirror handles its own updates usually
             }
+            const startDate = safeParseDate(selectedTask.startDate);
+            setLocalStartDate(startDate && isValid(startDate) ? startDate : undefined);
             const date = safeParseDate(selectedTask.dueDate);
             setLocalDueDate(date && isValid(date) ? date : undefined);
         }
@@ -280,15 +295,27 @@ const TaskDetail: React.FC = () => {
         }
     }, [savePendingChanges]);
 
+    const handleFooterStartDatePickerSelect = useCallback((dateWithTime: Date | undefined) => {
+        setLocalStartDate(dateWithTime);
+        updateTaskImmediately({ startDate: dateWithTime ? dateWithTime.getTime() : null });
+        setIsFooterStartDatePickerOpen(false);
+        setIsStartDateTooltipOpen(false);
+    }, [updateTaskImmediately]);
+
+    const closeFooterStartDatePickerPopover = useCallback(() => {
+        setIsFooterStartDatePickerOpen(false);
+        setIsStartDateTooltipOpen(false);
+    }, []);
+
     const handleFooterDatePickerSelect = useCallback((dateWithTime: Date | undefined) => {
         setLocalDueDate(dateWithTime);
-        updateTaskImmediately({dueDate: dateWithTime ? dateWithTime.getTime() : null});
+        updateTaskImmediately({ dueDate: dateWithTime ? dateWithTime.getTime() : null });
         setIsFooterDatePickerOpen(false);
         setIsDateTooltipOpen(false);
     }, [updateTaskImmediately]);
 
     const handleTagsApply = useCallback((newTags: string[]) => {
-        updateTaskImmediately({tags: newTags});
+        updateTaskImmediately({ tags: newTags });
     }, [updateTaskImmediately]);
 
     const closeFooterDatePickerPopover = useCallback(() => {
@@ -296,23 +323,34 @@ const TaskDetail: React.FC = () => {
         setIsDateTooltipOpen(false);
     }, []);
 
-    const handleHeaderMenuPopoverOpenChange = useCallback((open: boolean, type: 'date' | 'tags') => {
+    const handleHeaderMenuPopoverOpenChange = useCallback((open: boolean, type: 'date' | 'tags' | 'startDate') => {
         if (open) {
             if (type === 'date') {
                 setIsHeaderMenuDatePickerOpen(true);
                 setIsHeaderMenuTagsPopoverOpen(false);
+                setIsHeaderMenuStartDatePickerOpen(false);
             } else if (type === 'tags') {
                 setIsHeaderMenuTagsPopoverOpen(true);
                 setIsHeaderMenuDatePickerOpen(false);
+                setIsHeaderMenuStartDatePickerOpen(false);
+            } else if (type === 'startDate') {
+                setIsHeaderMenuStartDatePickerOpen(true);
+                setIsHeaderMenuDatePickerOpen(false);
+                setIsHeaderMenuTagsPopoverOpen(false);
             }
         } else {
             if (type === 'date') setIsHeaderMenuDatePickerOpen(false);
             if (type === 'tags') setIsHeaderMenuTagsPopoverOpen(false);
+            if (type === 'startDate') setIsHeaderMenuStartDatePickerOpen(false);
         }
     }, []);
 
     const closeHeaderMenuDatePickerPopover = useCallback(() => {
         handleHeaderMenuPopoverOpenChange(false, 'date');
+    }, [handleHeaderMenuPopoverOpenChange]);
+
+    const closeHeaderMenuStartDatePickerPopover = useCallback(() => {
+        handleHeaderMenuPopoverOpenChange(false, 'startDate');
     }, [handleHeaderMenuPopoverOpenChange]);
 
     const closeHeaderMenuTagsPopover = useCallback(() => {
@@ -322,13 +360,13 @@ const TaskDetail: React.FC = () => {
     const handleListChange = useCallback((newListName: string) => {
         const listObject = allUserLists?.find(l => l.name === newListName);
         if (listObject) {
-            updateTaskImmediately({listName: newListName, listId: listObject.id});
+            updateTaskImmediately({ listName: newListName, listId: listObject.id });
         }
         setIsMoreActionsOpen(false);
     }, [updateTaskImmediately, allUserLists]);
 
     const handlePriorityChange = useCallback((newPriority: number | null) => {
-        updateTaskImmediately({priority: newPriority});
+        updateTaskImmediately({ priority: newPriority });
     }, [updateTaskImmediately]);
 
     const handleProgressChange = useCallback((newPercentage: number | null) => {
@@ -357,7 +395,7 @@ const TaskDetail: React.FC = () => {
     const confirmDelete = useCallback(() => {
         if (!selectedTask) return;
         // Soft delete (move to trash)
-        updateTaskImmediately({listName: 'Trash', completePercentage: null});
+        updateTaskImmediately({ listName: 'Trash', completePercentage: null });
         setSelectedTaskId(null);
         closeDeleteConfirm();
     }, [selectedTask, updateTaskImmediately, setSelectedTaskId, closeDeleteConfirm]);
@@ -385,7 +423,7 @@ const TaskDetail: React.FC = () => {
 
     const handleRestore = useCallback(() => {
         if (!selectedTask || selectedTask.listName !== 'Trash') return;
-        updateTaskImmediately({listName: 'Inbox'});
+        updateTaskImmediately({ listName: 'Inbox' });
     }, [selectedTask, updateTaskImmediately]);
 
     const handleDuplicateTask = useCallback(() => {
@@ -476,14 +514,14 @@ const TaskDetail: React.FC = () => {
         deleteSubtask(selectedTask.id, subtaskId);
     }, [selectedTask, deleteSubtask]);
 
-    const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 3}}), useSensor(KeyboardSensor, {}));
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 3 } }), useSensor(KeyboardSensor, {}));
     const handleSubtaskDragStart = (event: DragStartEvent) => {
         if (event.active.data.current?.type === 'subtask-item-detail') setDraggingSubtaskId(event.active.id.toString().replace('subtask-detail-', ''));
     };
 
     const handleSubtaskDragEnd = (event: DragEndEvent) => {
         setDraggingSubtaskId(null);
-        const {active, over} = event;
+        const { active, over } = event;
         if (!selectedTask || !active || !over || active.id === over.id) return;
         if (active.data.current?.type !== 'subtask-item-detail' || over.data.current?.type !== 'subtask-item-detail') return;
 
@@ -502,6 +540,8 @@ const TaskDetail: React.FC = () => {
         }
     };
 
+    const displayStartDateForPicker = localStartDate;
+    const displayStartDateForRender = localStartDate;
     const displayDueDateForPicker = localDueDate;
     const displayDueDateForRender = localDueDate;
     const overdue = useMemo(() => displayDueDateForRender && isValid(displayDueDateForRender) && !isCompleted && !isTrash && isOverdue(displayDueDateForRender), [displayDueDateForRender, isCompleted, isTrash]);
@@ -518,9 +558,9 @@ const TaskDetail: React.FC = () => {
         bgColor: string;
         shortLabel: string;
     }> = useMemo(() => ({
-        1: {label: t('priorityLabels.1'), iconColor: 'text-error', bgColor: 'bg-error', shortLabel: 'P1'},
-        2: {label: t('priorityLabels.2'), iconColor: 'text-warning', bgColor: 'bg-warning', shortLabel: 'P2'},
-        3: {label: t('priorityLabels.3'), iconColor: 'text-info', bgColor: 'bg-info', shortLabel: 'P3'},
+        1: { label: t('priorityLabels.1'), iconColor: 'text-error', bgColor: 'bg-error', shortLabel: 'P1' },
+        2: { label: t('priorityLabels.2'), iconColor: 'text-warning', bgColor: 'bg-warning', shortLabel: 'P2' },
+        3: { label: t('priorityLabels.3'), iconColor: 'text-info', bgColor: 'bg-info', shortLabel: 'P3' },
     }), [t]);
 
     const priorityDotBgColor = useMemo(() => {
@@ -544,6 +584,7 @@ const TaskDetail: React.FC = () => {
     const editorClasses = useMemo(() => twMerge("!h-full text-sm !bg-transparent !border-none !shadow-none", (isInteractiveDisabled) && "opacity-60 cursor-not-allowed", isTrash && "pointer-events-none", "dark:!text-neutral-300"), [isInteractiveDisabled, isTrash]);
     const footerClass = useMemo(() => twMerge("px-4 py-2 h-11 flex items-center justify-between flex-shrink-0", "border-t border-grey-light/50 dark:border-neutral-700/50", "bg-white/70 dark:bg-neutral-850/70 backdrop-blur-sm"), []);
     const actionButtonClass = useMemo(() => twMerge("text-grey-medium dark:text-neutral-400", "hover:bg-black/5 dark:hover:bg-white/10", "hover:text-grey-dark dark:hover:text-neutral-200", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850"), []);
+    const footerStartDateTriggerClass = useMemo(() => twMerge("h-8 flex items-center text-xs px-2 py-1 rounded-base transition-colors duration-150", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850", "hover:bg-black/5 dark:hover:bg-white/10", (displayStartDateForRender && isValid(displayStartDateForRender)) ? "text-primary dark:text-primary-light font-medium" : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200", isTrash && "cursor-not-allowed opacity-60"), [displayStartDateForRender, isTrash]);
     const footerDateTriggerClass = useMemo(() => twMerge("h-8 flex items-center text-xs px-2 py-1 rounded-base transition-colors duration-150", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850", "hover:bg-black/5 dark:hover:bg-white/10", (displayDueDateForRender && isValid(displayDueDateForRender)) ? (overdue && !isCompleted && !isTrash ? "text-error dark:text-red-400 font-medium" : "text-primary dark:text-primary-light font-medium") : "text-grey-medium dark:text-neutral-400 hover:text-grey-dark dark:hover:text-neutral-200", isTrash && "cursor-not-allowed opacity-60"), [displayDueDateForRender, overdue, isCompleted, isTrash]);
     const dropdownContentClasses = useMemo(() => twMerge("z-[60] min-w-[180px] p-1 bg-white rounded-base shadow-modal dark:bg-neutral-800 dark:border dark:border-neutral-700", "data-[state=open]:animate-dropdownShow data-[state=closed]:animate-dropdownHide"), []);
     const subtaskDatePickerPopoverWrapperClasses = useMemo(() => twMerge("z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800", "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"), []);
@@ -560,10 +601,10 @@ const TaskDetail: React.FC = () => {
     const getSubTriggerClasses = () => twMerge("relative flex cursor-pointer select-none items-center rounded-base px-2.5 py-1.5 text-[12px] font-normal outline-none transition-colors data-[disabled]:pointer-events-none h-7", "focus:bg-grey-ultra-light data-[highlighted]:bg-grey-ultra-light data-[state=open]:bg-grey-ultra-light", "dark:focus:bg-neutral-700 dark:data-[highlighted]:bg-neutral-700 dark:data-[state=open]:bg-neutral-700", "text-grey-dark data-[highlighted]:text-grey-dark data-[state=open]:text-grey-dark", "dark:text-neutral-300 dark:data-[highlighted]:text-neutral-100 dark:data-[state=open]:text-neutral-100", "data-[disabled]:opacity-50");
     const tooltipContentClass = useMemo(() => twMerge("text-[11px] bg-grey-dark dark:bg-neutral-900/95 text-white dark:text-neutral-100 px-2 py-1 rounded-base shadow-md select-none z-[75]", "data-[state=delayed-open]:animate-fadeIn data-[state=closed]:animate-fadeOut"), []);
     const progressMenuItems = useMemo(() => [
-        {label: t('taskDetail.progressLabels.notStarted'), value: null, icon: 'circle' as IconName, iconStroke: 1.5},
-        {label: t('taskDetail.progressLabels.inProgress'), value: 30, icon: 'circle-dot-dashed' as IconName, iconStroke: 1.5},
-        {label: t('taskDetail.progressLabels.mostlyDone'), value: 60, icon: 'circle-dot' as IconName, iconStroke: 1.5},
-        {label: t('taskDetail.progressLabels.completed'), value: 100, icon: 'circle-check' as IconName, iconStroke: 2},
+        { label: t('taskDetail.progressLabels.notStarted'), value: null, icon: 'circle' as IconName, iconStroke: 1.5 },
+        { label: t('taskDetail.progressLabels.inProgress'), value: 30, icon: 'circle-dot-dashed' as IconName, iconStroke: 1.5 },
+        { label: t('taskDetail.progressLabels.mostlyDone'), value: 60, icon: 'circle-dot' as IconName, iconStroke: 1.5 },
+        { label: t('taskDetail.progressLabels.completed'), value: 100, icon: 'circle-check' as IconName, iconStroke: 2 },
     ], [t]);
 
     const availableLists = useMemo(() => (allUserLists ?? []).filter(l => l.name !== 'Trash'), [allUserLists]);
@@ -583,7 +624,7 @@ const TaskDetail: React.FC = () => {
 
     if (isLoadingPreferences) {
         return <div className="h-full flex items-center justify-center"><Icon name="loader" size={24}
-                                                                              className="text-primary animate-spin"/>
+            className="text-primary animate-spin" />
         </div>;
     }
     if (!selectedTask) return null;
@@ -608,15 +649,15 @@ const TaskDetail: React.FC = () => {
                             <Tooltip.Provider delayDuration={300}>
                                 <Tooltip.Root>
                                     <Tooltip.Trigger asChild>
-                                         <span
-                                             className={twMerge("w-2.5 h-2.5 rounded-full flex-shrink-0", priorityDotBgColor)}
-                                             aria-label={priorityDotLabel}
-                                         />
+                                        <span
+                                            className={twMerge("w-2.5 h-2.5 rounded-full flex-shrink-0", priorityDotBgColor)}
+                                            aria-label={priorityDotLabel}
+                                        />
                                     </Tooltip.Trigger>
                                     <Tooltip.Portal>
                                         <Tooltip.Content className={tooltipContentClass} side="bottom" sideOffset={4}>
                                             {priorityDotLabel}
-                                            <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/95"/>
+                                            <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/95" />
                                         </Tooltip.Content>
                                     </Tooltip.Portal>
                                 </Tooltip.Root>
@@ -653,9 +694,9 @@ const TaskDetail: React.FC = () => {
                         >
                             <DropdownMenu.Trigger asChild>
                                 <Button ref={moreActionsButtonRef} variant="ghost" size="icon"
-                                        icon="more-horizontal"
-                                        className={twMerge(actionButtonClass, "w-8 h-8")}
-                                        aria-label={t('taskDetail.moreActions')}/>
+                                    icon="more-horizontal"
+                                    className={twMerge(actionButtonClass, "w-8 h-8")}
+                                    aria-label={t('taskDetail.moreActions')} />
                             </DropdownMenu.Trigger>
                             <DropdownMenu.Portal>
                                 <DropdownMenu.Content
@@ -665,7 +706,7 @@ const TaskDetail: React.FC = () => {
                                     align="end"
                                     onCloseAutoFocus={handleMoreActionsDropdownCloseFocus}
                                     onInteractOutside={(e) => {
-                                        if (isHeaderMenuDatePickerOpen || isHeaderMenuTagsPopoverOpen) {
+                                        if (isHeaderMenuDatePickerOpen || isHeaderMenuTagsPopoverOpen || isHeaderMenuStartDatePickerOpen) {
                                             const target = e.target as HTMLElement;
                                             if (target.closest('[data-radix-popper-content-wrapper]')) {
                                                 e.preventDefault();
@@ -691,13 +732,13 @@ const TaskDetail: React.FC = () => {
                                                     aria-pressed={isSelected}
                                                     disabled={isInteractiveDisabled}
                                                 >
-                                                    <Icon name={item.icon} size={14} strokeWidth={item.iconStroke}/>
+                                                    <Icon name={item.icon} size={14} strokeWidth={item.iconStroke} />
                                                 </button>
                                             );
                                         })}
                                     </div>
 
-                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                     <div className="px-2.5 pt-1.5 pb-0.5 text-[11px] text-grey-medium dark:text-neutral-400 uppercase tracking-wider">{t('common.priority')}</div>
                                     <div className="flex justify-around items-center px-1.5 py-1">
@@ -719,7 +760,7 @@ const TaskDetail: React.FC = () => {
                                                     aria-pressed={isSelected}
                                                     disabled={isInteractiveDisabled}
                                                 >
-                                                    <Icon name="flag" size={14} strokeWidth={1.5}/>
+                                                    <Icon name="flag" size={14} strokeWidth={1.5} />
                                                 </button>
                                             );
                                         })}
@@ -736,11 +777,11 @@ const TaskDetail: React.FC = () => {
                                             aria-pressed={selectedTask.priority === null}
                                             disabled={isInteractiveDisabled}
                                         >
-                                            <Icon name="minus" size={14} strokeWidth={1.5}/>
+                                            <Icon name="minus" size={14} strokeWidth={1.5} />
                                         </button>
                                     </div>
 
-                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                     <DropdownMenu.Sub>
                                         <DropdownMenu.SubTrigger
@@ -749,15 +790,17 @@ const TaskDetail: React.FC = () => {
                                             onPointerEnter={() => {
                                                 if (isHeaderMenuDatePickerOpen) handleHeaderMenuPopoverOpenChange(false, 'date');
                                                 if (isHeaderMenuTagsPopoverOpen) handleHeaderMenuPopoverOpenChange(false, 'tags');
+                                                if (isHeaderMenuStartDatePickerOpen) handleHeaderMenuPopoverOpenChange(false, 'startDate');
                                             }}
                                             onFocus={() => {
                                                 if (isHeaderMenuDatePickerOpen) handleHeaderMenuPopoverOpenChange(false, 'date');
                                                 if (isHeaderMenuTagsPopoverOpen) handleHeaderMenuPopoverOpenChange(false, 'tags');
+                                                if (isHeaderMenuStartDatePickerOpen) handleHeaderMenuPopoverOpenChange(false, 'startDate');
                                             }}
                                         >
-                                            <Icon name="folder" size={14} strokeWidth={1.5} className="mr-2 opacity-80"/>
+                                            <Icon name="folder" size={14} strokeWidth={1.5} className="mr-2 opacity-80" />
                                             {t('taskDetail.moveTo')}
-                                            <div className="ml-auto pl-5"><Icon name="chevron-right" size={14} strokeWidth={1.5} className="opacity-70"/></div>
+                                            <div className="ml-auto pl-5"><Icon name="chevron-right" size={14} strokeWidth={1.5} className="opacity-70" /></div>
                                         </DropdownMenu.SubTrigger>
                                         <DropdownMenu.Portal>
                                             <DropdownMenu.SubContent
@@ -775,12 +818,12 @@ const TaskDetail: React.FC = () => {
                                                             disabled={isTrash}
                                                         >
                                                             <Icon name={list.name === 'Inbox' ? 'inbox' : 'list'}
-                                                                  size={14} strokeWidth={1.5}
-                                                                  className="mr-2 flex-shrink-0 opacity-80"/>
+                                                                size={14} strokeWidth={1.5}
+                                                                className="mr-2 flex-shrink-0 opacity-80" />
                                                             <span className="flex-grow">{list.name === 'Inbox' ? t('sidebar.inbox') : list.name}</span>
                                                             <DropdownMenu.ItemIndicator
                                                                 className="absolute right-2 inline-flex items-center">
-                                                                <Icon name="check" size={12} strokeWidth={2}/>
+                                                                <Icon name="check" size={12} strokeWidth={2} />
                                                             </DropdownMenu.ItemIndicator>
                                                         </DropdownMenu.RadioItem>
                                                     ))}
@@ -789,10 +832,10 @@ const TaskDetail: React.FC = () => {
                                         </DropdownMenu.Portal>
                                     </DropdownMenu.Sub>
 
-                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
 
                                     <Popover.Root modal={false} open={isHeaderMenuTagsPopoverOpen}
-                                                  onOpenChange={(open) => handleHeaderMenuPopoverOpenChange(open, 'tags')}>
+                                        onOpenChange={(open) => handleHeaderMenuPopoverOpenChange(open, 'tags')}>
                                         <Popover.Trigger asChild>
                                             <RadixMenuItem
                                                 icon="tag"
@@ -835,7 +878,7 @@ const TaskDetail: React.FC = () => {
                                     </Popover.Root>
 
                                     <Popover.Root modal={false} open={isHeaderMenuDatePickerOpen}
-                                                  onOpenChange={(open) => handleHeaderMenuPopoverOpenChange(open, 'date')}>
+                                        onOpenChange={(open) => handleHeaderMenuPopoverOpenChange(open, 'date')}>
                                         <Popover.Trigger asChild>
                                             <RadixMenuItem
                                                 icon="calendar-plus"
@@ -879,16 +922,61 @@ const TaskDetail: React.FC = () => {
                                         </Popover.Portal>
                                     </Popover.Root>
 
-                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                    <Popover.Root modal={false} open={isHeaderMenuStartDatePickerOpen}
+                                        onOpenChange={(open) => handleHeaderMenuPopoverOpenChange(open, 'startDate')}>
+                                        <Popover.Trigger asChild>
+                                            <RadixMenuItem
+                                                icon="calendar"
+                                                onSelect={(event) => {
+                                                    event.preventDefault();
+                                                    handleHeaderMenuPopoverOpenChange(true, 'startDate');
+                                                }}
+                                                disabled={isInteractiveDisabled}
+                                            > {t('taskDetail.setStartDate', 'Set start date')}... </RadixMenuItem>
+                                        </Popover.Trigger>
+                                        <Popover.Portal>
+                                            <Popover.Content
+                                                className={twMerge(popoverContentWrapperClasses, "p-0")}
+                                                side="left"
+                                                align="start"
+                                                sideOffset={headerMenuSubPopoverSideOffset}
+                                                onOpenAutoFocus={(e) => e.preventDefault()}
+                                                onCloseAutoFocus={(e) => {
+                                                    e.preventDefault();
+                                                    moreActionsButtonRef.current?.focus();
+                                                }}
+                                                onFocusOutside={(event) => event.preventDefault()}
+                                                onPointerDownOutside={(event) => {
+                                                    const target = event.target as HTMLElement;
+                                                    if (!target.closest('[data-radix-dropdown-menu-trigger]') && !target.closest('[data-radix-popper-content-wrapper]')) {
+                                                        handleHeaderMenuPopoverOpenChange(false, 'startDate');
+                                                    } else {
+                                                        event.preventDefault();
+                                                    }
+                                                }}
+                                            >
+                                                <CustomDatePickerContent
+                                                    initialDate={localStartDate ?? undefined}
+                                                    onSelect={(date) => {
+                                                        handleFooterStartDatePickerSelect(date);
+                                                        closeHeaderMenuStartDatePickerPopover();
+                                                    }}
+                                                    closePopover={closeHeaderMenuStartDatePickerPopover}
+                                                />
+                                            </Popover.Content>
+                                        </Popover.Portal>
+                                    </Popover.Root>
+
+                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
                                     <RadixMenuItem icon="copy-plus" onSelect={handleDuplicateTask} disabled={isTrash}>
                                         {t('taskDetail.duplicate')}
                                     </RadixMenuItem>
-                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1"/>
+                                    <DropdownMenu.Separator className="h-px bg-grey-light dark:bg-neutral-700 my-1" />
                                     {isTrash ? (
                                         <>
                                             <RadixMenuItem icon="arrow-left"
-                                                           onSelect={handleRestore}
-                                                           className="text-success dark:text-green-500 data-[highlighted]:!bg-green-500/10 data-[highlighted]:!text-green-600 dark:data-[highlighted]:!bg-green-500/15 dark:data-[highlighted]:!text-green-400">
+                                                onSelect={handleRestore}
+                                                className="text-success dark:text-green-500 data-[highlighted]:!bg-green-500/10 data-[highlighted]:!text-green-600 dark:data-[highlighted]:!bg-green-500/15 dark:data-[highlighted]:!text-green-400">
                                                 {t('taskDetail.restore')}
                                             </RadixMenuItem>
                                             <RadixMenuItem
@@ -910,8 +998,8 @@ const TaskDetail: React.FC = () => {
                             </DropdownMenu.Portal>
                         </DropdownMenu.Root>
                         <Button variant="ghost" size="icon" icon="x" onClick={handleClose}
-                                className={twMerge(actionButtonClass, "w-8 h-8")}
-                                aria-label={t('taskDetail.close')}/>
+                            className={twMerge(actionButtonClass, "w-8 h-8")}
+                            aria-label={t('taskDetail.close')} />
                     </div>
                 </div>
 
@@ -948,11 +1036,11 @@ const TaskDetail: React.FC = () => {
                                     </div>
                                     <div className="flex-1 overflow-y-auto styled-scrollbar-thin -mx-2 pr-2 mb-3 min-h-[80px]">
                                         <DndContext sensors={sensors} collisionDetection={closestCenter}
-                                                    onDragStart={handleSubtaskDragStart}
-                                                    onDragEnd={handleSubtaskDragEnd}
-                                                    measuring={{droppable: {strategy: MeasuringStrategy.WhileDragging}}}>
+                                            onDragStart={handleSubtaskDragStart}
+                                            onDragEnd={handleSubtaskDragEnd}
+                                            measuring={{ droppable: { strategy: MeasuringStrategy.WhileDragging } }}>
                                             <SortableContext items={sortedSubtasks.map(s => `subtask-detail-${s.id}`)}
-                                                             strategy={verticalListSortingStrategy}>
+                                                strategy={verticalListSortingStrategy}>
                                                 <div className="space-y-0.5">
                                                     {sortedSubtasks.map(subtask => (
                                                         <SubtaskItemDetail
@@ -968,8 +1056,8 @@ const TaskDetail: React.FC = () => {
                                                 {draggingSubtaskId && selectedTask.subtasks?.find(s => s.id === draggingSubtaskId) ? (
                                                     <SubtaskItemDetail
                                                         subtask={selectedTask.subtasks.find(s => s.id === draggingSubtaskId)!}
-                                                        onUpdate={() => {}}
-                                                        onDelete={() => {}}
+                                                        onUpdate={() => { }}
+                                                        onDelete={() => { }}
                                                         isTaskCompletedOrTrashed={isInteractiveDisabled}
                                                         isDraggingOverlay={true}
                                                     />
@@ -985,7 +1073,7 @@ const TaskDetail: React.FC = () => {
                                     <form onSubmit={handleSubtaskSubmit} className="group relative flex items-center flex-1 h-8 bg-white/50 dark:bg-neutral-800/50 rounded-base transition-all duration-150 ease-in-out border border-transparent dark:border-transparent backdrop-blur-sm">
                                         <div className="absolute left-0.5 top-1/2 -translate-y-1/2 flex items-center h-full">
                                             <Popover.Root open={isNewSubtaskDatePickerOpen}
-                                                          onOpenChange={setIsNewSubtaskDatePickerOpen}>
+                                                onOpenChange={setIsNewSubtaskDatePickerOpen}>
                                                 <Popover.Trigger asChild>
                                                     <button
                                                         type="button"
@@ -995,7 +1083,7 @@ const TaskDetail: React.FC = () => {
                                                         )}
                                                         aria-label={t('subtask.setDueDate')}
                                                     >
-                                                        <Icon name="calendar" size={16} strokeWidth={1.5}/>
+                                                        <Icon name="calendar" size={16} strokeWidth={1.5} />
                                                     </button>
                                                 </Popover.Trigger>
                                                 <Popover.Portal>
@@ -1048,17 +1136,17 @@ const TaskDetail: React.FC = () => {
                                                 "text-grey-dark dark:text-neutral-100 placeholder:text-grey-medium dark:placeholder:text-neutral-400/70",
                                                 "transition-colors duration-150 ease-in-out"
                                             )}
-                                            style={{paddingLeft: `${newSubtaskInputPaddingLeft}px`}}
+                                            style={{ paddingLeft: `${newSubtaskInputPaddingLeft}px` }}
                                             aria-label="New subtask title"
                                         />
                                     </form>
                                     <AnimatePresence>
                                         {newSubtaskTitle.trim() && (
-                                            <motion.div initial={{opacity: 0, scale: 0.8}}
-                                                        animate={{opacity: 1, scale: 1}}
-                                                        exit={{opacity: 0, scale: 0.8}} transition={{duration: 0.15}}>
+                                            <motion.div initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.15 }}>
                                                 <Button variant="primary" size="sm" onClick={handleSubtaskSubmit}
-                                                        className="!h-7 !px-2.5 ml-2 !text-xs">{t('taskDetail.addSubtaskButton')}</Button>
+                                                    className="!h-7 !px-2.5 ml-2 !text-xs">{t('taskDetail.addSubtaskButton')}</Button>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -1069,13 +1157,56 @@ const TaskDetail: React.FC = () => {
                 </div>
 
                 <div className={footerClass}>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-1">
+                        <Tooltip.Provider><Popover.Root open={isFooterStartDatePickerOpen} onOpenChange={(open) => {
+                            setIsFooterStartDatePickerOpen(open);
+                            if (!open) setIsStartDateTooltipOpen(false);
+                        }}>
+                            <Tooltip.Root delayDuration={300} open={isStartDateTooltipOpen}
+                                onOpenChange={setIsStartDateTooltipOpen}>
+                                <Tooltip.Trigger asChild>
+                                    <Popover.Trigger asChild disabled={isTrash}>
+                                        <button className={footerStartDateTriggerClass} aria-label={t('taskDetail.setStartDate')}>
+                                            {displayStartDateForRender && isValid(displayStartDateForRender)
+                                                ? formatRelativeDate(displayStartDateForRender, t, true, preferences?.language)
+                                                : t('taskDetail.setStartDate')
+                                            }
+                                        </button>
+                                    </Popover.Trigger>
+                                </Tooltip.Trigger>
+                                <Tooltip.Portal>
+                                    <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
+                                        {displayStartDateForRender && isValid(displayStartDateForRender) ? `Start: ${formatRelativeDate(displayStartDateForRender, t, true, preferences?.language)}` : t('taskDetail.setStartDate')}
+                                        <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/95" />
+                                    </Tooltip.Content>
+                                </Tooltip.Portal>
+                            </Tooltip.Root>
+                            <Popover.Portal>
+                                <Popover.Content
+                                    className={twMerge(
+                                        "z-[70] p-0 bg-white rounded-base shadow-modal dark:bg-neutral-800",
+                                        "data-[state=open]:animate-popoverShow data-[state=closed]:animate-popoverHide"
+                                    )}
+                                    sideOffset={5}
+                                    align="start"
+                                    onOpenAutoFocus={(e) => e.preventDefault()}
+                                    onCloseAutoFocus={(e) => e.preventDefault()}
+                                >
+                                    <CustomDatePickerContent initialDate={displayStartDateForPicker}
+                                        onSelect={handleFooterStartDatePickerSelect}
+                                        closePopover={closeFooterStartDatePickerPopover} />
+                                </Popover.Content>
+                            </Popover.Portal>
+                        </Popover.Root></Tooltip.Provider>
+
+                        <span className="text-grey-light dark:text-neutral-700/50">→</span>
+
                         <Tooltip.Provider><Popover.Root open={isFooterDatePickerOpen} onOpenChange={(open) => {
                             setIsFooterDatePickerOpen(open);
                             if (!open) setIsDateTooltipOpen(false);
                         }}>
                             <Tooltip.Root delayDuration={300} open={isDateTooltipOpen}
-                                          onOpenChange={setIsDateTooltipOpen}>
+                                onOpenChange={setIsDateTooltipOpen}>
                                 <Tooltip.Trigger asChild>
                                     <Popover.Trigger asChild disabled={isTrash}>
                                         <button className={footerDateTriggerClass} aria-label={t('taskDetail.setDueDate')}>
@@ -1089,7 +1220,7 @@ const TaskDetail: React.FC = () => {
                                 <Tooltip.Portal>
                                     <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
                                         {displayDueDateForRender && isValid(displayDueDateForRender) ? `Due: ${formatRelativeDate(displayDueDateForRender, t, true, preferences?.language)}` : t('taskDetail.setDueDate')}
-                                        <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/95"/>
+                                        <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/95" />
                                     </Tooltip.Content>
                                 </Tooltip.Portal>
                             </Tooltip.Root>
@@ -1105,8 +1236,8 @@ const TaskDetail: React.FC = () => {
                                     onCloseAutoFocus={(e) => e.preventDefault()}
                                 >
                                     <CustomDatePickerContent initialDate={displayDueDateForPicker}
-                                                             onSelect={handleFooterDatePickerSelect}
-                                                             closePopover={closeFooterDatePickerPopover}/>
+                                        onSelect={handleFooterDatePickerSelect}
+                                        closePopover={closeFooterDatePickerPopover} />
                                 </Popover.Content>
                             </Popover.Portal>
                         </Popover.Root></Tooltip.Provider>
@@ -1118,18 +1249,18 @@ const TaskDetail: React.FC = () => {
                             if (!open) setIsInfoTooltipOpen(false);
                         }}>
                             <Tooltip.Root delayDuration={300} open={isInfoTooltipOpen}
-                                          onOpenChange={setIsInfoTooltipOpen}>
+                                onOpenChange={setIsInfoTooltipOpen}>
                                 <Tooltip.Trigger asChild>
                                     <Popover.Trigger asChild>
                                         <Button variant="ghost" size="icon" icon="info"
-                                                className={twMerge(actionButtonClass, "w-8 h-8")}
-                                                aria-label={t('taskDetail.taskInfo')}/>
+                                            className={twMerge(actionButtonClass, "w-8 h-8")}
+                                            aria-label={t('taskDetail.taskInfo')} />
                                     </Popover.Trigger>
                                 </Tooltip.Trigger>
                                 <Tooltip.Portal>
                                     <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
                                         {t('taskDetail.taskInfo')}
-                                        <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/95"/>
+                                        <Tooltip.Arrow className="fill-grey-dark dark:fill-neutral-900/95" />
                                     </Tooltip.Content>
                                 </Tooltip.Portal>
                             </Tooltip.Root>
@@ -1156,12 +1287,12 @@ const TaskDetail: React.FC = () => {
             </div>
             {selectedTask && (
                 <ConfirmDeleteModalRadix isOpen={isDeleteDialogOpen} onClose={closeDeleteConfirm}
-                                         onConfirm={confirmDelete}
-                                         itemTitle={selectedTask.title || t('common.untitledTask')}
-                                         title={t('confirmDeleteModal.task.title')}
-                                         description={t('confirmDeleteModal.task.description', {itemTitle: selectedTask.title || t('common.untitledTask')})}
-                                         confirmText={t('confirmDeleteModal.task.confirmText')}
-                                         confirmVariant="danger"
+                    onConfirm={confirmDelete}
+                    itemTitle={selectedTask.title || t('common.untitledTask')}
+                    title={t('confirmDeleteModal.task.title')}
+                    description={t('confirmDeleteModal.task.description', { itemTitle: selectedTask.title || t('common.untitledTask') })}
+                    confirmText={t('confirmDeleteModal.task.confirmText')}
+                    confirmVariant="danger"
                 />
             )}
             {selectedTask && (
@@ -1171,7 +1302,7 @@ const TaskDetail: React.FC = () => {
                     onConfirm={confirmPermanentDelete}
                     itemTitle={selectedTask.title || t('common.untitledTask')}
                     title={t('confirmDeleteModal.permanent.title')}
-                    description={t('confirmDeleteModal.permanent.description', {itemTitle: selectedTask.title || t('common.untitledTask')})}
+                    description={t('confirmDeleteModal.permanent.description', { itemTitle: selectedTask.title || t('common.untitledTask') })}
                     confirmText={t('confirmDeleteModal.permanent.confirmText')}
                     confirmVariant="danger"
                 />

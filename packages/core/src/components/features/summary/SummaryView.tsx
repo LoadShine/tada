@@ -105,8 +105,11 @@ const SummaryView: React.FC = () => {
 
     const isAiEnabled = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
 
+    const [historyInitialSelectedId, setHistoryInitialSelectedId] = useState<string | null>(null);
+
     useEffect(() => {
         if (selectedSummaryId) {
+            setHistoryInitialSelectedId(selectedSummaryId);
             setIsHistoryModalOpen(true);
             setSelectedSummaryId(null);
         }
@@ -334,7 +337,10 @@ const SummaryView: React.FC = () => {
         setIsHistoryModalOpen(true);
     }, [forceSaveCurrentSummary, isGenerating]);
 
-    const closeHistoryModal = useCallback(() => setIsHistoryModalOpen(false), []);
+    const closeHistoryModal = useCallback(() => {
+        setIsHistoryModalOpen(false);
+        setHistoryInitialSelectedId(null);
+    }, []);
     const closeRangePicker = useCallback(() => setIsRangePickerOpen(false), []);
 
     const periodOptions = useMemo((): { label: string, value: SummaryPeriodOption | 'custom' }[] => [
@@ -873,7 +879,7 @@ const SummaryView: React.FC = () => {
                 </div>
             </div>
             <SummaryHistoryModal isOpen={isHistoryModalOpen} onClose={closeHistoryModal} summaries={allStoredSummaries}
-                allTasks={allTasks} />
+                allTasks={allTasks} initialSelectedId={historyInitialSelectedId} />
         </div>
     );
 };

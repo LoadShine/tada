@@ -24,6 +24,7 @@ export interface Subtask {
     title: string;
     completed: boolean;
     completedAt: number | null;
+    startDate?: number | null;
     dueDate?: number | null;
     order: number;
     createdAt: number;
@@ -39,6 +40,7 @@ export interface Task {
     completed: boolean;
     completedAt: number | null;
     completePercentage: number | null;
+    startDate?: number | null;
     dueDate?: number | null;
     listId: string | null;
     listName: string;
