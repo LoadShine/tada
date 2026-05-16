@@ -6,6 +6,7 @@ import {EditorView} from '@codemirror/view';
 import {useTranslation} from "react-i18next";
 import {AI_PROVIDERS} from "@/config/aiProviders";
 import {streamChatCompletionForEditor} from "@/services/aiService";
+import {installMoondownInteractionFixes} from "@/utils/moondownInteractionFixes";
 import Moondown, {type MoondownTranslations} from 'moondown';
 import 'moondown/style.css';
 import 'tippy.js/dist/tippy.css';
@@ -89,7 +90,9 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
 
         useEffect(() => {
             let instance: Moondown | null = null;
+            let cleanupInteractionFixes: (() => void) | undefined;
             if (editorContainerRef.current) {
+                cleanupInteractionFixes = installMoondownInteractionFixes(editorContainerRef.current);
                 instance = new Moondown(editorContainerRef.current, value, {
                     theme,
                     readOnly,
@@ -108,6 +111,7 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
             }
 
             return () => {
+                cleanupInteractionFixes?.();
                 instance?.destroy();
                 moondownInstanceRef.current = null;
             };

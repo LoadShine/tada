@@ -40,24 +40,10 @@ const MainPage: React.FC<MainPageProps> = ({title, filter}) => {
             {/* Desktop Layout: TaskDetail is a permanent second column */}
             {isLg ? (
                 <div className={twMerge(
-                    "h-full flex-1 flex-shrink-0 relative overflow-hidden",
+                    "h-full flex-1 flex-shrink-0 min-w-0 overflow-hidden",
                     "bg-transparent"
                 )}>
-                    {!selectedTaskId && <TaskDetailPlaceholder/>}
-                    <AnimatePresence initial={false}>
-                        {selectedTaskId && (
-                            <motion.div
-                                key={selectedTaskId}
-                                className="absolute inset-0 w-full h-full z-10"
-                                initial={{x: '100%'}}
-                                animate={{x: 0}}
-                                exit={{x: '100%'}}
-                                transition={{duration: 0.25, ease: [0.33, 1, 0.68, 1]}}
-                            >
-                                <TaskDetail/>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {selectedTaskId ? <TaskDetail key={selectedTaskId}/> : <TaskDetailPlaceholder/>}
                 </div>
             ) : (
                 /* Mobile Layout: TaskDetail is an overlay drawer */

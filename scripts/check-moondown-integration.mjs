@@ -13,6 +13,7 @@ const readJson = (relativePath) => JSON.parse(readText(relativePath));
 const corePackage = readJson('packages/core/package.json');
 const editorSource = readText('packages/core/src/components/ui/Editor.tsx');
 const aiServiceSource = readText('packages/core/src/services/aiService.ts');
+const mainPageSource = readText('packages/core/src/pages/MainPage.tsx');
 
 const failures = [];
 
@@ -38,6 +39,18 @@ if (fs.existsSync(path.join(rootDir, 'packages/core/src/lib/moondown'))) {
 
 if (!editorSource.includes('instance.getValue() !== value') || !editorSource.includes('instance.setValue(value)')) {
   failures.push('Editor.tsx must sync external value prop changes into the Moondown instance.');
+}
+
+if (!editorSource.includes('installMoondownInteractionFixes')) {
+  failures.push('Editor.tsx must install interaction fixes for Moondown table cell focus and controls.');
+}
+
+if (!mainPageSource.includes('selectedTaskId ? <TaskDetail key={selectedTaskId}/> : <TaskDetailPlaceholder/>')) {
+  failures.push('MainPage.tsx must render the desktop task detail panel directly instead of leaving it in a drawer transform.');
+}
+
+if (!mainPageSource.includes('min-w-0 overflow-hidden')) {
+  failures.push('MainPage.tsx must constrain the desktop detail column so it cannot overflow offscreen.');
 }
 
 if (failures.length > 0) {
