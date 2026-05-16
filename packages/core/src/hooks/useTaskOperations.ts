@@ -32,7 +32,7 @@ export const useTaskOperations = () => {
     const updateTask = useCallback((taskId: string, updates: Partial<Task>) => {
         const service = storageManager.get();
 
-        let finalUpdates = { ...updates };
+        const finalUpdates = { ...updates };
         if (updates.completed === true && !updates.completedAt) {
             finalUpdates.completedAt = Date.now();
         } else if (updates.completed === false) {

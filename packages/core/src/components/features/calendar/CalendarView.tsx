@@ -359,7 +359,7 @@ const CalendarView: React.FC = () => {
                 const originalDue = safeParseDate(originalTask.dueDate);
                 const originalStart = safeParseDate(originalTask.startDate);
 
-                let targetDate = startOfDay(targetDay);
+                const targetDate = startOfDay(targetDay);
                 let updates: Partial<Task> = {};
                 const dragOffset = differenceInCalendarDays(targetDate, startOfDay(initialDragDate));
 

@@ -1,6 +1,19 @@
 # Changelog
 
-## Version 0.3.4 (Current)
+## Version 0.3.6 (Current)
+*Release Date: May 16, 2026*
+
+### ✨ Improvements
+- **Editor Runtime**: Replaced Tada's embedded Moondown source with the published npm `moondown` package.
+- **Editor Sync**: The task editor now refreshes correctly when external task content changes.
+- **Build Automation**: Added CI checks for the npm Moondown integration and aligned GitHub Actions with Node.js 22.
+
+### 🐛 Bug Fixes
+- Kept AI prompt image cleanup inside Tada so the app no longer depends on non-public Moondown utility exports.
+
+---
+
+## Version 0.3.4
 *Release Date: January 30, 2026*
 
 ### ✨ New Features

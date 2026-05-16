@@ -836,7 +836,7 @@ export class LocalStorageService implements IStorageService {
 
             // Import lists
             if (options.includeLists && data.data.lists) {
-                let lists = options.replaceAllData ? [] : this.fetchLists();
+                const lists = options.replaceAllData ? [] : this.fetchLists();
                 const localListsMap = new Map(lists.map(list => [list.id, list]));
 
                 data.data.lists.forEach(importedList => {
@@ -869,7 +869,7 @@ export class LocalStorageService implements IStorageService {
 
             // Import tasks
             if (options.includeTasks && data.data.tasks) {
-                let tasks = options.replaceAllData ? [] : this.fetchTasks();
+                const tasks = options.replaceAllData ? [] : this.fetchTasks();
                 const localTasksMap = new Map(tasks.map(task => [task.id, task]));
 
                 data.data.tasks.forEach(importedTask => {
@@ -902,7 +902,7 @@ export class LocalStorageService implements IStorageService {
 
             // Import summaries
             if (options.includeSummaries && data.data.summaries) {
-                let summaries = options.replaceAllData ? [] : this.fetchSummaries();
+                const summaries = options.replaceAllData ? [] : this.fetchSummaries();
                 const localSummariesMap = new Map(summaries.map(summary => [summary.id, summary]));
 
                 data.data.summaries.forEach(importedSummary => {
@@ -934,13 +934,13 @@ export class LocalStorageService implements IStorageService {
             }
 
             if (options.includeEcho && data.data.echoReports) {
-                let reports = options.replaceAllData ? [] : this.fetchEchoReports();
+                const reports = options.replaceAllData ? [] : this.fetchEchoReports();
                 const localReportsMap = new Map(reports.map(report => [report.id, report]));
 
                 data.data.echoReports.forEach(importedReport => {
                     const existingReport = localReportsMap.get(importedReport.id);
                     let shouldImport = true;
-                    let reportToImport = importedReport;
+                    const reportToImport = importedReport;
 
                     if (existingReport) {
                         const resolution = conflictResolutions?.get(importedReport.id) || options.conflictResolution;

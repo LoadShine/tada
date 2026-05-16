@@ -934,12 +934,12 @@ export class SqliteStorageService implements IStorageService {
             }
 
             if (options.includeLists && data.data.lists) {
-                let lists = options.replaceAllData ? [] : this.fetchLists();
+                const lists = options.replaceAllData ? [] : this.fetchLists();
                 const localListsMap = new Map(lists.map(list => [list.id, list]));
                 data.data.lists.forEach(importedList => {
                     const existingList = localListsMap.get(importedList.id);
                     let shouldImport = true;
-                    let listToImport = importedList;
+                    const listToImport = importedList;
                     if (existingList) {
                         const resolution = conflictResolutions?.get(importedList.id) || options.conflictResolution;
                         if (resolution === 'keep-local') shouldImport = false;
@@ -956,12 +956,12 @@ export class SqliteStorageService implements IStorageService {
             }
 
             if (options.includeTasks && data.data.tasks) {
-                let tasks = options.replaceAllData ? [] : this.fetchTasks();
+                const tasks = options.replaceAllData ? [] : this.fetchTasks();
                 const localTasksMap = new Map(tasks.map(task => [task.id, task]));
                 data.data.tasks.forEach(importedTask => {
                     const existingTask = localTasksMap.get(importedTask.id);
                     let shouldImport = true;
-                    let taskToImport = { ...importedTask, groupCategory: getTaskGroupCategory(importedTask) };
+                    const taskToImport = { ...importedTask, groupCategory: getTaskGroupCategory(importedTask) };
                     if (existingTask) {
                         const resolution = conflictResolutions?.get(importedTask.id) || options.conflictResolution;
                         if (resolution === 'keep-local') shouldImport = false;
@@ -978,12 +978,12 @@ export class SqliteStorageService implements IStorageService {
             }
 
             if (options.includeSummaries && data.data.summaries) {
-                let summaries = options.replaceAllData ? [] : this.fetchSummaries();
+                const summaries = options.replaceAllData ? [] : this.fetchSummaries();
                 const localSummariesMap = new Map(summaries.map(summary => [summary.id, summary]));
                 data.data.summaries.forEach(importedSummary => {
                     const existingSummary = localSummariesMap.get(importedSummary.id);
                     let shouldImport = true;
-                    let summaryToImport = importedSummary;
+                    const summaryToImport = importedSummary;
                     if (existingSummary) {
                         const resolution = conflictResolutions?.get(importedSummary.id) || options.conflictResolution;
                         if (resolution === 'keep-local') shouldImport = false;
@@ -1000,12 +1000,12 @@ export class SqliteStorageService implements IStorageService {
             }
 
             if (options.includeEcho && data.data.echoReports) {
-                let reports = options.replaceAllData ? [] : this.fetchEchoReports();
+                const reports = options.replaceAllData ? [] : this.fetchEchoReports();
                 const localReportsMap = new Map(reports.map(report => [report.id, report]));
                 data.data.echoReports.forEach(importedReport => {
                     const existingReport = localReportsMap.get(importedReport.id);
                     let shouldImport = true;
-                    let reportToImport = importedReport;
+                    const reportToImport = importedReport;
                     if (existingReport) {
                         const resolution = conflictResolutions?.get(importedReport.id) || options.conflictResolution;
                         if (resolution === 'keep-local' || resolution === 'skip') shouldImport = false;

@@ -1,6 +1,19 @@
 # 更新日志
 
-## Version 0.3.4（当前版本）
+## Version 0.3.6（当前版本）
+*发布日期: 2026年5月16日*
+
+### ✨ 改进 (Improvements)
+- **编辑器运行时**: 将 Tada 内置的 Moondown 源码替换为 npm 发布版 `moondown` 包。
+- **编辑器同步**: 当任务内容从外部刷新或切换时，编辑器现在会正确同步最新内容。
+- **自动构建**: 新增 npm Moondown 集成检查，并将 GitHub Actions 构建环境统一到 Node.js 22。
+
+### 🐛 问题修复 (Bug Fixes)
+- 将 AI 提示词中的图片清洗逻辑保留在 Tada 内部，避免依赖 Moondown 未公开导出的工具函数。
+
+---
+
+## Version 0.3.4
 *发布日期: 2026年1月30日*
 
 ### ✨ 新功能 (New Features)

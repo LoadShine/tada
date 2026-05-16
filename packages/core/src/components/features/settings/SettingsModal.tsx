@@ -332,9 +332,6 @@ const PreferencesSettings: React.FC = memo(() => {
 
     const isAIConfigured = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
 
-    if (!preferences) {
-        return <div className="p-4 text-center text-grey-medium">Loading preferences...</div>;
-    }
     const currentPreferences = preferences ?? defaultPreferencesFromAtoms;
 
     // Effect to auto-disable "Always Use AI Task" if AI is not configured
@@ -395,6 +392,10 @@ const PreferencesSettings: React.FC = memo(() => {
     }, [userLists, t]);
 
     const tooltipContentClass = "text-[11px] bg-grey-dark dark:bg-neutral-900 text-white dark:text-neutral-100 px-2 py-1 rounded-base shadow-md select-none z-[60] data-[state=delayed-open]:animate-fadeIn data-[state=closed]:animate-fadeOut";
+
+    if (!preferences) {
+        return <div className="p-4 text-center text-grey-medium">Loading preferences...</div>;
+    }
 
     return (
         <div className="space-y-0">
@@ -1144,10 +1145,6 @@ const AISettings: React.FC = memo(() => {
     const [showApiKey, setShowApiKey] = useState(false);
     const [connectionStatus, setConnectionStatus] = useAtom(aiConnectionStatusAtom);
 
-    if (!aiSettings) {
-        return <div className="p-4 text-center text-grey-medium">Loading AI settings...</div>;
-    }
-
     const currentSettings = aiSettings ?? defaultAISettingsForApi();
     const currentProvider = AI_PROVIDERS.find(p => p.id === currentSettings.provider) ?? AI_PROVIDERS[0];
     const availableModels = currentSettings.availableModels ?? currentProvider.models;
@@ -1265,6 +1262,10 @@ const AISettings: React.FC = memo(() => {
             statusColor = "bg-green-500";
             statusText = t('settings.ai.statusReady');
         }
+    }
+
+    if (!aiSettings) {
+        return <div className="p-4 text-center text-grey-medium">Loading AI settings...</div>;
     }
 
     return (

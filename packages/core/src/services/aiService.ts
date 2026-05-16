@@ -1,7 +1,7 @@
 import { AISettings, StoredSummary, Task, EchoReport, ProxySettings, UserProfile } from '@/types';
 import storageManager from './storageManager.ts';
 import { AI_PROVIDERS, AIModel, AIProvider } from "@/config/aiProviders";
-import { stripBase64Images } from "@/lib/moondown/core/utils/string-utils";
+import { stripBase64Images } from "@/utils/markdownUtils";
 import { fetchWithProxy } from "@/utils/networkUtils";
 import { aiCache, withCache } from './ai/cache';
 import { withRetry } from './ai/retry';

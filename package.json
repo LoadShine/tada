@@ -1,7 +1,7 @@
 {
   "name": "tada",
   "private": true,
-  "version": "0.3.5",
+  "version": "0.3.6",
   "type": "module",
   "description": "Tada Monorepo",
   "scripts": {
@@ -10,6 +10,7 @@
     "build": "pnpm --filter @tada/web build",
     "build:desktop": "pnpm --filter @tada/desktop build:custom",
     "lint": "pnpm --filter \"./packages/**\" lint",
+    "test:moondown": "node scripts/check-moondown-integration.mjs",
     "bump": "node scripts/update-version.js"
   },
   "keywords": [],

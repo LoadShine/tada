@@ -312,9 +312,7 @@ const ZenModeView: React.FC = () => {
     }, [setIsFullScreen]);
 
     const toggleFullScreen = async () => {
-        // Detect Tauri environment
-        // @ts-ignore
-        const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__ !== undefined;
+        const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
         if (isTauri) {
             try {

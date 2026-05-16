@@ -421,7 +421,7 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
         }
         const categoryChanged = targetGroupCategory && targetGroupCategory !== originalTask.groupCategory;
 
-        let currentTasks = [...allTasks];
+        const currentTasks = [...allTasks];
         const oldIndex = currentTasks.findIndex(t => t.id === activeId);
         const newIndex = currentTasks.findIndex(t => t.id === overId);
 
@@ -917,6 +917,17 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
         return t('taskList.addTaskPlaceholder', { listName: newTaskListState });
     }, [isCurrentlyAiMode, newTaskListState, t]);
 
+    const handleInputSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        if (newTaskTitle.trim()) {
+            if (isCurrentlyAiMode) {
+                handleAiTaskCommit();
+            } else {
+                commitNewTask();
+            }
+        }
+    }, [newTaskTitle, isCurrentlyAiMode, handleAiTaskCommit, commitNewTask]);
+
     if (isLoadingTasks || isLoadingPreferences) {
         return (
             <div className="h-full flex items-center justify-center bg-transparent">
@@ -924,13 +935,6 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
             </div>
         );
     }
-
-    const handleInputSubmit = useCallback((e: React.FormEvent) => {
-        e.preventDefault();
-        if (newTaskTitle.trim()) {
-            isCurrentlyAiMode ? handleAiTaskCommit() : commitNewTask();
-        }
-    }, [newTaskTitle, isCurrentlyAiMode, handleAiTaskCommit, commitNewTask]);
 
     return (
         <TaskItemMenuProvider>

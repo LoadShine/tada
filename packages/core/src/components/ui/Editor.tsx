@@ -6,8 +6,9 @@ import {EditorView} from '@codemirror/view';
 import {useTranslation} from "react-i18next";
 import {AI_PROVIDERS} from "@/config/aiProviders";
 import {streamChatCompletionForEditor} from "@/services/aiService";
-import Moondown from "@/lib/moondown/moondown.ts";
-import {MoondownTranslations} from "@/lib/moondown/core";
+import Moondown, {type MoondownTranslations} from 'moondown';
+import 'moondown/style.css';
+import 'tippy.js/dist/tippy.css';
 
 interface CodeMirrorEditorProps {
     value: string;
@@ -118,6 +119,14 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
         useEffect(() => {
             moondownInstanceRef.current?.setTheme(theme);
         }, [theme]);
+
+        useEffect(() => {
+            const instance = moondownInstanceRef.current;
+            if (!instance) return;
+            if (instance.getValue() !== value) {
+                instance.setValue(value);
+            }
+        }, [value]);
 
         useEffect(() => {
             moondownInstanceRef.current?.setTranslations(moondownTranslations);
