@@ -25,6 +25,8 @@ interface CodeMirrorEditorProps {
 export interface CodeMirrorEditorRef {
     focus: () => void;
     getView: () => EditorView | null;
+    openSearch: () => void;
+    openReplace: () => void;
 }
 
 /**
@@ -86,7 +88,32 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorRef, CodeMirrorEditorProps>(
         useImperativeHandle(ref, () => ({
             focus: () => moondownInstanceRef.current?.focus(),
             getView: () => moondownInstanceRef.current?.getView() ?? null,
+            openSearch: () => moondownInstanceRef.current?.openSearch(),
+            openReplace: () => moondownInstanceRef.current?.openReplace(),
         }), []);
+
+        useEffect(() => {
+            const onKeyDown = (event: KeyboardEvent) => {
+                if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+                const key = event.key.toLowerCase();
+                if (key !== 'f' && key !== 'r') return;
+
+                const instance = moondownInstanceRef.current;
+                if (!instance) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (key === 'r') {
+                    instance.openReplace();
+                } else {
+                    instance.openSearch();
+                }
+            };
+
+            window.addEventListener('keydown', onKeyDown, true);
+            return () => window.removeEventListener('keydown', onKeyDown, true);
+        }, []);
 
         useEffect(() => {
             let instance: Moondown | null = null;

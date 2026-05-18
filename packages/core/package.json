@@ -1,6 +1,6 @@
 {
   "name": "@tada/core",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -56,7 +56,7 @@
     "jotai": "^2.8.3",
     "lucide": "^0.552.0",
     "lucide-react": "^0.395.0",
-    "moondown": "^1.0.1",
+    "moondown": "^1.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-highlight-words": "^0.21.0",

@@ -21,6 +21,10 @@ if (!corePackage.dependencies?.moondown) {
   failures.push('@tada/core must depend on the published moondown package.');
 }
 
+if (corePackage.dependencies?.moondown && !corePackage.dependencies.moondown.includes('1.0.3')) {
+  failures.push('@tada/core must use moondown 1.0.3 or newer for table, slash, search, and replace fixes.');
+}
+
 if (!editorSource.includes("from 'moondown'") && !editorSource.includes('from "moondown"')) {
   failures.push('Editor.tsx must import the editor API from moondown.');
 }
@@ -43,6 +47,14 @@ if (!editorSource.includes('instance.getValue() !== value') || !editorSource.inc
 
 if (!editorSource.includes('installMoondownInteractionFixes')) {
   failures.push('Editor.tsx must install interaction fixes for Moondown table cell focus and controls.');
+}
+
+if (!editorSource.includes('openSearch') || !editorSource.includes('openReplace')) {
+  failures.push('Editor.tsx must expose Moondown search and replace commands for global shortcuts.');
+}
+
+if (!editorSource.includes("key !== 'f' && key !== 'r'")) {
+  failures.push('Editor.tsx must handle Cmd/Ctrl+F and Cmd/Ctrl+R at the window level.');
 }
 
 if (!mainPageSource.includes('selectedTaskId ? <TaskDetail key={selectedTaskId}/> : <TaskDetailPlaceholder/>')) {
