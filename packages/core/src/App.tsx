@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useAtomValue } from 'jotai';
 import {
     aiSettingsAtom,
@@ -50,6 +51,8 @@ const App: React.FC = () => {
 
     // Auto sync tasks to ICS server when configured
     useIcsAutoSync();
+    useHiddenTitleDrag();
+    const isTauri = isTauriRuntime();
 
     // Ensure all pending writes are flushed when the app unmounts.
     useEffect(() => {
@@ -66,6 +69,8 @@ const App: React.FC = () => {
 
     return (
         <>
+            {isTauri && <div className="hidden-title-drag-strip" data-tauri-drag-region="true" aria-hidden="true" />}
+
             {/* Onboarding screen - shown on first launch */}
             {showOnboarding && (
                 <OnboardingScreen onComplete={handleOnboardingComplete} />
@@ -90,3 +95,44 @@ const App: React.FC = () => {
 
 App.displayName = 'App';
 export default App;
+
+function useHiddenTitleDrag(): void {
+    useEffect(() => {
+        if (!isTauriRuntime()) return;
+
+        const interactiveSelector = [
+            'a',
+            'button',
+            'input',
+            'select',
+            'textarea',
+            '[contenteditable="true"]',
+            '[role="button"]',
+            '[data-no-window-drag]',
+            '.cm-editor',
+            '[data-radix-popper-content-wrapper]',
+        ].join(',');
+
+        const handleMouseDown = (event: MouseEvent) => {
+            if (event.button !== 0) return;
+            const target = event.target instanceof Element ? event.target : null;
+            const dragRegion = target?.closest('[data-tauri-drag-region]');
+            if (!target || !dragRegion || target.closest(interactiveSelector)) return;
+
+            event.preventDefault();
+            void getCurrentWindow().startDragging().catch(() => undefined);
+        };
+
+        document.addEventListener('mousedown', handleMouseDown, true);
+        return () => document.removeEventListener('mousedown', handleMouseDown, true);
+    }, []);
+}
+
+function isTauriRuntime(): boolean {
+    return typeof window !== 'undefined' && (
+        '__TAURI_INTERNALS__' in window ||
+        '__TAURI__' in window ||
+        window.location.protocol === 'tauri:' ||
+        navigator.userAgent.includes('Tauri')
+    );
+}

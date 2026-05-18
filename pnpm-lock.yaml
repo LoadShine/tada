@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  moondown@1.0.0:
+    hash: njwccpfnuydd75rmo2xtl3gboe
+    path: patches/moondown@1.0.0.patch
+
 importers:
 
   .:
@@ -190,7 +195,7 @@ importers:
         version: 0.395.0(react@18.3.1)
       moondown:
         specifier: ^1.0.0
-        version: 1.0.0
+        version: 1.0.0(patch_hash=njwccpfnuydd75rmo2xtl3gboe)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -6228,7 +6233,7 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  moondown@1.0.0:
+  moondown@1.0.0(patch_hash=njwccpfnuydd75rmo2xtl3gboe):
     dependencies:
       '@codemirror/autocomplete': 6.19.1
       '@codemirror/commands': 6.10.0

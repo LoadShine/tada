@@ -15,7 +15,12 @@ interface TauriFetchOptions extends RequestInit {
  * Checks if the application is running in a Tauri environment.
  */
 export const isTauri = (): boolean => {
-    return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    return typeof window !== 'undefined' && (
+        '__TAURI_INTERNALS__' in window ||
+        '__TAURI__' in window ||
+        window.location.protocol === 'tauri:' ||
+        navigator.userAgent.includes('Tauri')
+    );
 };
 
 /**

@@ -140,6 +140,18 @@
         background-color: hsl(var(--color-grey-deep)); /* Dark mode base background */
     }
 
+    .hidden-title-drag-strip {
+        position: fixed;
+        top: 0;
+        left: 72px;
+        right: 72px;
+        height: 14px;
+        z-index: 2147483000;
+        background: transparent;
+        user-select: none;
+        -webkit-app-region: drag;
+    }
+
     html {
         scroll-behavior: smooth;
     }
