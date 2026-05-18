@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  moondown@1.0.0:
-    hash: njwccpfnuydd75rmo2xtl3gboe
-    path: patches/moondown@1.0.0.patch
-
 importers:
 
   .:
@@ -194,8 +189,8 @@ importers:
         specifier: ^0.395.0
         version: 0.395.0(react@18.3.1)
       moondown:
-        specifier: ^1.0.0
-        version: 1.0.0(patch_hash=njwccpfnuydd75rmo2xtl3gboe)
+        specifier: ^1.0.1
+        version: 1.0.1
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2494,6 +2489,7 @@ packages:
     resolution: {integrity: sha512-Quz3MvAwHxVYNXsOByL7xI5EB2WYOeFswqaHIA3qOK3isRWTxiplBEocmmru6XmxDB2L7jDNYtYA4FyimoAFEw==}
     engines: {node: '>=8.17.0'}
     hasBin: true
+    bundledDependencies: []
 
   katex@0.16.46:
     resolution: {integrity: sha512-WHy4Coo+bGZyH7NwJKHkS04YFsFcarWbAEOAC3EMndzdN6VSZqklLLIgfxzyaW9jDoeGYJX9SWbJPKpecox0Uw==}
@@ -2722,8 +2718,8 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  moondown@1.0.0:
-    resolution: {integrity: sha512-Ttn89tUhmhQPeOyXSoOWuSiHIvrmqlj0drO3Uf2zfPjhY3m1s4V29C0WgksUaOpw45TTUzQw5umNerXd1VQ7ow==}
+  moondown@1.0.1:
+    resolution: {integrity: sha512-XTrbzs7NSmQmZMb166pqxhVu79WW5CROCMLiSedHktIR+wgSBT5WcBXHXEZV8Y960aOnKjmihlQwkDJs7tFlaA==}
     engines: {node: '>=22.0.0', pnpm: '>=10.0.0'}
 
   motion-dom@11.18.1:
@@ -6233,7 +6229,7 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  moondown@1.0.0(patch_hash=njwccpfnuydd75rmo2xtl3gboe):
+  moondown@1.0.1:
     dependencies:
       '@codemirror/autocomplete': 6.19.1
       '@codemirror/commands': 6.10.0
