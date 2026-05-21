@@ -28,7 +28,6 @@
             "core:window:allow-destroy",
             "core:window:allow-set-fullscreen",
             "core:default",
-            "core:tray:default",
             "opener:default",
             "log:default",
             "http:default",

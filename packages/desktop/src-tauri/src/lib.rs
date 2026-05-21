@@ -1,11 +1,7 @@
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri::{
-    menu::{Menu, MenuItem},
-    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent, Emitter,
-    image::Image,
+    Manager, Emitter,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 use chrono::{Timelike, Datelike};
@@ -30,7 +26,6 @@ impl Default for ScheduleSettings {
 
 /// Application state to track quitting status and schedule settings
 struct AppState {
-    is_quitting: AtomicBool,
     schedule_settings: Mutex<ScheduleSettings>,
 }
 
@@ -254,7 +249,6 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(AppState {
-            is_quitting: AtomicBool::new(false),
             schedule_settings: Mutex::new(ScheduleSettings::default()),
         })
         .invoke_handler(tauri::generate_handler![update_schedule_settings])
@@ -279,85 +273,9 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            // Create a tray menu
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let show_i = MenuItem::with_id(app, "show", "Show Tada", true, None::<&str>)?;
-            let logs_i = MenuItem::with_id(app, "open_logs", "Open Logs", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &logs_i, &quit_i])?;
-
-            let icon_bytes = include_bytes!("../icons/tray-icon.png");
-            let icon = Image::from_bytes(icon_bytes).expect("Failed to load tray icon");
-
-            // Build the tray icon
-            let tray_builder = TrayIconBuilder::with_id("tray")
-                .menu(&menu)
-                .icon(icon)
-                .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "quit" => {
-                        // User clicked the exit button of the tray
-                        let state = app.state::<AppState>();
-                        state.is_quitting.store(true, Ordering::Relaxed);
-                        app.exit(0);
-                    }
-                    "show" => {
-                        // User clicked "Display"
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
-                    "open_logs" => {
-                        let app_handle = app.app_handle();
-                        if let Ok(path) = app_handle.path().app_log_dir() {
-                            if let Some(path_str) = path.to_str() {
-                                #[cfg(target_os = "macos")]
-                                let _ = std::process::Command::new("open").arg(path_str).spawn();
-                                #[cfg(target_os = "windows")]
-                                let _ = std::process::Command::new("explorer").arg(path_str).spawn();
-                                #[cfg(target_os = "linux")]
-                                let _ = std::process::Command::new("xdg-open").arg(path_str).spawn();
-                            }
-                        }
-                    }
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| match event {
-                    // Left-click the tray icon on Windows/Linux to display the window
-                    TrayIconEvent::Click {
-                        button: MouseButton::Left,
-                        ..
-                    } => {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
-                    _ => {}
-                });
-
-            #[cfg(target_os = "macos")]
-            let tray_builder = tray_builder.icon_as_template(true);
-
-            tray_builder.build(app)?;
-
             start_background_scheduler(app.handle().clone());
 
             Ok(())
-        })
-        // Handle window events (block the close button)
-        .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                let app_handle = window.app_handle();
-                let state = app_handle.state::<AppState>();
-
-                // If it is not exited through the Quit button on the tray or Cmd+Q (which triggers the App Exit process), it will be blocked and hidden
-                if !state.is_quitting.load(Ordering::Relaxed) {
-                    api.prevent_close();
-                    window.hide().unwrap();
-                }
-            }
         })
         // .plugin(tauri_plugin_updater::Builder::new().build())
         .build(tauri::generate_context!())
