@@ -21,7 +21,7 @@ function readFile(relativePath) {
   return fs.readFileSync(absolutePath);
 }
 
-function checkPng(relativePath, width, height, cornerRgb) {
+function checkPng(relativePath, width, height, cornerExpectation) {
   const buffer = readFile(relativePath);
   if (!buffer) return;
 
@@ -36,7 +36,7 @@ function checkPng(relativePath, width, height, cornerRgb) {
     fail(`${relativePath} expected ${width}x${height}, got ${actualWidth}x${actualHeight}`);
   }
 
-  if (!cornerRgb) return;
+  if (!cornerExpectation) return;
   const colorType = buffer[25];
   const bitDepth = buffer[24];
   if (colorType !== 6 || bitDepth !== 8) {
@@ -53,9 +53,14 @@ function checkPng(relativePath, width, height, cornerRgb) {
   }
   const raw = zlib.inflateSync(Buffer.concat(chunks));
   const rowLength = 1 + width * 4;
-  const firstPixel = raw.subarray(1, 4);
-  if (!cornerRgb.every((value, index) => firstPixel[index] === value)) {
-    fail(`${relativePath} corner expected rgb(${cornerRgb.join(', ')}), got rgb(${[...firstPixel].join(', ')})`);
+  const firstPixel = raw.subarray(1, 5);
+  const expected =
+    Array.isArray(cornerExpectation) ? { rgb: cornerExpectation } : cornerExpectation;
+  if (expected.rgb && !expected.rgb.every((value, index) => firstPixel[index] === value)) {
+    fail(`${relativePath} corner expected rgb(${expected.rgb.join(', ')}), got rgb(${[...firstPixel.subarray(0, 3)].join(', ')})`);
+  }
+  if (typeof expected.alpha === 'number' && firstPixel[3] !== expected.alpha) {
+    fail(`${relativePath} corner expected alpha ${expected.alpha}, got ${firstPixel[3]}`);
   }
 }
 
@@ -78,7 +83,7 @@ function checkIcns(relativePath) {
 checkPng('logo_assets/web/favicon-32.png', 32, 32, LIGHT_BG);
 checkPng('logo_assets/web/apple-touch-icon.png', 180, 180, LIGHT_BG);
 checkPng('logo_assets/linux/icon.png', 512, 512, LIGHT_BG);
-checkPng('logo_assets/macos/icon.png', 1024, 1024, LIGHT_BG);
+checkPng('logo_assets/macos/icon.png', 1024, 1024, { alpha: 0 });
 checkPng('logo_assets/dark/web/favicon-32.png', 32, 32, DARK_BG);
 checkIco('logo_assets/windows/icon.ico');
 checkIcns('logo_assets/macos/icon.icns');

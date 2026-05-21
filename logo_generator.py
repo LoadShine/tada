@@ -14,12 +14,12 @@ import numpy as np
 from matplotlib.patches import PathPatch
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageDraw
 except ImportError:
     import sys
 
     subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow", "-q", "--break-system-packages"])
-    from PIL import Image
+    from PIL import Image, ImageDraw
 
 
 OUTPUT_DIR = Path("logo_assets")
@@ -437,6 +437,32 @@ def composite_icon(base_image, size, bg=None):
     return canvas
 
 
+def composite_macos_icon(base_image, size, bg, content_scale=0.76):
+    oversample = 4
+    canvas_size = size * oversample
+    canvas = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+
+    radius = int(canvas_size * 0.225)
+    mask = Image.new("L", (canvas_size, canvas_size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle(
+        [0, 0, canvas_size - 1, canvas_size - 1],
+        radius=radius,
+        fill=255,
+    )
+
+    tile = Image.new("RGBA", (canvas_size, canvas_size), (*bg, 255))
+    tile.putalpha(mask)
+    canvas.alpha_composite(tile)
+
+    logo_size = int(canvas_size * content_scale)
+    logo = base_image.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
+    offset = ((canvas_size - logo_size) // 2, (canvas_size - logo_size) // 2)
+    canvas.alpha_composite(logo, offset)
+
+    return canvas.resize((size, size), Image.Resampling.LANCZOS)
+
+
 def save_png(base_image, output_path, size, bg=None):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     composite_icon(base_image, size, bg).save(output_path)
@@ -466,12 +492,12 @@ def save_icns(base_image, output_path, bg):
             ("icon_512x512@2x.png", 1024),
         ]
         for filename, size in sizes:
-            composite_icon(base_image, size, bg).save(iconset / filename)
+            composite_macos_icon(base_image, size, bg).save(iconset / filename)
 
         if shutil.which("iconutil"):
             subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(output_path)], check=True)
         else:
-            composite_icon(base_image, 1024, bg).save(output_path, format="ICNS")
+            composite_macos_icon(base_image, 1024, bg).save(output_path, format="ICNS")
 
 
 def save_legacy_matrix(theme_key, theme, base_image):
@@ -509,7 +535,8 @@ def save_platform_assets(base_image, theme, prefix=OUTPUT_DIR):
     save_png(base_image, prefix / "web" / "apple-touch-icon.png", 180, theme["bg"])
     save_png(base_image, prefix / "web" / "icon-512.png", 512, theme["bg"])
     save_png(base_image, prefix / "linux" / "icon.png", 512, theme["bg"])
-    save_png(base_image, prefix / "macos" / "icon.png", 1024, theme["bg"])
+    prefix.joinpath("macos").mkdir(parents=True, exist_ok=True)
+    composite_macos_icon(base_image, 1024, theme["bg"]).save(prefix / "macos" / "icon.png")
     save_ico(base_image, prefix / "windows" / "icon.ico", theme["bg"])
     save_icns(base_image, prefix / "macos" / "icon.icns", theme["bg"])
 
