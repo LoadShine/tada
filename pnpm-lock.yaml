@@ -189,8 +189,8 @@ importers:
         specifier: ^0.395.0
         version: 0.395.0(react@18.3.1)
       moondown:
-        specifier: ^1.0.3
-        version: 1.0.3
+        specifier: ^1.0.4
+        version: 1.0.4
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2720,8 +2720,8 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  moondown@1.0.3:
-    resolution: {integrity: sha512-OEAj1TGNPp6fPy8LIanKrzcJl4q2SIPnJPWDFRqkwqrb+z2/Lx8Y0mqt4CfwxBhpu5PfgOFwxoM+K6vsQvSh0w==}
+  moondown@1.0.4:
+    resolution: {integrity: sha512-VjjaBv0SkD4NjmVm8OKKrFSp8TFYn7C8Q42QSEJKaAHF+cy/NSa/21G606+yulddf2In09Fl01gQ2nLxgXJPqw==}
     engines: {node: '>=22.0.0', pnpm: '>=10.0.0'}
 
   motion-dom@11.18.1:
@@ -6237,7 +6237,7 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  moondown@1.0.3:
+  moondown@1.0.4:
     dependencies:
       '@codemirror/autocomplete': 6.19.1
       '@codemirror/commands': 6.10.0

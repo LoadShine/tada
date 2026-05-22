@@ -52,6 +52,7 @@ const App: React.FC = () => {
     // Auto sync tasks to ICS server when configured
     useIcsAutoSync();
     useHiddenTitleDrag();
+    useMacFullscreenClose();
     const isTauri = isTauriRuntime();
 
     // Ensure all pending writes are flushed when the app unmounts.
@@ -126,6 +127,68 @@ function useHiddenTitleDrag(): void {
         document.addEventListener('mousedown', handleMouseDown, true);
         return () => document.removeEventListener('mousedown', handleMouseDown, true);
     }, []);
+}
+
+function useMacFullscreenClose(): void {
+    useEffect(() => {
+        if (!isTauriRuntime() || !isMacPlatform()) return;
+
+        let unlistenCloseRequested: (() => void) | undefined;
+        let closeInProgress = false;
+
+        const closeDesktopWindow = async () => {
+            if (closeInProgress) return;
+            closeInProgress = true;
+
+            await storageManager.flush().catch((error) => {
+                console.error('Failed to flush before window close:', error);
+            });
+
+            const appWindow = getCurrentWindow();
+            try {
+                if (await appWindow.isFullscreen()) {
+                    await appWindow.setFullscreen(false);
+                    await waitForWindowTransition();
+                }
+            } catch (error) {
+                console.error('Failed to leave fullscreen before window close:', error);
+            }
+
+            await appWindow.hide().catch((error) => {
+                console.error('Failed to hide window:', error);
+            });
+            closeInProgress = false;
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (!(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLowerCase() !== 'w') return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            void closeDesktopWindow();
+        };
+
+        window.addEventListener('keydown', handleKeyDown, true);
+        void getCurrentWindow().onCloseRequested(async (event) => {
+            event.preventDefault();
+            await closeDesktopWindow();
+        }).then((cleanup) => {
+            unlistenCloseRequested = cleanup;
+        });
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, true);
+            unlistenCloseRequested?.();
+        };
+    }, []);
+}
+
+function waitForWindowTransition(ms = 240): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isMacPlatform(): boolean {
+    return navigator.platform.toLowerCase().includes('mac') || navigator.userAgent.toLowerCase().includes('mac os');
 }
 
 function isTauriRuntime(): boolean {

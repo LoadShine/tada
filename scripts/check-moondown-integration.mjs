@@ -14,15 +14,35 @@ const corePackage = readJson('packages/core/package.json');
 const editorSource = readText('packages/core/src/components/ui/Editor.tsx');
 const aiServiceSource = readText('packages/core/src/services/aiService.ts');
 const mainPageSource = readText('packages/core/src/pages/MainPage.tsx');
+const appSource = readText('packages/core/src/App.tsx');
+const desktopConfig = readText('packages/desktop/src-tauri/tauri.conf.json');
 
 const failures = [];
+const minimumMoondownVersion = [1, 0, 4];
+
+const parseSemverRange = (range) => {
+  const match = range?.match(/\d+\.\d+\.\d+/);
+  return match ? match[0].split('.').map(Number) : null;
+};
+
+const isAtLeast = (version, minimum) => {
+  if (!version) return false;
+  for (let index = 0; index < minimum.length; index += 1) {
+    if (version[index] > minimum[index]) return true;
+    if (version[index] < minimum[index]) return false;
+  }
+  return true;
+};
 
 if (!corePackage.dependencies?.moondown) {
   failures.push('@tada/core must depend on the published moondown package.');
 }
 
-if (corePackage.dependencies?.moondown && !corePackage.dependencies.moondown.includes('1.0.3')) {
-  failures.push('@tada/core must use moondown 1.0.3 or newer for table, slash, search, and replace fixes.');
+if (
+  corePackage.dependencies?.moondown &&
+  !isAtLeast(parseSemverRange(corePackage.dependencies.moondown), minimumMoondownVersion)
+) {
+  failures.push('@tada/core must use moondown 1.0.4 or newer for fenced-code, syntax hiding, table, slash, search, and replace fixes.');
 }
 
 if (!editorSource.includes("from 'moondown'") && !editorSource.includes('from "moondown"')) {
@@ -63,6 +83,22 @@ if (!mainPageSource.includes('selectedTaskId ? <TaskDetail key={selectedTaskId}/
 
 if (!mainPageSource.includes('min-w-0 overflow-hidden')) {
   failures.push('MainPage.tsx must constrain the desktop detail column so it cannot overflow offscreen.');
+}
+
+if (!appSource.includes('useMacFullscreenClose')) {
+  failures.push('Tada must intercept macOS fullscreen close requests in the core app shell.');
+}
+
+if (!appSource.includes('setFullscreen(false)') || !appSource.includes('isFullscreen()') || !appSource.includes('.hide()')) {
+  failures.push('Tada macOS close handling must leave fullscreen before hiding the window.');
+}
+
+if (!desktopConfig.includes('core:window:allow-hide')) {
+  failures.push('Tada desktop capabilities must allow close-to-hide behavior.');
+}
+
+if (!desktopConfig.includes('core:window:allow-is-fullscreen')) {
+  failures.push('Tada desktop capabilities must allow fullscreen state checks before close-to-hide.');
 }
 
 if (failures.length > 0) {
