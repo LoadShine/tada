@@ -18,7 +18,7 @@ const appSource = readText('packages/core/src/App.tsx');
 const desktopConfig = readText('packages/desktop/src-tauri/tauri.conf.json');
 
 const failures = [];
-const minimumMoondownVersion = [1, 0, 4];
+const minimumMoondownVersion = [1, 0, 5];
 
 const parseSemverRange = (range) => {
   const match = range?.match(/\d+\.\d+\.\d+/);
@@ -42,7 +42,7 @@ if (
   corePackage.dependencies?.moondown &&
   !isAtLeast(parseSemverRange(corePackage.dependencies.moondown), minimumMoondownVersion)
 ) {
-  failures.push('@tada/core must use moondown 1.0.4 or newer for fenced-code, syntax hiding, table, slash, search, and replace fixes.');
+  failures.push('@tada/core must use moondown 1.0.5 or newer for horizontal-rule hit testing, table focus, fenced-code, syntax hiding, table, slash, search, and replace fixes.');
 }
 
 if (!editorSource.includes("from 'moondown'") && !editorSource.includes('from "moondown"')) {
