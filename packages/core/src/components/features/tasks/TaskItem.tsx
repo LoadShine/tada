@@ -21,7 +21,7 @@ import Highlighter from "react-highlight-words";
 import { IconName } from "@/components/ui/IconMap.ts";
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Popover from '@radix-ui/react-popover';
-import { useTaskItemMenu } from '@/context/TaskItemMenuContext';
+import { useTaskItemMenu } from '@/context/taskItemMenuContextValue';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useTranslation } from "react-i18next";
 import CustomDatePickerContent from "@/components/ui/DatePicker.tsx";

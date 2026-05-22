@@ -25,10 +25,10 @@ const RouteChangeHandler: React.FC = () => {
     const [currentFilterInternal, setCurrentFilter] = useAtom(currentFilterAtom);
     const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
     const location = useLocation();
+    const pathname = location.pathname;
     const params = useParams();
 
     useEffect(() => {
-        const { pathname } = location;
         const listName = params.listName ? decodeURIComponent(params.listName) : '';
         const tagName = params.tagName ? decodeURIComponent(params.tagName) : '';
 
@@ -45,7 +45,7 @@ const RouteChangeHandler: React.FC = () => {
             setCurrentFilter(newFilter);
             setSelectedTaskId(null); // Deselect task when filter changes
         }
-    }, [location.pathname, params.listName, params.tagName, currentFilterInternal, setCurrentFilter, setSelectedTaskId]);
+    }, [pathname, params.listName, params.tagName, currentFilterInternal, setCurrentFilter, setSelectedTaskId]);
 
     return <Outlet />;
 };

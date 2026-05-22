@@ -332,50 +332,6 @@ const DataSettings: React.FC = () => {
         }
     }, [addNotification, t]);
 
-    const handleImportFile = useCallback((file: File) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target?.result as string) as ExportedData;
-
-                if (!data || !data.version || !data.data) {
-                    throw new Error('Invalid file format');
-                }
-
-                // Default import options
-                const options: ImportOptions = {
-                    includeEcho: true,
-                    includeSettings: true,
-                    includeLists: true,
-                    includeTasks: true,
-                    includeSummaries: true,
-                    conflictResolution: 'keep-newer',
-                    replaceAllData: false
-                };
-
-                // Analyze for conflicts
-                const storage = storageManager.get();
-                const detectedConflicts = storage.analyzeImport(data, options);
-
-                if (detectedConflicts.length > 0) {
-                    setConflicts(detectedConflicts);
-                    setPendingImport({ data, options });
-                } else {
-                    // No conflicts, proceed with import
-                    performImport(data, options);
-                }
-
-            } catch (error) {
-                console.error('Import file parsing failed:', error);
-                addNotification({
-                    type: 'error',
-                    message: t('settings.data.import.invalidFile')
-                });
-            }
-        };
-        reader.readAsText(file);
-    }, [addNotification, t]);
-
     const performImport = useCallback((data: ExportedData, options: ImportOptions, conflictResolutions?: Map<string, ConflictResolution>) => {
         try {
             setIsImporting(true);
@@ -419,6 +375,50 @@ const DataSettings: React.FC = () => {
             setPendingImport(null);
         }
     }, [addNotification, t, setTasks, setLists, setSummaries, setAppearanceSettings, setPreferencesSettings, setAISettings]);
+
+    const handleImportFile = useCallback((file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target?.result as string) as ExportedData;
+
+                if (!data || !data.version || !data.data) {
+                    throw new Error('Invalid file format');
+                }
+
+                // Default import options
+                const options: ImportOptions = {
+                    includeEcho: true,
+                    includeSettings: true,
+                    includeLists: true,
+                    includeTasks: true,
+                    includeSummaries: true,
+                    conflictResolution: 'keep-newer',
+                    replaceAllData: false
+                };
+
+                // Analyze for conflicts
+                const storage = storageManager.get();
+                const detectedConflicts = storage.analyzeImport(data, options);
+
+                if (detectedConflicts.length > 0) {
+                    setConflicts(detectedConflicts);
+                    setPendingImport({ data, options });
+                } else {
+                    // No conflicts, proceed with import
+                    performImport(data, options);
+                }
+
+            } catch (error) {
+                console.error('Import file parsing failed:', error);
+                addNotification({
+                    type: 'error',
+                    message: t('settings.data.import.invalidFile')
+                });
+            }
+        };
+        reader.readAsText(file);
+    }, [addNotification, t, performImport]);
 
     const handleConflictsResolved = useCallback((resolutions: Map<string, ConflictResolution>) => {
         if (pendingImport) {

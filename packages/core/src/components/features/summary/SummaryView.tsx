@@ -227,7 +227,7 @@ const SummaryView: React.FC = () => {
     }, [
         isGenerating, forceSaveCurrentSummary, allTasks, selectedTaskIds, selectedFutureTaskIds,
         filterKey, setStoredSummaries, setCurrentIndex, setIsGenerating, aiSettings, addNotification,
-        t, setIsSettingsOpen, setSettingsTab, isAiEnabled
+        t, setIsSettingsOpen, setSettingsTab, isAiEnabled, userProfile
     ]);
 
     const handleEditorChange = useCallback((newValue: string) => {

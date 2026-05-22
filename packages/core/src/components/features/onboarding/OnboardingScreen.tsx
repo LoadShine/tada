@@ -89,27 +89,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         );
     }, []);
 
-    const handleNext = useCallback(() => {
-        if (step < TOTAL_STEPS - 1) {
-            setStep(step + 1);
-        } else {
-            handleComplete();
-        }
-    }, [step]);
-
-    const handleBack = useCallback(() => {
-        if (step > 0) {
-            setStep(step - 1);
-        }
-    }, [step]);
-
-    const handleSkipAll = useCallback(() => {
-        const defaultProfile = createDefaultUserProfile();
-        defaultProfile.onboardingCompleted = true;
-        setUserProfile(defaultProfile);
-        onComplete();
-    }, [setUserProfile, onComplete]);
-
     const handleComplete = useCallback(() => {
         setUserProfile({
             persona: selectedPersonas.length > 0 ? selectedPersonas : null,
@@ -130,6 +109,27 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         });
         onComplete();
     }, [selectedPersonas, taskView, uncertaintyTolerance, incompletionStyle, userNote, setUserProfile, onComplete]);
+
+    const handleNext = useCallback(() => {
+        if (step < TOTAL_STEPS - 1) {
+            setStep(step + 1);
+        } else {
+            handleComplete();
+        }
+    }, [step, handleComplete]);
+
+    const handleBack = useCallback(() => {
+        if (step > 0) {
+            setStep(step - 1);
+        }
+    }, [step]);
+
+    const handleSkipAll = useCallback(() => {
+        const defaultProfile = createDefaultUserProfile();
+        defaultProfile.onboardingCompleted = true;
+        setUserProfile(defaultProfile);
+        onComplete();
+    }, [setUserProfile, onComplete]);
 
     // Step indicator
     const renderStepIndicator = () => (

@@ -812,9 +812,9 @@ const TaskList: React.FC<{ title: string }> = ({ title: pageTitle }) => {
             }
         }
     }, [
-        newTaskTitle, newTaskDueDate, newTaskPriority, newTaskListState,
+        newTaskTitle, newTaskDueDate, newTaskListState,
         createTask, updateTask, createSubtask, allTasks, isAiProcessing, isRegularNewTaskModeAllowed, preferences, allUserLists, t, aiSettings, addNotification, setIsSettingsOpen, setSettingsTab, isAIConfigured,
-        currentFilterGlobal, availableListsForNewTask, setAiListAnalyzingTaskIds
+        currentFilterGlobal, availableListsForNewTask, setAiListAnalyzingTaskIds, userProfile
     ]);
 
 

@@ -242,7 +242,7 @@ const DroppableListContainer = ({ id, items, children, className }: { id: string
 const ZenModeView: React.FC = () => {
     const { t, i18n } = useTranslation();
     const [preferences, setPreferences] = useAtom(preferencesSettingsAtom);
-    const tasks = useAtomValue(tasksAtom) ?? [];
+    const tasks = useAtomValue(tasksAtom);
     const allUserLists = useAtomValue(userListsAtom);
     const aiSettings = useAtomValue(aiSettingsAtom);
     const userProfile = useAtomValue(userProfileAtom);
@@ -352,7 +352,7 @@ const ZenModeView: React.FC = () => {
         const dones: Task[] = [];
         const overdue: Task[] = [];
 
-        tasks.forEach(task => {
+        (tasks ?? []).forEach(task => {
             if (task.listName === 'Trash') return;
 
             const taskDate = safeParseDate(task.dueDate);

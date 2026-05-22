@@ -328,7 +328,7 @@ const PreferencesSettings: React.FC = memo(() => {
     const { t } = useTranslation();
     const [preferences, setPreferences] = useAtom(preferencesSettingsAtom);
     const aiSettings = useAtomValue(aiSettingsAtom);
-    const userLists = useAtomValue(userListNamesAtom) ?? [];
+    const userLists = useAtomValue(userListNamesAtom);
 
     const isAIConfigured = useMemo(() => isAIConfigValid(aiSettings), [aiSettings]);
 
@@ -385,7 +385,7 @@ const PreferencesSettings: React.FC = memo(() => {
         { value: '3', label: t('settings.preferences.priorityOptions.3') },
     ];
     const listOptions = useMemo(() => {
-        return userLists.map(l => ({
+        return (userLists ?? []).map(l => ({
             value: l,
             label: l === 'Inbox' ? t('sidebar.inbox') : l
         }));
