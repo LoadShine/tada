@@ -79,6 +79,23 @@ THEMES = {
     },
 }
 
+DESKTOP_PLATE_SCALE = 0.82
+DESKTOP_CONTENT_SCALE = 0.9
+DESKTOP_PLATE_Y_OFFSET = 0.01
+
+WINDOWS_TILE_SIZES = {
+    "Square30x30Logo.png": 30,
+    "Square44x44Logo.png": 44,
+    "StoreLogo.png": 50,
+    "Square71x71Logo.png": 71,
+    "Square89x89Logo.png": 89,
+    "Square107x107Logo.png": 107,
+    "Square142x142Logo.png": 142,
+    "Square150x150Logo.png": 150,
+    "Square284x284Logo.png": 284,
+    "Square310x310Logo.png": 310,
+}
+
 LEGACY_TARGETS = {
     "Web_Favicon": (32, 32),
     "Web_TouchIcon": (180, 180),
@@ -437,16 +454,21 @@ def composite_icon(base_image, size, bg=None):
     return canvas
 
 
-def composite_macos_icon(base_image, size, bg, content_scale=0.76):
+def composite_desktop_icon(base_image, size, bg):
     oversample = 4
     canvas_size = size * oversample
     canvas = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
 
-    radius = int(canvas_size * 0.225)
+    plate_size = int(canvas_size * DESKTOP_PLATE_SCALE)
+    plate_x = (canvas_size - plate_size) // 2
+    plate_y = int((canvas_size - plate_size) // 2 + canvas_size * DESKTOP_PLATE_Y_OFFSET)
+    plate_y = max(0, min(canvas_size - plate_size, plate_y))
+    radius = int(plate_size * 0.225)
+
     mask = Image.new("L", (canvas_size, canvas_size), 0)
     draw = ImageDraw.Draw(mask)
     draw.rounded_rectangle(
-        [0, 0, canvas_size - 1, canvas_size - 1],
+        [plate_x, plate_y, plate_x + plate_size - 1, plate_y + plate_size - 1],
         radius=radius,
         fill=255,
     )
@@ -455,9 +477,9 @@ def composite_macos_icon(base_image, size, bg, content_scale=0.76):
     tile.putalpha(mask)
     canvas.alpha_composite(tile)
 
-    logo_size = int(canvas_size * content_scale)
+    logo_size = int(plate_size * DESKTOP_CONTENT_SCALE)
     logo = base_image.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
-    offset = ((canvas_size - logo_size) // 2, (canvas_size - logo_size) // 2)
+    offset = (plate_x + (plate_size - logo_size) // 2, plate_y + (plate_size - logo_size) // 2)
     canvas.alpha_composite(logo, offset)
 
     return canvas.resize((size, size), Image.Resampling.LANCZOS)
@@ -470,7 +492,7 @@ def save_png(base_image, output_path, size, bg=None):
 
 def save_ico(base_image, output_path, bg):
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    icon = composite_icon(base_image, 256, bg)
+    icon = composite_desktop_icon(base_image, 256, bg)
     icon.save(output_path, format="ICO", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 
 
@@ -492,12 +514,12 @@ def save_icns(base_image, output_path, bg):
             ("icon_512x512@2x.png", 1024),
         ]
         for filename, size in sizes:
-            composite_macos_icon(base_image, size, bg).save(iconset / filename)
+            composite_desktop_icon(base_image, size, bg).save(iconset / filename)
 
         if shutil.which("iconutil"):
             subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(output_path)], check=True)
         else:
-            composite_macos_icon(base_image, 1024, bg).save(output_path, format="ICNS")
+            composite_desktop_icon(base_image, 1024, bg).save(output_path, format="ICNS")
 
 
 def save_legacy_matrix(theme_key, theme, base_image):
@@ -534,9 +556,10 @@ def save_platform_assets(base_image, theme, prefix=OUTPUT_DIR):
     save_png(base_image, prefix / "web" / "favicon-32.png", 32, theme["bg"])
     save_png(base_image, prefix / "web" / "apple-touch-icon.png", 180, theme["bg"])
     save_png(base_image, prefix / "web" / "icon-512.png", 512, theme["bg"])
-    save_png(base_image, prefix / "linux" / "icon.png", 512, theme["bg"])
+    prefix.joinpath("linux").mkdir(parents=True, exist_ok=True)
+    composite_desktop_icon(base_image, 512, theme["bg"]).save(prefix / "linux" / "icon.png")
     prefix.joinpath("macos").mkdir(parents=True, exist_ok=True)
-    composite_macos_icon(base_image, 1024, theme["bg"]).save(prefix / "macos" / "icon.png")
+    composite_desktop_icon(base_image, 1024, theme["bg"]).save(prefix / "macos" / "icon.png")
     save_ico(base_image, prefix / "windows" / "icon.ico", theme["bg"])
     save_icns(base_image, prefix / "macos" / "icon.icns", theme["bg"])
 
@@ -560,10 +583,13 @@ def sync_tada_assets(light_base, dark_base):
             composite_icon(dark_base, 2048, dark["bg"]).save(dist_dir / "logo_white.png")
             shutil.copyfile(OUTPUT_DIR / "logo.svg", dist_dir / "tray-icon.svg")
 
-    save_png(light_base, TAURI_ICON_DIR / "32x32.png", 32, light["bg"])
-    save_png(light_base, TAURI_ICON_DIR / "128x128.png", 128, light["bg"])
-    save_png(light_base, TAURI_ICON_DIR / "128x128@2x.png", 256, light["bg"])
-    save_png(light_base, TAURI_ICON_DIR / "256x256.png", 256, light["bg"])
+    composite_desktop_icon(light_base, 32, light["bg"]).save(TAURI_ICON_DIR / "32x32.png")
+    composite_desktop_icon(light_base, 128, light["bg"]).save(TAURI_ICON_DIR / "128x128.png")
+    composite_desktop_icon(light_base, 256, light["bg"]).save(TAURI_ICON_DIR / "128x128@2x.png")
+    composite_desktop_icon(light_base, 256, light["bg"]).save(TAURI_ICON_DIR / "256x256.png")
+    composite_desktop_icon(light_base, 512, light["bg"]).save(TAURI_ICON_DIR / "icon.png")
+    for filename, size in WINDOWS_TILE_SIZES.items():
+        composite_desktop_icon(light_base, size, light["bg"]).save(TAURI_ICON_DIR / filename)
     save_ico(light_base, TAURI_ICON_DIR / "icon.ico", light["bg"])
     save_icns(light_base, TAURI_ICON_DIR / "icon.icns", light["bg"])
 
