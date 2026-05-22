@@ -144,17 +144,7 @@ function useMacFullscreenClose(): void {
                 console.error('Failed to flush before window close:', error);
             });
 
-            const appWindow = getCurrentWindow();
-            try {
-                if (await appWindow.isFullscreen()) {
-                    await appWindow.setFullscreen(false);
-                    await waitForWindowTransition();
-                }
-            } catch (error) {
-                console.error('Failed to leave fullscreen before window close:', error);
-            }
-
-            await appWindow.hide().catch((error) => {
+            await getCurrentWindow().hide().catch((error) => {
                 console.error('Failed to hide window:', error);
             });
             closeInProgress = false;
@@ -181,10 +171,6 @@ function useMacFullscreenClose(): void {
             unlistenCloseRequested?.();
         };
     }, []);
-}
-
-function waitForWindowTransition(ms = 240): Promise<void> {
-    return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function isMacPlatform(): boolean {

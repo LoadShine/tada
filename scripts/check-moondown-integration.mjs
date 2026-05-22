@@ -10,12 +10,16 @@ const readText = (relativePath) =>
 
 const readJson = (relativePath) => JSON.parse(readText(relativePath));
 
+const rootPackage = readJson('package.json');
 const corePackage = readJson('packages/core/package.json');
+const webPackage = readJson('packages/web/package.json');
+const desktopPackage = readJson('packages/desktop/package.json');
 const editorSource = readText('packages/core/src/components/ui/Editor.tsx');
 const aiServiceSource = readText('packages/core/src/services/aiService.ts');
 const mainPageSource = readText('packages/core/src/pages/MainPage.tsx');
 const appSource = readText('packages/core/src/App.tsx');
 const desktopConfig = readText('packages/desktop/src-tauri/tauri.conf.json');
+const desktopCargo = readText('packages/desktop/src-tauri/Cargo.toml');
 
 const failures = [];
 const minimumMoondownVersion = [1, 0, 5];
@@ -36,6 +40,20 @@ const isAtLeast = (version, minimum) => {
 
 if (!corePackage.dependencies?.moondown) {
   failures.push('@tada/core must depend on the published moondown package.');
+}
+
+for (const workspacePackage of [corePackage, webPackage, desktopPackage]) {
+  if (workspacePackage.version !== rootPackage.version) {
+    failures.push(`${workspacePackage.name} version must match root package.json.`);
+  }
+}
+
+if (!desktopConfig.includes(`"version": "${rootPackage.version}"`)) {
+  failures.push('Tada Tauri config version must match root package.json.');
+}
+
+if (!desktopCargo.includes(`version = "${rootPackage.version}"`)) {
+  failures.push('Tada Cargo.toml package version must match root package.json.');
 }
 
 if (
@@ -89,16 +107,16 @@ if (!appSource.includes('useMacFullscreenClose')) {
   failures.push('Tada must intercept macOS fullscreen close requests in the core app shell.');
 }
 
-if (!appSource.includes('setFullscreen(false)') || !appSource.includes('isFullscreen()') || !appSource.includes('.hide()')) {
-  failures.push('Tada macOS close handling must leave fullscreen before hiding the window.');
+if (appSource.includes('setFullscreen(false)') || appSource.includes('isFullscreen()')) {
+  failures.push('Tada Cmd+W must hide the window directly instead of exiting fullscreen first.');
+}
+
+if (!appSource.includes('.hide()')) {
+  failures.push('Tada Cmd+W must hide the window instead of quitting the app.');
 }
 
 if (!desktopConfig.includes('core:window:allow-hide')) {
   failures.push('Tada desktop capabilities must allow close-to-hide behavior.');
-}
-
-if (!desktopConfig.includes('core:window:allow-is-fullscreen')) {
-  failures.push('Tada desktop capabilities must allow fullscreen state checks before close-to-hide.');
 }
 
 if (failures.length > 0) {
