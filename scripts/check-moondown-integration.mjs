@@ -188,8 +188,23 @@ const deployWorkflow = workflowSources.find(([workflowPath]) => workflowPath.end
 if (deployWorkflow.includes('actions/upload-pages-artifact@v3')) {
   failures.push('Tada Pages workflow must not use upload-pages-artifact@v3 because it depends on Node 20-era artifact actions.');
 }
-if (!deployWorkflow.includes('actions/upload-pages-artifact@v4')) {
-  failures.push('Tada Pages workflow must use upload-pages-artifact@v4.');
+for (const deprecatedPagesAction of [
+  'actions/configure-pages@v5',
+  'actions/upload-pages-artifact@v4',
+  'actions/deploy-pages@v4'
+]) {
+  if (deployWorkflow.includes(deprecatedPagesAction)) {
+    failures.push(`Tada Pages workflow must not use ${deprecatedPagesAction} because it still emits Node.js 20 deprecation warnings.`);
+  }
+}
+if (!deployWorkflow.includes('actions/configure-pages@v6')) {
+  failures.push('Tada Pages workflow must use configure-pages@v6.');
+}
+if (!deployWorkflow.includes('actions/upload-pages-artifact@v5')) {
+  failures.push('Tada Pages workflow must use upload-pages-artifact@v5.');
+}
+if (!deployWorkflow.includes('actions/deploy-pages@v5')) {
+  failures.push('Tada Pages workflow must use deploy-pages@v5.');
 }
 
 if (scheduledReportSource.includes("import('@tauri-apps/api/core')")) {

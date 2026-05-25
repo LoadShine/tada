@@ -1,7 +1,7 @@
 {
   "name": "tada",
   "private": true,
-  "version": "0.3.15",
+  "version": "0.3.16",
   "type": "module",
   "description": "Tada Monorepo",
   "scripts": {
