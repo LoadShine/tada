@@ -29,15 +29,15 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install Rust stable
@@ -66,19 +66,19 @@ jobs:
 
       - name: Upload Release Assets (macOS)
         if: runner.os == 'macOS'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.5.0
         with:
           files: packages/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg
 
       - name: Upload Release Assets (Windows)
         if: runner.os == 'Windows'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.5.0
         with:
           files: |
             packages/desktop/src-tauri/target/**/release/bundle/nsis/*.exe
 
       - name: Upload Release Assets (Linux)
         if: runner.os == 'Linux'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.5.0
         with:
           files: packages/desktop/src-tauri/target/**/release/bundle/deb/*.deb

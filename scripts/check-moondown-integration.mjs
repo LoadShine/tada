@@ -17,12 +17,28 @@ const desktopPackage = readJson('packages/desktop/package.json');
 const editorSource = readText('packages/core/src/components/ui/Editor.tsx');
 const aiServiceSource = readText('packages/core/src/services/aiService.ts');
 const mainPageSource = readText('packages/core/src/pages/MainPage.tsx');
+const mainLayoutSource = readText('packages/core/src/components/features/layout/MainLayout.tsx');
 const appSource = readText('packages/core/src/App.tsx');
+const scheduledReportSource = readText('packages/core/src/components/global/ScheduledReportGenerator.tsx');
 const desktopConfig = readText('packages/desktop/src-tauri/tauri.conf.json');
 const desktopCargo = readText('packages/desktop/src-tauri/Cargo.toml');
+const lockfile = readText('pnpm-lock.yaml');
+const webViteConfig = readText('packages/web/vite.config.ts');
+const desktopViteConfig = readText('packages/desktop/vite.config.ts');
+const workflowSources = [
+  ['.github/workflows/ci.yml', readText('.github/workflows/ci.yml')],
+  ['.github/workflows/deploy.yml', readText('.github/workflows/deploy.yml')],
+  ['.github/workflows/release.yml', readText('.github/workflows/release.yml')]
+];
 
 const failures = [];
 const minimumMoondownVersion = [1, 0, 5];
+const browserDataOverrides = {
+  'baseline-browser-mapping': '2.10.32',
+  'browserslist': '4.28.2',
+  'caniuse-lite': '1.0.30001793',
+  'update-browserslist-db': '1.2.3'
+};
 
 const parseSemverRange = (range) => {
   const match = range?.match(/\d+\.\d+\.\d+/);
@@ -54,6 +70,15 @@ if (!desktopConfig.includes(`"version": "${rootPackage.version}"`)) {
 
 if (!desktopCargo.includes(`version = "${rootPackage.version}"`)) {
   failures.push('Tada Cargo.toml package version must match root package.json.');
+}
+
+for (const [dependencyName, dependencyVersion] of Object.entries(browserDataOverrides)) {
+  if (rootPackage.pnpm?.overrides?.[dependencyName] !== dependencyVersion) {
+    failures.push(`Root package.json must pin ${dependencyName} ${dependencyVersion} through pnpm.overrides to keep build browser data fresh.`);
+  }
+  if (!lockfile.includes(`${dependencyName}@${dependencyVersion}`)) {
+    failures.push(`pnpm-lock.yaml must resolve ${dependencyName} ${dependencyVersion}.`);
+  }
 }
 
 if (
@@ -103,6 +128,14 @@ if (!mainPageSource.includes('min-w-0 overflow-hidden')) {
   failures.push('MainPage.tsx must constrain the desktop detail column so it cannot overflow offscreen.');
 }
 
+if (!mainLayoutSource.includes("useMediaQuery('(min-width: 768px)'")) {
+  failures.push('MainLayout.tsx must detect compact screens so the desktop sidebar cannot squeeze mobile content.');
+}
+
+if (!mainLayoutSource.includes('showSecondarySidebar')) {
+  failures.push('MainLayout.tsx must centralize secondary sidebar visibility for route and compact-screen handling.');
+}
+
 if (!appSource.includes('useMacFullscreenClose')) {
   failures.push('Tada must intercept macOS fullscreen close requests in the core app shell.');
 }
@@ -117,6 +150,74 @@ if (!appSource.includes('.hide()')) {
 
 if (!desktopConfig.includes('core:window:allow-hide')) {
   failures.push('Tada desktop capabilities must allow close-to-hide behavior.');
+}
+
+for (const [workflowPath, workflowSource] of workflowSources) {
+  if (workflowSource.includes('actions/checkout@v4')) {
+    failures.push(`${workflowPath} must not use checkout@v4 because it runs on the deprecated Node 20 runtime.`);
+  }
+  if (!workflowSource.includes('actions/checkout@v6')) {
+    failures.push(`${workflowPath} must use checkout@v6.`);
+  }
+  if (workflowSource.includes('actions/setup-node@v4')) {
+    failures.push(`${workflowPath} must not use setup-node@v4 because it runs on the deprecated Node 20 runtime.`);
+  }
+  if (!workflowSource.includes('actions/setup-node@v6')) {
+    failures.push(`${workflowPath} must use setup-node@v6.`);
+  }
+  if (!workflowSource.includes('node-version: 24')) {
+    failures.push(`${workflowPath} must run Node.js 24.`);
+  }
+  if (workflowSource.includes('pnpm/action-setup@v4')) {
+    failures.push(`${workflowPath} must not use pnpm/action-setup@v4 because it runs on the deprecated Node 20 runtime.`);
+  }
+  if (!workflowSource.includes('pnpm/action-setup@v6')) {
+    failures.push(`${workflowPath} must use pnpm/action-setup@v6.`);
+  }
+}
+
+const releaseWorkflow = workflowSources.find(([workflowPath]) => workflowPath.endsWith('release.yml'))?.[1] ?? '';
+if (releaseWorkflow.includes('softprops/action-gh-release@v1')) {
+  failures.push('Tada release workflow must not use action-gh-release@v1 because it runs on the deprecated Node 20 runtime.');
+}
+if (!releaseWorkflow.includes('softprops/action-gh-release@v2.5.0')) {
+  failures.push('Tada release workflow must pin action-gh-release@v2.5.0.');
+}
+
+const deployWorkflow = workflowSources.find(([workflowPath]) => workflowPath.endsWith('deploy.yml'))?.[1] ?? '';
+if (deployWorkflow.includes('actions/upload-pages-artifact@v3')) {
+  failures.push('Tada Pages workflow must not use upload-pages-artifact@v3 because it depends on Node 20-era artifact actions.');
+}
+if (!deployWorkflow.includes('actions/upload-pages-artifact@v4')) {
+  failures.push('Tada Pages workflow must use upload-pages-artifact@v4.');
+}
+
+if (scheduledReportSource.includes("import('@tauri-apps/api/core')")) {
+  failures.push('ScheduledReportGenerator must not dynamically import @tauri-apps/api/core because it creates an ineffective Vite chunk split.');
+}
+
+if (scheduledReportSource.includes("import('@tauri-apps/api/event')")) {
+  failures.push('ScheduledReportGenerator must not dynamically import @tauri-apps/api/event because it creates an ineffective Vite chunk split.');
+}
+
+if (!scheduledReportSource.includes("from '@tauri-apps/api/core'")) {
+  failures.push('ScheduledReportGenerator must statically import Tauri invoke.');
+}
+
+if (!scheduledReportSource.includes("from '@tauri-apps/api/event'")) {
+  failures.push('ScheduledReportGenerator must statically import Tauri listen.');
+}
+
+for (const [configPath, configSource] of [
+  ['packages/web/vite.config.ts', webViteConfig],
+  ['packages/desktop/vite.config.ts', desktopViteConfig]
+]) {
+  if (configSource.includes('manualChunks')) {
+    failures.push(`${configPath} must not manually merge editor dependencies into giant chunks.`);
+  }
+  if (!configSource.includes('chunkSizeWarningLimit: 1500')) {
+    failures.push(`${configPath} must set a 1500KB chunk warning limit for lazy editor and Mermaid chunks.`);
+  }
 }
 
 if (failures.length > 0) {

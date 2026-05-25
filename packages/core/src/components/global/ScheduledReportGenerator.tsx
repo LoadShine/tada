@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { useAtomValue, useSetAtom } from 'jotai';
 import {
     aiSettingsAtom,
@@ -48,7 +50,6 @@ const ScheduledReportGenerator: React.FC = () => {
             if (!scheduleSettings) return;
 
             try {
-                const { invoke } = await import('@tauri-apps/api/core');
                 await invoke('update_schedule_settings', {
                     settings: {
                         enabled: scheduleSettings.enabled,
@@ -249,8 +250,6 @@ const ScheduledReportGenerator: React.FC = () => {
 
             const setupTauriListener = async () => {
                 try {
-                    const { listen } = await import('@tauri-apps/api/event');
-
                     const unlisten = await listen<{
                         timestamp: number;
                         date: string;
