@@ -195,6 +195,9 @@ if (!releaseWorkflow.includes('gh release upload')) {
 if (!releaseWorkflow.includes('--repo "${GITHUB_REPOSITORY}"')) {
   failures.push('Tada release workflow must pass --repo to gh release commands so release creation does not depend on checkout state.');
 }
+if (releaseWorkflow.includes('globstar')) {
+  failures.push('Tada release workflow must not rely on bash globstar because macOS runners use /bin/bash without globstar support.');
+}
 
 const deployWorkflow = workflowSources.find(([workflowPath]) => workflowPath.endsWith('deploy.yml'))?.[1] ?? '';
 if (deployWorkflow.includes('actions/upload-pages-artifact@v3')) {

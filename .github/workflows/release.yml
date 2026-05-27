@@ -88,8 +88,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          shopt -s globstar nullglob
-          files=(packages/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg)
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find packages/desktop/src-tauri/target -path '*/release/bundle/dmg/*.dmg' -print0)
           if [ "${#files[@]}" -eq 0 ]; then
             echo "No macOS DMG files found."
             exit 1
@@ -102,8 +104,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          shopt -s globstar nullglob
-          files=(packages/desktop/src-tauri/target/**/release/bundle/nsis/*.exe)
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find packages/desktop/src-tauri/target -path '*/release/bundle/nsis/*.exe' -print0)
           if [ "${#files[@]}" -eq 0 ]; then
             echo "No Windows NSIS installers found."
             exit 1
@@ -116,8 +120,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          shopt -s globstar nullglob
-          files=(packages/desktop/src-tauri/target/**/release/bundle/deb/*.deb)
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find packages/desktop/src-tauri/target -path '*/release/bundle/deb/*.deb' -print0)
           if [ "${#files[@]}" -eq 0 ]; then
             echo "No Linux DEB files found."
             exit 1
