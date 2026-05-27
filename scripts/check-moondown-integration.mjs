@@ -174,6 +174,9 @@ for (const [workflowPath, workflowSource] of workflowSources) {
   if (!workflowSource.includes('pnpm/action-setup@v6')) {
     failures.push(`${workflowPath} must use pnpm/action-setup@v6.`);
   }
+  if (!workflowSource.includes('FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true')) {
+    failures.push(`${workflowPath} must force JavaScript actions onto Node.js 24 to avoid deprecated Node 20 action runtime warnings.`);
+  }
 }
 
 const releaseWorkflow = workflowSources.find(([workflowPath]) => workflowPath.endsWith('release.yml'))?.[1] ?? '';
