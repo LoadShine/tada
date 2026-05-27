@@ -13,7 +13,21 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  prepare-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || \
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "Tada ${GITHUB_REF_NAME}" \
+              --notes "Cross-platform Tada desktop builds for ${GITHUB_REF_NAME}." \
+              --latest
+
   create-release:
+    needs: prepare-release
     strategy:
       fail-fast: false
       matrix:
@@ -69,19 +83,42 @@ jobs:
 
       - name: Upload Release Assets (macOS)
         if: runner.os == 'macOS'
-        uses: softprops/action-gh-release@v2.5.0
-        with:
-          files: packages/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s globstar nullglob
+          files=(packages/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No macOS DMG files found."
+            exit 1
+          fi
+          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
 
       - name: Upload Release Assets (Windows)
         if: runner.os == 'Windows'
-        uses: softprops/action-gh-release@v2.5.0
-        with:
-          files: |
-            packages/desktop/src-tauri/target/**/release/bundle/nsis/*.exe
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s globstar nullglob
+          files=(packages/desktop/src-tauri/target/**/release/bundle/nsis/*.exe)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Windows NSIS installers found."
+            exit 1
+          fi
+          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
 
       - name: Upload Release Assets (Linux)
         if: runner.os == 'Linux'
-        uses: softprops/action-gh-release@v2.5.0
-        with:
-          files: packages/desktop/src-tauri/target/**/release/bundle/deb/*.deb
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s globstar nullglob
+          files=(packages/desktop/src-tauri/target/**/release/bundle/deb/*.deb)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Linux DEB files found."
+            exit 1
+          fi
+          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber

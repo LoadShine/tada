@@ -183,8 +183,14 @@ const releaseWorkflow = workflowSources.find(([workflowPath]) => workflowPath.en
 if (releaseWorkflow.includes('softprops/action-gh-release@v1')) {
   failures.push('Tada release workflow must not use action-gh-release@v1 because it runs on the deprecated Node 20 runtime.');
 }
-if (!releaseWorkflow.includes('softprops/action-gh-release@v2.5.0')) {
-  failures.push('Tada release workflow must pin action-gh-release@v2.5.0.');
+if (releaseWorkflow.includes('softprops/action-gh-release')) {
+  failures.push('Tada release workflow must not use softprops/action-gh-release because it still emits Node.js 20 deprecation warnings.');
+}
+if (!releaseWorkflow.includes('gh release create')) {
+  failures.push('Tada release workflow must create releases through GitHub CLI instead of a deprecated JavaScript action runtime.');
+}
+if (!releaseWorkflow.includes('gh release upload')) {
+  failures.push('Tada release workflow must upload release assets through GitHub CLI instead of a deprecated JavaScript action runtime.');
 }
 
 const deployWorkflow = workflowSources.find(([workflowPath]) => workflowPath.endsWith('deploy.yml'))?.[1] ?? '';
