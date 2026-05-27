@@ -192,6 +192,9 @@ if (!releaseWorkflow.includes('gh release create')) {
 if (!releaseWorkflow.includes('gh release upload')) {
   failures.push('Tada release workflow must upload release assets through GitHub CLI instead of a deprecated JavaScript action runtime.');
 }
+if (!releaseWorkflow.includes('--repo "${GITHUB_REPOSITORY}"')) {
+  failures.push('Tada release workflow must pass --repo to gh release commands so release creation does not depend on checkout state.');
+}
 
 const deployWorkflow = workflowSources.find(([workflowPath]) => workflowPath.endsWith('deploy.yml'))?.[1] ?? '';
 if (deployWorkflow.includes('actions/upload-pages-artifact@v3')) {

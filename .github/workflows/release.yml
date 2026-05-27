@@ -20,8 +20,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || \
+          gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1 || \
             gh release create "${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}" \
               --title "Tada ${GITHUB_REF_NAME}" \
               --notes "Cross-platform Tada desktop builds for ${GITHUB_REF_NAME}." \
               --latest
@@ -93,7 +94,7 @@ jobs:
             echo "No macOS DMG files found."
             exit 1
           fi
-          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
+          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
 
       - name: Upload Release Assets (Windows)
         if: runner.os == 'Windows'
@@ -107,7 +108,7 @@ jobs:
             echo "No Windows NSIS installers found."
             exit 1
           fi
-          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
+          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
 
       - name: Upload Release Assets (Linux)
         if: runner.os == 'Linux'
@@ -121,4 +122,4 @@ jobs:
             echo "No Linux DEB files found."
             exit 1
           fi
-          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
+          gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
