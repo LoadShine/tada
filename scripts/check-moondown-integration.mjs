@@ -32,7 +32,7 @@ const workflowSources = [
 ];
 
 const failures = [];
-const minimumMoondownVersion = [1, 0, 5];
+const minimumMoondownVersion = [1, 0, 6];
 const browserDataOverrides = {
   'baseline-browser-mapping': '2.10.32',
   'browserslist': '4.28.2',
@@ -85,7 +85,7 @@ if (
   corePackage.dependencies?.moondown &&
   !isAtLeast(parseSemverRange(corePackage.dependencies.moondown), minimumMoondownVersion)
 ) {
-  failures.push('@tada/core must use moondown 1.0.5 or newer for horizontal-rule hit testing, table focus, fenced-code, syntax hiding, table, slash, search, and replace fixes.');
+  failures.push('@tada/core must use moondown 1.0.6 or newer for horizontal-rule hit testing, table focus, fenced-code, syntax hiding, table, slash, search, and replace fixes.');
 }
 
 if (!editorSource.includes("from 'moondown'") && !editorSource.includes('from "moondown"')) {
@@ -150,6 +150,14 @@ if (!appSource.includes('.hide()')) {
 
 if (!desktopConfig.includes('core:window:allow-hide')) {
   failures.push('Tada desktop capabilities must allow close-to-hide behavior.');
+}
+
+if (desktopConfig.includes('core:window:allow-is-fullscreen')) {
+  failures.push('Tada desktop capabilities must not allow unused fullscreen state checks.');
+}
+
+if (desktopConfig.includes('core:window:allow-set-fullscreen')) {
+  failures.push('Tada desktop capabilities must not allow unused fullscreen mutations.');
 }
 
 for (const [workflowPath, workflowSource] of workflowSources) {
