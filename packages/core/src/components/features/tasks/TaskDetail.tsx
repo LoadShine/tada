@@ -580,7 +580,7 @@ const TaskDetail: React.FC = () => {
     }, [selectedTask, taskListPriorityMap, t]);
 
     const titleInputClasses = useMemo(() => twMerge("flex-1 text-lg font-medium border-none focus:ring-0 focus:outline-none bg-transparent p-0 leading-tight", "placeholder:text-grey-medium dark:placeholder:text-neutral-500 placeholder:font-normal", (isInteractiveDisabled) && "line-through text-grey-medium dark:text-neutral-400/80", "text-grey-dark dark:text-neutral-100 tracking-tight"), [isInteractiveDisabled]);
-    const editorContainerClass = useMemo(() => twMerge("flex-1 min-h-0 overflow-hidden"), []);
+    const editorContainerClass = useMemo(() => twMerge("flex-1 min-h-0 overflow-hidden px-5"), []);
     const editorClasses = useMemo(() => twMerge("!h-full text-sm !bg-transparent !border-none !shadow-none", (isInteractiveDisabled) && "opacity-60 cursor-not-allowed", isTrash && "pointer-events-none", "dark:!text-neutral-300"), [isInteractiveDisabled, isTrash]);
     const footerClass = useMemo(() => twMerge("px-4 py-2 h-11 flex items-center justify-between flex-shrink-0", "border-t border-grey-light/50 dark:border-neutral-700/50", "bg-white/70 dark:bg-neutral-850/70 backdrop-blur-sm"), []);
     const actionButtonClass = useMemo(() => twMerge("text-grey-medium dark:text-neutral-400", "hover:bg-black/5 dark:hover:bg-white/10", "hover:text-grey-dark dark:hover:text-neutral-200", "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1", "focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-850"), []);

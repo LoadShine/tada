@@ -27,6 +27,7 @@ async function runMoondownUiChecks(url) {
 
     await openSeededTask(page, url);
     await assertDesktopEditorSearchReplace(page);
+    await assertChaoticMoondownEditorWorkflow(page, url);
     await assertNoHorizontalOverflow(page, 'desktop editor layout');
 
     await page.setViewportSize({ width: 390, height: 740 });
@@ -89,6 +90,62 @@ async function assertMobileEditorSearchPanel(page) {
   await assertBoxInsideViewport(page, '.cm-search', 'mobile Moondown search panel');
 }
 
+async function assertChaoticMoondownEditorWorkflow(page, url) {
+  await page.setViewportSize({ width: 390, height: 740 });
+  await openSeededTask(page, url);
+
+  const content = [
+    '# Chaos',
+    '',
+    'alpha before rule',
+    '---',
+    'alpha after rule one',
+    'alpha after rule two',
+    '',
+    '| A | B | C |',
+    '| - | - | - |',
+    '| 1 | 2 | 3 |',
+    '| 4 | 5 | 6 |',
+    '',
+    '```latex',
+    '\\\\frac{a}{b}',
+    '```',
+    '',
+    'tail',
+    '',
+  ].join('\n');
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press(`${modifierKey()}+A`);
+  await page.keyboard.insertText(content);
+  await page.waitForTimeout(250);
+
+  await focusEditorText(page, 'tail', 'tail'.length);
+  await page.keyboard.type('\n/table');
+  await page.waitForTimeout(180);
+  await assertBoxInsideViewport(page, '.cm-slash-command-menu', 'mobile slash command menu near editor bottom');
+  await page.keyboard.press('Escape');
+
+  await page.keyboard.press(`${modifierKey()}+F`);
+  await page.locator('.cm-search input[name="search"]').fill('alpha after');
+  await page.waitForTimeout(160);
+  assert.equal(await page.locator('.cm-searchMatch,.cm-searchMatch-selected').count(), 2, 'filled search input should immediately highlight exact matches');
+  await assertBoxInsideViewport(page, '.cm-search', 'mobile filled search panel');
+  await page.keyboard.press('Escape');
+
+  await page.locator('.table-helper td').nth(4).click();
+  await page.locator('.table-helper-operate-button.left').click();
+  await page.waitForTimeout(120);
+  await assertBoxInsideViewport(page, '.table-action-popover', 'mobile table row action popover');
+  await page.locator('.table-action-popover .tippy-button[title="Insert row below"]').last().click();
+  await page.waitForTimeout(160);
+  const focusedCell = await page.locator('.table-helper td:focus').evaluate((cell) => ({
+    rowIndex: cell.parentElement?.rowIndex,
+    cellIndex: cell.cellIndex,
+  }));
+  assert.deepEqual(focusedCell, { rowIndex: 2, cellIndex: 1 }, 'inserted table row should receive focus in the same column');
+}
+
 async function assertNoHorizontalOverflow(page, label) {
   const layout = await page.evaluate(() => {
     const root = document.documentElement;
@@ -137,6 +194,17 @@ async function editorText(page) {
 
 async function selectedText(page) {
   return page.evaluate(() => getSelection()?.toString() || '');
+}
+
+async function focusEditorText(page, needle, offset = 0) {
+  const line = page.locator('.cm-line').filter({ hasText: needle }).last();
+  await line.scrollIntoViewIfNeeded();
+  const box = await line.boundingBox();
+  if (!box) throw new Error(`Line is unavailable for text: ${needle}`);
+  await page.mouse.click(box.x + Math.min(42 + offset * 6, Math.max(8, box.width - 4)), box.y + box.height / 2);
+  if (offset >= needle.length) {
+    await page.keyboard.press('End');
+  }
 }
 
 function createSeedData() {

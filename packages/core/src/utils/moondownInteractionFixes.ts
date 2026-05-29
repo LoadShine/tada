@@ -1,7 +1,7 @@
 export function installMoondownInteractionFixes(root: HTMLElement): () => void {
     const patchTables = () => {
         root.querySelectorAll<HTMLTableElement>('table.table-helper').forEach((table) => {
-            table.removeAttribute('contenteditable');
+            table.setAttribute('contenteditable', 'false');
             table.querySelectorAll<HTMLTableCellElement>('td').forEach((cell) => {
                 if (cell.getAttribute('contenteditable') !== 'true') {
                     cell.setAttribute('contenteditable', 'true');
