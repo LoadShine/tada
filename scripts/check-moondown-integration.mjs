@@ -19,6 +19,7 @@ const aiServiceSource = readText('packages/core/src/services/aiService.ts');
 const mainPageSource = readText('packages/core/src/pages/MainPage.tsx');
 const mainLayoutSource = readText('packages/core/src/components/features/layout/MainLayout.tsx');
 const appSource = readText('packages/core/src/App.tsx');
+const zenModeSource = readText('packages/core/src/components/features/zen/ZenModeView.tsx');
 const scheduledReportSource = readText('packages/core/src/components/global/ScheduledReportGenerator.tsx');
 const desktopConfig = readText('packages/desktop/src-tauri/tauri.conf.json');
 const desktopCargo = readText('packages/desktop/src-tauri/Cargo.toml');
@@ -158,6 +159,10 @@ if (desktopConfig.includes('core:window:allow-is-fullscreen')) {
 
 if (desktopConfig.includes('core:window:allow-set-fullscreen')) {
   failures.push('Tada desktop capabilities must not allow unused fullscreen mutations.');
+}
+
+if (zenModeSource.includes("import('@tauri-apps/api/window')") || zenModeSource.includes('setFullscreen(') || zenModeSource.includes('isFullscreen(')) {
+  failures.push('Zen mode fullscreen must use DOM fullscreen instead of Tauri fullscreen APIs without matching window permissions.');
 }
 
 for (const [workflowPath, workflowSource] of workflowSources) {

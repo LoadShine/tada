@@ -312,21 +312,6 @@ const ZenModeView: React.FC = () => {
     }, [setIsFullScreen]);
 
     const toggleFullScreen = async () => {
-        const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-
-        if (isTauri) {
-            try {
-                const { getCurrentWindow } = await import('@tauri-apps/api/window');
-                const appWindow = getCurrentWindow();
-                const isFull = await appWindow.isFullscreen();
-                await appWindow.setFullscreen(!isFull);
-                setIsFullScreen(!isFull);
-                return;
-            } catch (e) {
-                console.warn("Tauri fullscreen failed, falling back to DOM", e);
-            }
-        }
-
         const doc = document as any;
         const docEl = document.documentElement as any;
 
